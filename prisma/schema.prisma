@@ -30,3 +30,11 @@ model Session {
   collaborator  Boolean?  @default(false)
   emailVerified Boolean?  @default(false)
 }
+
+model GeneratedSection {
+  id        String   @id @default(uuid())
+  shop      String
+  prompt    String
+  content   String
+  createdAt DateTime @default(now())
+}

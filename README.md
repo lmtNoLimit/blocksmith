@@ -40,6 +40,14 @@ Press P to open the URL to your app. Once you click install, you can start devel
 
 Local development is powered by [the Shopify CLI](https://shopify.dev/docs/apps/tools/cli). It logs into your partners account, connects to an app, provides environment variables, updates remote config, creates a tunnel and provides commands to generate extensions.
 
+### Environment Variables
+
+This app uses Google Gemini for AI-powered section generation. You'll need to set the following environment variable:
+
+- `GEMINI_API_KEY`: Your Google AI Studio API key ([Get one here](https://aistudio.google.com/app/apikey))
+
+The app will fall back to a mock response if this key is not set.
+
 ### Authenticating and querying data
 
 To authenticate and query data you can use the `shopify` const that is exported from `/app/shopify.server.js`:
