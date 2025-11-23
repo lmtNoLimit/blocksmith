@@ -54,7 +54,11 @@ export default function GeneratePage() {
 
   const [prompt, setPrompt] = useState(actionData?.prompt || "");
   const [generatedCode, setGeneratedCode] = useState(actionData?.code || "");
-  const [selectedTheme, setSelectedTheme] = useState(themes[0]?.id || "");
+  
+  // Find the active (main) theme to set as default
+  const activeTheme = themes.find((theme: any) => theme.role === "MAIN");
+  const [selectedTheme, setSelectedTheme] = useState(activeTheme?.id || themes[0]?.id || "");
+  
   const [fileName, setFileName] = useState("ai-section");
 
   const isLoading = navigation.state === "submitting";
