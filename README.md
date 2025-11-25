@@ -1,14 +1,54 @@
-# Shopify App Template - React Router
+# AI Section Generator - Shopify App
 
-This is a template for building a [Shopify app](https://shopify.dev/docs/apps/getting-started) using [React Router](https://reactrouter.com/).  It was forked from the [Shopify Remix app template](https://github.com/Shopify/shopify-app-template-remix) and converted to React Router.
+Generate custom Shopify Liquid theme sections using AI (Google Gemini). Describe what you want in natural language, get production-ready Liquid code, and save it directly to your theme.
 
-Rather than cloning this repo, follow the [Quick Start steps](https://github.com/Shopify/shopify-app-template-react-router#quick-start).
+Built with [React Router](https://reactrouter.com/), [Prisma](https://www.prisma.io/), and [Google Gemini AI](https://ai.google.dev/).
 
-Visit the [`shopify.dev` documentation](https://shopify.dev/docs/api/shopify-app-react-router) for more details on the React Router app package.
+## What is this?
 
-## Upgrading from Remix
+AI Section Generator is a Shopify embedded app that lets merchants create custom theme sections without coding:
 
-If you have an existing Remix app that you want to upgrade to React Router, please follow the [upgrade guide](https://github.com/Shopify/shopify-app-template-react-router/wiki/Upgrading-from-Remix).  Otherwise, please follow the quick start guide below.
+1. Describe the section you want (e.g., "A hero section with background image and call-to-action button")
+2. AI generates complete Liquid code with schema, styles, and markup
+3. Preview the generated code
+4. Select a theme and save the section directly
+
+## Features
+
+- **AI-Powered Generation**: Uses Google Gemini 2.0 Flash to generate Shopify Liquid sections
+- **Theme Integration**: Fetches merchant themes and saves sections via Shopify Admin API
+- **Code Preview**: Review generated code before saving
+- **Polaris UI**: Native Shopify admin experience with Polaris web components
+- **Fallback Support**: Works with mock responses if Gemini API unavailable
+
+## Documentation
+
+- [Project Overview & PDR](docs/project-overview-pdr.md) - Product requirements, architecture, and roadmap
+- [Codebase Summary](docs/codebase-summary.md) - Detailed codebase walkthrough and file structure
+- [Code Standards](docs/code-standards.md) - Development guidelines and best practices
+- [System Architecture](docs/system-architecture.md) - Technical architecture and data flows
+
+## Project Status
+
+**Current Version**: 1.0 (Development)
+
+**Completed**:
+- ✅ AI section generation with Google Gemini
+- ✅ Theme fetching and selection
+- ✅ Section saving to themes
+- ✅ Polaris UI implementation
+- ✅ Authentication and session management
+
+**Pending**:
+- ⏳ Shopify approval for write_themes scope (required for production)
+- ⏳ Production deployment
+- ⏳ Database migration to PostgreSQL/MySQL
+
+**Future Enhancements**:
+- Section editing and versioning
+- Section history viewer
+- Template library
+- Multi-language support
 
 ## Quick start
 
