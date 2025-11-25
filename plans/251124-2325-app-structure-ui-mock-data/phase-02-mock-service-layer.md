@@ -644,7 +644,7 @@ npm run dev
 - [x] Test mock mode end-to-end (build & typecheck passing) ✅
 - [x] Verify console logging shows [MOCK] prefix ✅
 - [ ] Test real mode still works (pending API access)
-- [ ] Commit changes: "feat: implement mock service layer with adapter pattern"
+- [x] Commit changes: "feat: implement mock service layer with adapter pattern" ✅
 
 ## Success Criteria
 
