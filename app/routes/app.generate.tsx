@@ -1,45 +1,46 @@
-// @ts-nocheck
 import { useState } from "react";
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData, useNavigation, useSubmit } from "react-router";
 import { authenticate } from "../shopify.server";
 import { aiService } from "../services/ai.server";
 import { themeService } from "../services/theme.server";
+import type { GenerateActionData, SaveActionData, Theme } from "../types";
 
-export async function loader({ request }: { request: Request }) {
+export async function loader({ request }: LoaderFunctionArgs) {
   await authenticate.admin(request);
   const themes = await themeService.getThemes(request);
   console.log("Loaded themes:", themes);
   return { themes };
 }
 
-export async function action({ request }: { request: Request }) {
-  const { admin } = await authenticate.admin(request);
+export async function action({ request }: ActionFunctionArgs) {
+  await authenticate.admin(request);
   const formData = await request.formData();
-  const action = formData.get("action");
+  const actionType = formData.get("action");
 
-  if (action === "generate") {
+  if (actionType === "generate") {
     const prompt = formData.get("prompt") as string;
     const code = await aiService.generateSection(prompt);
-    return { code, prompt };
+    return { code, prompt } satisfies GenerateActionData;
   }
 
-  if (action === "save") {
+  if (actionType === "save") {
     const themeId = formData.get("themeId") as string;
     const fileName = formData.get("fileName") as string;
     const content = formData.get("content") as string;
-    
+
     try {
       const result = await themeService.createSection(request, themeId, fileName, content);
-      return { 
-        success: true, 
-        message: `Section saved successfully to ${result?.filename || fileName}!` 
-      };
+      return {
+        success: true,
+        message: `Section saved successfully to ${result?.filename || fileName}!`
+      } satisfies SaveActionData;
     } catch (error) {
       console.error("Failed to save section:", error);
-      return { 
-        success: false, 
-        message: error instanceof Error ? error.message : "Failed to save section. Please try again." 
-      };
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to save section. Please try again."
+      } satisfies SaveActionData;
     }
   }
 
@@ -54,11 +55,11 @@ export default function GeneratePage() {
 
   const [prompt, setPrompt] = useState(actionData?.prompt || "");
   const [generatedCode, setGeneratedCode] = useState(actionData?.code || "");
-  
+
   // Find the active (main) theme to set as default
-  const activeTheme = themes.find((theme: any) => theme.role === "MAIN");
+  const activeTheme = themes.find((theme: Theme) => theme.role === "MAIN");
   const [selectedTheme, setSelectedTheme] = useState(activeTheme?.id || themes[0]?.id || "");
-  
+
   const [fileName, setFileName] = useState("ai-section");
 
   const isLoading = navigation.state === "submitting";
@@ -86,7 +87,22 @@ export default function GeneratePage() {
     submit(formData, { method: "post" });
   };
 
-  const themeOptions = themes.map((theme: any) => ({
+  const handlePromptChange = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    setPrompt(target.value);
+  };
+
+  const handleThemeChange = (e: Event) => {
+    const target = e.target as HTMLSelectElement;
+    setSelectedTheme(target.value);
+  };
+
+  const handleFileNameChange = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    setFileName(target.value);
+  };
+
+  const themeOptions = themes.map((theme: Theme) => ({
     label: `${theme.name} (${theme.role})`,
     value: theme.id,
   }));
@@ -106,7 +122,7 @@ export default function GeneratePage() {
               <s-text-field
                 label="Prompt"
                 value={prompt}
-                onInput={(e: any) => setPrompt(e.target.value)}
+                onInput={handlePromptChange}
                 multiline="4"
                 autoComplete="off"
                 placeholder="A hero section with a background image and centered text..."
@@ -149,9 +165,9 @@ export default function GeneratePage() {
                   <s-select
                     label="Select Theme"
                     value={selectedTheme}
-                    onChange={(e: any) => setSelectedTheme(e.target.value)}
+                    onChange={handleThemeChange}
                   >
-                    {themeOptions.map((option: any) => (
+                    {themeOptions.map((option) => (
                       <s-option key={option.value} value={option.value}>
                         {option.label}
                       </s-option>
@@ -160,7 +176,7 @@ export default function GeneratePage() {
                   <s-text-field
                     label="Section Filename"
                     value={fileName}
-                    onInput={(e: any) => setFileName(e.target.value)}
+                    onInput={handleFileNameChange}
                     suffix=".liquid"
                     autoComplete="off"
                   ></s-text-field>

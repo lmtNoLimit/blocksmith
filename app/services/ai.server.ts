@@ -1,4 +1,5 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import type { AIServiceInterface } from "../types";
 
 const SYSTEM_PROMPT = `You are an expert Shopify theme developer specializing in creating Liquid sections.
 
@@ -42,24 +43,25 @@ Example structure:
 </div>
 `;
 
-export class AIService {
+export class AIService implements AIServiceInterface {
   private genAI: GoogleGenerativeAI | null = null;
 
-  constructor() {
-    const apiKey = process.env.GEMINI_API_KEY;
-    if (apiKey) {
-      this.genAI = new GoogleGenerativeAI(apiKey);
+  constructor(apiKey?: string) {
+    const key = apiKey || process.env.GEMINI_API_KEY;
+    if (key) {
+      this.genAI = new GoogleGenerativeAI(key);
+    } else {
+      console.warn("GEMINI_API_KEY not set. Mock mode enabled.");
     }
   }
 
   async generateSection(prompt: string): Promise<string> {
     if (!this.genAI) {
-      console.warn("GEMINI_API_KEY not set. Using mock response.");
       return this.getMockSection(prompt);
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ 
+      const model = this.genAI.getGenerativeModel({
         model: "gemini-2.0-flash-exp",
         systemInstruction: SYSTEM_PROMPT
       });
@@ -76,7 +78,7 @@ export class AIService {
     }
   }
 
-  private getMockSection(prompt: string): string {
+  getMockSection(prompt: string): string {
     return `
 {% schema %}
 {

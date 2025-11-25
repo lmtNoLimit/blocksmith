@@ -1,7 +1,14 @@
 import { authenticate } from "../shopify.server";
+import type {
+  Theme,
+  ThemesQueryResponse,
+  ThemeFilesUpsertResponse,
+  ThemeFileMetadata,
+  ThemeServiceInterface
+} from "../types";
 
-export class ThemeService {
-  async getThemes(request: Request) {
+export class ThemeService implements ThemeServiceInterface {
+  async getThemes(request: Request): Promise<Theme[]> {
     const { admin } = await authenticate.admin(request);
     const response = await admin.graphql(
       `#graphql
@@ -17,14 +24,19 @@ export class ThemeService {
         }
       }`
     );
-    
-    const data = await response.json();
-    return data.data.themes.edges.map((edge: any) => edge.node);
+
+    const data = await response.json() as ThemesQueryResponse;
+    return data.data?.themes?.edges.map(edge => edge.node) || [];
   }
 
-  async createSection(request: Request, themeId: string, fileName: string, content: string) {
+  async createSection(
+    request: Request,
+    themeId: string,
+    fileName: string,
+    content: string
+  ): Promise<ThemeFileMetadata> {
     const { admin } = await authenticate.admin(request);
-    
+
     // Ensure filename ends with .liquid and is in sections/ folder if not specified
     const filename = fileName.includes('/') ? fileName : `sections/${fileName}`;
     const fullFilename = filename.endsWith('.liquid') ? filename : `${filename}.liquid`;
@@ -58,15 +70,20 @@ export class ThemeService {
       }
     });
 
-    const data = await response.json();
-    
+    const data = await response.json() as ThemeFilesUpsertResponse;
+
     // Check for errors
-    if (data.data?.themeFilesUpsert?.userErrors?.length > 0) {
+    if (data.data?.themeFilesUpsert?.userErrors?.length) {
       const errors = data.data.themeFilesUpsert.userErrors;
-      throw new Error(`Failed to save theme file: ${errors.map((e: any) => e.message).join(', ')}`);
+      throw new Error(`Failed to save theme file: ${errors.map(e => e.message).join(', ')}`);
     }
 
-    return data.data?.themeFilesUpsert?.upsertedThemeFiles?.[0];
+    const file = data.data?.themeFilesUpsert?.upsertedThemeFiles?.[0];
+    if (!file) {
+      throw new Error('No file returned from upsert');
+    }
+
+    return file;
   }
 }
 

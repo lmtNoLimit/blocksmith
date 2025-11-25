@@ -26,6 +26,11 @@ export default function Auth() {
   const [shop, setShop] = useState("");
   const { errors } = actionData || loaderData;
 
+  const handleShopChange = (e: Event) => {
+    const target = e.currentTarget as HTMLInputElement;
+    setShop(target.value);
+  };
+
   return (
     <AppProvider embedded={false}>
       <s-page>
@@ -36,7 +41,7 @@ export default function Auth() {
             label="Shop domain"
             details="example.myshopify.com"
             value={shop}
-            onChange={(e) => setShop(e.currentTarget.value)}
+            onChange={handleShopChange}
             autocomplete="on"
             error={errors.shop}
           ></s-text-field>
