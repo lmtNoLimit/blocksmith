@@ -12,8 +12,7 @@ export interface SectionNameInputProps {
 export function SectionNameInput({
   value,
   onChange,
-  error,
-  disabled = false
+  error
 }: SectionNameInputProps) {
   const handleInput = (e: Event) => {
     const target = e.target as HTMLInputElement;
