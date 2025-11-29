@@ -5,19 +5,18 @@ generator client {
   provider = "prisma-client-js"
 }
 
-// Note that some adapters may set a maximum length for the String type by default, please ensure your strings are long
-// enough when changing adapters.
-// See https://www.prisma.io/docs/orm/reference/prisma-schema-reference#string for more information
 datasource db {
-  provider = "sqlite"
-  url      = "file:dev.sqlite"
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
 }
 
+// Session model for Shopify OAuth (MongoDB requires dual ID pattern)
 model Session {
-  id            String    @id
+  session_id    String   @id @default(auto()) @map("_id") @db.ObjectId
+  id            String   @unique // Shopify session ID (e.g., "offline_shop.myshopify.com")
   shop          String
   state         String
-  isOnline      Boolean   @default(false)
+  isOnline      Boolean  @default(false)
   scope         String?
   expires       DateTime?
   accessToken   String
@@ -25,23 +24,17 @@ model Session {
   firstName     String?
   lastName      String?
   email         String?
-  accountOwner  Boolean   @default(false)
+  accountOwner  Boolean  @default(false)
   locale        String?
-  collaborator  Boolean?  @default(false)
-  emailVerified Boolean?  @default(false)
-}
+  collaborator  Boolean? @default(false)
+  emailVerified Boolean? @default(false)
 
-model GeneratedSection {
-  id        String   @id @default(uuid())
-  shop      String
-  prompt    String
-  content   String
-  createdAt DateTime @default(now())
+  @@index([shop])
 }
 
 // Generation history for tracking all AI generations
 model GenerationHistory {
-  id           String   @id @default(uuid())
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
   shop         String
   prompt       String
   code         String   // Generated Liquid code
@@ -66,7 +59,7 @@ model GenerationHistory {
 
 // Section templates for reusable prompts and generated code
 model SectionTemplate {
-  id          String   @id @default(uuid())
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
   shop        String   // Merchant who owns template
   title       String
   description String
