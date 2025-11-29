@@ -17,32 +17,23 @@ export function ThemeSelector({
   onChange,
   disabled = false
 }: ThemeSelectorProps) {
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onChange(e.target.value);
+  const handleChange = (e: Event) => {
+    const target = e.target as HTMLSelectElement;
+    onChange(target.value);
   };
 
   return (
-    <s-stack gap="small" direction="block">
-      <s-text variant="bodyMd" fontWeight="semibold">Select Theme</s-text>
-      <select
-        value={selectedThemeId}
-        onChange={handleChange}
-        disabled={disabled}
-        style={{
-          width: '100%',
-          padding: '8px 12px',
-          border: '1px solid var(--p-color-border)',
-          borderRadius: '8px',
-          fontSize: '14px',
-          backgroundColor: 'var(--p-color-bg-surface)',
-        }}
-      >
-        {themes.map((theme) => (
-          <option key={theme.id} value={theme.id}>
-            {theme.name} ({theme.role})
-          </option>
-        ))}
-      </select>
-    </s-stack>
+    <s-select
+      label="Select Theme"
+      value={selectedThemeId}
+      onChange={handleChange}
+      disabled={disabled || undefined}
+    >
+      {themes.map((theme) => (
+        <option key={theme.id} value={theme.id}>
+          {theme.name} ({theme.role})
+        </option>
+      ))}
+    </s-select>
   );
 }

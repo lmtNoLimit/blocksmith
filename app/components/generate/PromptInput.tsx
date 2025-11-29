@@ -12,7 +12,7 @@ export interface PromptInputProps {
 /**
  * Prompt input field with character counter and validation
  * Minimum 10 characters, maximum 2000 characters
- * Height: 250px per design decision
+ * Uses Polaris s-text-area component
  */
 export function PromptInput({
   value,
@@ -24,8 +24,9 @@ export function PromptInput({
   minLength = 10,
   maxLength = 2000
 }: PromptInputProps) {
-  const handleInput = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onChange(e.target.value);
+  const handleInput = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    onChange(target.value);
   };
 
   // Character counter
@@ -39,37 +40,21 @@ export function PromptInput({
     : undefined;
 
   // Combine help text with character counter
-  const displayHelpText = !error && !validationError
+  const displayDetails = !error && !validationError
     ? `${helpText} (${charCountText})`
     : charCountText;
 
   return (
-    <s-stack gap="small" direction="block">
-      <s-text variant="bodyMd" fontWeight="semibold">Prompt</s-text>
-      <textarea
-        value={value}
-        onInput={handleInput}
-        autoComplete="off"
-        placeholder={placeholder}
-        disabled={disabled}
-        rows={6}
-        style={{
-          width: '100%',
-          padding: '12px',
-          border: `1px solid var(--p-color-border${error || validationError ? '-critical' : ''})`,
-          borderRadius: '8px',
-          fontSize: '14px',
-          fontFamily: 'inherit',
-          resize: 'vertical',
-          minHeight: '150px',
-          backgroundColor: disabled ? 'var(--p-color-bg-surface-disabled)' : 'var(--p-color-bg-surface)',
-        }}
-      />
-      {(error || validationError) ? (
-        <s-text variant="bodySm" tone="critical">{error || validationError}</s-text>
-      ) : (
-        <s-text variant="bodySm" tone="subdued">{displayHelpText}</s-text>
-      )}
-    </s-stack>
+    <s-text-area
+      label="Prompt"
+      value={value}
+      onInput={handleInput}
+      placeholder={placeholder}
+      disabled={disabled || undefined}
+      rows={6}
+      maxLength={maxLength}
+      error={error || validationError}
+      details={displayDetails}
+    />
   );
 }

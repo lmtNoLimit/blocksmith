@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 export interface ButtonProps {
   children: ReactNode;
   variant?: 'primary' | 'secondary' | 'plain' | 'destructive';
-  size?: 'slim' | 'medium' | 'large';
   loading?: boolean;
   disabled?: boolean;
   onClick?: () => void;
@@ -18,7 +17,6 @@ export interface ButtonProps {
 export function Button({
   children,
   variant = 'secondary',
-  size = 'medium',
   loading = false,
   disabled = false,
   onClick,
@@ -30,7 +28,6 @@ export function Button({
   return (
     <s-button
       variant={variant}
-      size={size}
       loading={loading ? 'true' : undefined}
       disabled={disabled}
       onClick={onClick}

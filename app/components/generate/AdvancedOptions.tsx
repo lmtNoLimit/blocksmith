@@ -23,16 +23,19 @@ export function AdvancedOptions({
 }: AdvancedOptionsProps) {
   const [isExpanded, setIsExpanded] = useState(false);
 
-  const handleToneChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onChange({ ...value, tone: e.target.value as AdvancedOptionsState['tone'] });
+  const handleToneChange = (e: Event) => {
+    const target = e.target as HTMLSelectElement;
+    onChange({ ...value, tone: target.value as AdvancedOptionsState['tone'] });
   };
 
-  const handleStyleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    onChange({ ...value, style: e.target.value as AdvancedOptionsState['style'] });
+  const handleStyleChange = (e: Event) => {
+    const target = e.target as HTMLSelectElement;
+    onChange({ ...value, style: target.value as AdvancedOptionsState['style'] });
   };
 
-  const handleSchemaChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onChange({ ...value, includeSchema: e.target.checked });
+  const handleSchemaChange = (e: Event) => {
+    const target = e.target as HTMLInputElement;
+    onChange({ ...value, includeSchema: target.checked });
   };
 
   return (
@@ -40,9 +43,10 @@ export function AdvancedOptions({
       {/* Collapsible trigger */}
       <s-button
         onClick={() => setIsExpanded(!isExpanded)}
-        variant="plain"
-        disclosure={isExpanded ? 'up' : 'down'}
-        disabled={disabled}
+        variant="tertiary"
+        icon={isExpanded ? 'chevron-up' : 'chevron-down'}
+        disabled={disabled || undefined}
+        accessibilityLabel={isExpanded ? 'Collapse advanced options' : 'Expand advanced options'}
       >
         Advanced Options
       </s-button>
@@ -51,66 +55,38 @@ export function AdvancedOptions({
       {isExpanded && (
         <s-stack gap="base" direction="block">
           {/* Tone select */}
-          <s-stack gap="small" direction="block">
-            <s-text variant="bodyMd" fontWeight="semibold">Tone</s-text>
-            <select
-              value={value.tone}
-              onChange={handleToneChange}
-              disabled={disabled}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid var(--p-color-border)',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: 'var(--p-color-bg-surface)',
-              }}
-            >
-              <option value="professional">Professional</option>
-              <option value="casual">Casual</option>
-              <option value="friendly">Friendly</option>
-            </select>
-            <s-text variant="bodySm" tone="subdued">Writing style for generated content</s-text>
-          </s-stack>
+          <s-select
+            label="Tone"
+            value={value.tone}
+            onChange={handleToneChange}
+            disabled={disabled || undefined}
+            details="Writing style for generated content"
+          >
+            <option value="professional">Professional</option>
+            <option value="casual">Casual</option>
+            <option value="friendly">Friendly</option>
+          </s-select>
 
           {/* Style select */}
-          <s-stack gap="small" direction="block">
-            <s-text variant="bodyMd" fontWeight="semibold">Style</s-text>
-            <select
-              value={value.style}
-              onChange={handleStyleChange}
-              disabled={disabled}
-              style={{
-                width: '100%',
-                padding: '8px 12px',
-                border: '1px solid var(--p-color-border)',
-                borderRadius: '8px',
-                fontSize: '14px',
-                backgroundColor: 'var(--p-color-bg-surface)',
-              }}
-            >
-              <option value="minimal">Minimal</option>
-              <option value="bold">Bold</option>
-              <option value="elegant">Elegant</option>
-            </select>
-            <s-text variant="bodySm" tone="subdued">Visual aesthetic for the section</s-text>
-          </s-stack>
+          <s-select
+            label="Style"
+            value={value.style}
+            onChange={handleStyleChange}
+            disabled={disabled || undefined}
+            details="Visual aesthetic for the section"
+          >
+            <option value="minimal">Minimal</option>
+            <option value="bold">Bold</option>
+            <option value="elegant">Elegant</option>
+          </s-select>
 
-          {/* Checkbox */}
-          <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-            <input
-              type="checkbox"
-              checked={value.includeSchema}
-              onChange={handleSchemaChange}
-              disabled={disabled}
-              style={{
-                width: '18px',
-                height: '18px',
-                accentColor: 'var(--p-color-bg-fill-brand)',
-              }}
-            />
-            <s-text variant="bodyMd">Include customizable schema settings</s-text>
-          </label>
+          {/* Switch for schema */}
+          <s-switch
+            label="Include customizable schema settings"
+            checked={value.includeSchema || undefined}
+            onChange={handleSchemaChange}
+            disabled={disabled || undefined}
+          />
         </s-stack>
       )}
     </s-stack>

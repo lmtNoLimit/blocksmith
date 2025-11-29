@@ -82,7 +82,7 @@ export function HistoryPreview({
 
         {/* Prompt info */}
         <div style={{ padding: '12px 20px', backgroundColor: 'var(--p-color-bg-surface-secondary)' }}>
-          <s-text variant="bodySm" tone="subdued">
+          <s-text variant="bodySm" color="subdued">
             Prompt: {item.prompt.substring(0, 150)}{item.prompt.length > 150 ? '...' : ''}
           </s-text>
         </div>

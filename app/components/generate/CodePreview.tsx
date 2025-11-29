@@ -11,10 +11,11 @@ export interface CodePreviewProps {
 /**
  * Enhanced code preview with copy and download buttons
  * Shows generated Liquid code in a formatted, scrollable container
+ * Uses proper Polaris components
  */
 export function CodePreview({
   code,
-  maxHeight = '500px',
+  maxHeight = '400px',
   fileName = 'section',
   onCopy,
   onDownload
@@ -57,33 +58,31 @@ export function CodePreview({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--p-space-300)' }}>
+    <s-stack gap="base" direction="block">
       {/* Action buttons */}
-      <div style={{ display: 'flex', gap: 'var(--p-space-200)', justifyContent: 'flex-end' }}>
+      <s-stack gap="small" direction="inline" justifyContent="end">
         <s-button
           onClick={handleCopy}
-          size="slim"
           variant="secondary"
+          icon={copySuccess ? 'check' : 'clipboard'}
         >
-          {copySuccess ? '✓ Copied!' : 'Copy Code'}
+          {copySuccess ? 'Copied!' : 'Copy'}
         </s-button>
 
         <s-button
           onClick={handleDownload}
-          size="slim"
           variant="secondary"
+          icon="download"
         >
           Download
         </s-button>
-      </div>
+      </s-stack>
 
       {/* Code display */}
-      <div
-        style={{
-          padding: '16px',
-          backgroundColor: 'var(--p-color-bg-surface-secondary)',
-          borderRadius: '8px',
-        }}
+      <s-box
+        padding="base"
+        background="subdued"
+        borderRadius="base"
       >
         <pre
           style={{
@@ -91,7 +90,7 @@ export function CodePreview({
             overflowY: 'auto',
             maxHeight,
             margin: 0,
-            fontFamily: 'Monaco, Courier, monospace',
+            fontFamily: 'ui-monospace, SFMono-Regular, SF Mono, Menlo, Consolas, Liberation Mono, monospace',
             fontSize: '13px',
             lineHeight: '1.6',
             whiteSpace: 'pre-wrap',
@@ -100,7 +99,7 @@ export function CodePreview({
         >
           {code}
         </pre>
-      </div>
-    </div>
+      </s-box>
+    </s-stack>
   );
 }

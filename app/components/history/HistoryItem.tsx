@@ -31,8 +31,8 @@ export function HistoryItem({
     minute: '2-digit'
   });
 
-  // Status badge color
-  const statusTone = item.status === 'saved' ? 'success' : 'subdued';
+  // Status display
+  const isSaved = item.status === 'saved';
 
   return (
     <div
@@ -47,24 +47,30 @@ export function HistoryItem({
         <s-stack gap="small" distribution="equalSpacing">
           <s-stack gap="small">
             {item.isFavorite && <span>⭐</span>}
-            <s-text variant="bodySm" tone="subdued">
+            <s-text variant="bodySm" color="subdued">
               {formattedDate}
             </s-text>
-            <s-text variant="bodySm" tone={statusTone}>
-              {item.status === 'saved' ? '✓ Saved' : 'Generated'}
-            </s-text>
+            {isSaved ? (
+              <s-text variant="bodySm" tone="success">
+                ✓ Saved
+              </s-text>
+            ) : (
+              <s-text variant="bodySm" color="subdued">
+                Generated
+              </s-text>
+            )}
           </s-stack>
 
           {/* Metadata badges */}
           {(item.tone || item.style) && (
             <s-stack gap="small">
               {item.tone && (
-                <s-text variant="bodySm" tone="subdued">
+                <s-text variant="bodySm" color="subdued">
                   {item.tone}
                 </s-text>
               )}
               {item.style && (
-                <s-text variant="bodySm" tone="subdued">
+                <s-text variant="bodySm" color="subdued">
                   {item.style}
                 </s-text>
               )}
@@ -79,25 +85,23 @@ export function HistoryItem({
 
         {/* Saved info */}
         {item.status === 'saved' && item.themeName && (
-          <s-text variant="bodySm" tone="subdued">
+          <s-text variant="bodySm" color="subdued">
             Saved to: {item.themeName} / {item.fileName}.liquid
           </s-text>
         )}
 
         {/* Actions */}
-        <s-stack gap="small">
-          <s-button size="slim" onClick={onPreview}>
+        <s-stack gap="small" direction="inline">
+          <s-button onClick={onPreview}>
             Preview Code
           </s-button>
           <s-button
-            size="slim"
             variant="plain"
             onClick={onToggleFavorite}
           >
             {item.isFavorite ? 'Unfavorite' : 'Favorite'}
           </s-button>
           <s-button
-            size="slim"
             variant="plain"
             tone="critical"
             onClick={onDelete}

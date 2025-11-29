@@ -24,14 +24,13 @@ export function TemplateCard({
     <s-card>
       <s-stack gap="base" direction="block">
         {/* Header with icon and favorite */}
-        <s-stack gap="small" distribution="equalSpacing">
-          <s-stack gap="small">
+        <s-stack gap="small" justifyContent="space-between" alignItems="center" direction="inline">
+          <s-stack gap="small" direction="inline" alignItems="center">
             <span style={{ fontSize: '24px' }}>{template.icon}</span>
-            <s-text variant="headingSm">{template.title}</s-text>
+            <s-text type="strong">{template.title}</s-text>
           </s-stack>
           <s-button
             variant="tertiary"
-            size="slim"
             onClick={onToggleFavorite}
             accessibilityLabel={template.isFavorite ? "Remove from favorites" : "Add to favorites"}
           >
@@ -40,7 +39,7 @@ export function TemplateCard({
         </s-stack>
 
         {/* Description */}
-        <s-text tone="subdued">{template.description}</s-text>
+        <s-text color="subdued">{template.description}</s-text>
 
         {/* Category badge */}
         <s-badge>{template.category}</s-badge>
@@ -62,17 +61,17 @@ export function TemplateCard({
         </div>
 
         {/* Actions */}
-        <s-stack gap="small">
-          <s-button variant="primary" size="slim" onClick={onUse}>
+        <s-stack gap="small" direction="inline">
+          <s-button variant="primary" onClick={onUse}>
             Use Template
           </s-button>
-          <s-button variant="secondary" size="slim" onClick={onEdit}>
+          <s-button variant="secondary" onClick={onEdit}>
             Edit
           </s-button>
-          <s-button variant="tertiary" size="slim" onClick={onDuplicate}>
+          <s-button variant="tertiary" onClick={onDuplicate}>
             Duplicate
           </s-button>
-          <s-button variant="tertiary" size="slim" tone="critical" onClick={onDelete}>
+          <s-button variant="tertiary" tone="critical" onClick={onDelete}>
             Delete
           </s-button>
         </s-stack>

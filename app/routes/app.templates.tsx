@@ -187,7 +187,7 @@ export default function TemplatesPage() {
 
   return (
     <>
-      <s-page title="Section Templates">
+      <s-page heading="Section Templates">
         <s-stack gap="large" direction="block">
           {actionData?.action === "delete" && (
             <s-banner tone="success" dismissible>
@@ -208,8 +208,8 @@ export default function TemplatesPage() {
           <s-card>
             <s-stack gap="large" direction="block">
               {/* Header with create button */}
-              <s-stack gap="small" distribution="equalSpacing">
-                <s-text variant="headingMd">Your Templates</s-text>
+              <s-stack gap="small" justifyContent="space-between" alignItems="center">
+                <s-heading>Your Templates</s-heading>
                 <s-button variant="primary" onClick={() => {
                   setEditingTemplate(null);
                   setShowEditor(true);
@@ -219,12 +219,11 @@ export default function TemplatesPage() {
               </s-stack>
 
               {/* Filters */}
-              <s-stack gap="small">
+              <s-stack gap="small" direction="inline">
                 {CATEGORIES.map((cat) => (
                   <s-button
                     key={cat.value}
                     variant={currentCategory === cat.value && !favoritesOnly ? "primary" : "secondary"}
-                    size="slim"
                     onClick={() => handleCategoryFilter(cat.value)}
                   >
                     {cat.label}
@@ -232,7 +231,6 @@ export default function TemplatesPage() {
                 ))}
                 <s-button
                   variant={favoritesOnly ? "primary" : "secondary"}
-                  size="slim"
                   onClick={handleFavoritesFilter}
                 >
                   Favorites
@@ -250,12 +248,12 @@ export default function TemplatesPage() {
                   onDelete={handleDelete}
                 />
               ) : (
-                <s-stack gap="large" direction="block" align="center">
+                <s-stack gap="large" direction="block" alignItems="center">
                   <div style={{ fontSize: '48px', opacity: 0.5 }}>📋</div>
-                  <s-text variant="headingMd" tone="subdued">
+                  <s-text variant="headingMd" color="subdued">
                     No templates yet
                   </s-text>
-                  <s-text tone="subdued">
+                  <s-text color="subdued">
                     Create your first template or save one from the Generate page.
                   </s-text>
                   <s-button onClick={() => setShowEditor(true)}>

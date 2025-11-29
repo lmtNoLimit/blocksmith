@@ -8,6 +8,7 @@ export interface TemplateSuggestionsProps {
 /**
  * Template gallery showing common section types
  * Click to populate prompt with pre-written description
+ * Uses s-grid for proper responsive layout
  */
 export function TemplateSuggestions({
   onSelectTemplate,
@@ -20,49 +21,28 @@ export function TemplateSuggestions({
   };
 
   return (
-    <s-stack gap="base" direction="block">
-      <s-text variant="headingSm" as="h3">
-        Quick Start Templates
-      </s-text>
-
-      {/* Grid layout: 2 columns on desktop, 1 on mobile */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fill, minmax(140px, 1fr))',
-          gap: '12px'
-        }}
-      >
-        {SECTION_TEMPLATES.map((template) => (
-          <button
-            key={template.id}
-            onClick={() => handleClick(template)}
-            disabled={disabled}
-            style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'flex-start',
-              gap: '8px',
-              padding: '12px',
-              border: '1px solid var(--p-color-border)',
-              borderRadius: '8px',
-              background: 'var(--p-color-bg-surface)',
-              cursor: disabled ? 'not-allowed' : 'pointer',
-              opacity: disabled ? 0.5 : 1,
-              textAlign: 'left',
-              width: '100%'
-            }}
-          >
-            <span style={{ fontSize: '24px' }}>{template.icon}</span>
-            <s-text variant="bodySm" fontWeight="semibold">
-              {template.title}
-            </s-text>
-            <s-text variant="bodySm" tone="subdued">
-              {template.description}
-            </s-text>
-          </button>
-        ))}
-      </div>
-    </s-stack>
+    <s-grid
+      gap="base"
+      gridTemplateColumns="repeat(auto-fill, minmax(140px, 1fr))"
+    >
+      {SECTION_TEMPLATES.map((template) => (
+        <s-clickable
+          key={template.id}
+          onClick={() => handleClick(template)}
+          disabled={disabled || undefined}
+          padding="base"
+          borderRadius="base"
+          border="base"
+          borderColor="subdued"
+          background="base"
+        >
+          <s-stack gap="small" direction="block">
+            <s-text>{template.icon}</s-text>
+            <s-text type="strong">{template.title}</s-text>
+            <s-text color="subdued">{template.description}</s-text>
+          </s-stack>
+        </s-clickable>
+      ))}
+    </s-grid>
   );
 }

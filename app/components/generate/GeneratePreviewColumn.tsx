@@ -20,9 +20,9 @@ export interface GeneratePreviewColumnProps {
 }
 
 /**
- * Right column for generate screen
+ * Secondary column for generate screen (following Details pattern)
  * Contains code preview, theme selector, filename input, and save button
- * Handles loading, empty, and content states
+ * Shows supporting information: status, metadata, summaries
  */
 export function GeneratePreviewColumn({
   generatedCode,
@@ -41,10 +41,12 @@ export function GeneratePreviewColumn({
   if (isGenerating) {
     return (
       <s-card>
-        <LoadingState
-          message="Generating section code..."
-          subMessage="This may take 10-15 seconds"
-        />
+        <s-section heading="Preview">
+          <LoadingState
+            message="Generating section code..."
+            subMessage="This may take 10-15 seconds"
+          />
+        </s-section>
       </s-card>
     );
   }
@@ -53,65 +55,70 @@ export function GeneratePreviewColumn({
   if (!generatedCode) {
     return (
       <s-card>
-        <EmptyState
-          heading="Preview"
-          message="Generated code will appear here. Enter a prompt or choose a template to get started."
-        />
+        <s-section heading="Preview">
+          <EmptyState
+            heading="No code yet"
+            message="Enter a prompt or choose a template to get started."
+            icon="📝"
+          />
+        </s-section>
       </s-card>
     );
   }
 
   // Show code preview and save controls
   return (
-    <s-stack gap="large" direction="block">
+    <>
+      {/* Code Preview Card */}
       <s-card>
-        <s-stack gap="large" direction="block">
-          <s-text variant="headingMd" as="h2">
-            Preview & Save
-          </s-text>
-
+        <s-section heading="Generated Code">
           <CodePreview
             code={generatedCode}
             fileName={fileName}
           />
-
-          <s-divider />
-
-          <ThemeSelector
-            themes={themes}
-            selectedThemeId={selectedTheme}
-            onChange={onThemeChange}
-            disabled={isSaving}
-          />
-
-          <SectionNameInput
-            value={fileName}
-            onChange={onFileNameChange}
-            disabled={isSaving}
-          />
-
-          <s-stack gap="base">
-            <s-button
-              variant="primary"
-              onClick={onSave}
-              loading={isSaving ? "true" : undefined}
-              disabled={!canSave || isSaving}
-            >
-              {isSaving ? 'Saving...' : 'Save to Theme'}
-            </s-button>
-
-            {onSaveAsTemplate && (
-              <s-button
-                variant="secondary"
-                onClick={onSaveAsTemplate}
-                disabled={!generatedCode || isSaving}
-              >
-                Save as Template
-              </s-button>
-            )}
-          </s-stack>
-        </s-stack>
+        </s-section>
       </s-card>
-    </s-stack>
+
+      {/* Save Options Card */}
+      <s-card>
+        <s-section heading="Save to Theme">
+          <s-stack gap="large" direction="block">
+            <ThemeSelector
+              themes={themes}
+              selectedThemeId={selectedTheme}
+              onChange={onThemeChange}
+              disabled={isSaving}
+            />
+
+            <SectionNameInput
+              value={fileName}
+              onChange={onFileNameChange}
+              disabled={isSaving}
+            />
+
+            <s-stack gap="base" direction="block">
+              <s-button
+                variant="primary"
+                onClick={onSave}
+                loading={isSaving || undefined}
+                disabled={!canSave || isSaving}
+              >
+                {isSaving ? 'Saving...' : 'Save to Theme'}
+              </s-button>
+
+              {onSaveAsTemplate && (
+                <s-button
+                  variant="secondary"
+                  onClick={onSaveAsTemplate}
+                  disabled={!generatedCode || isSaving}
+                >
+                  Save as Template
+                </s-button>
+              )}
+            </s-stack>
+          </s-stack>
+        </s-section>
+      </s-card>
+    </>
   );
 }

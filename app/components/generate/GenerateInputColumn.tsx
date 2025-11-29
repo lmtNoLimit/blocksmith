@@ -14,8 +14,9 @@ export interface GenerateInputColumnProps {
 }
 
 /**
- * Left column for generate screen
+ * Primary column for generate screen (following Details pattern)
  * Contains prompt input, templates, examples, and advanced options
+ * Uses s-section for proper grouping with headers
  */
 export function GenerateInputColumn({
   prompt,
@@ -30,52 +31,54 @@ export function GenerateInputColumn({
   const isPromptValid = prompt.trim().length >= 10 && prompt.trim().length <= 2000;
 
   return (
-    <s-stack gap="large" direction="block">
-      {/* Main input card */}
+    <>
+      {/* Main input section */}
       <s-card>
-        <s-stack gap="large" direction="block">
-          <s-text variant="headingMd" as="h2">
-            Describe your section
-          </s-text>
+        <s-section heading="Describe your section">
+          <s-stack gap="large" direction="block">
+            <PromptInput
+              value={prompt}
+              onChange={onPromptChange}
+              disabled={disabled}
+            />
 
-          <PromptInput
-            value={prompt}
-            onChange={onPromptChange}
-            disabled={disabled}
-          />
+            <AdvancedOptions
+              value={advancedOptions}
+              onChange={onAdvancedOptionsChange}
+              disabled={disabled}
+            />
 
-          <AdvancedOptions
-            value={advancedOptions}
-            onChange={onAdvancedOptionsChange}
-            disabled={disabled}
-          />
-
-          <s-button
-            variant="primary"
-            onClick={onGenerate}
-            loading={isGenerating ? "true" : undefined}
-            disabled={disabled || !isPromptValid}
-          >
-            Generate Code
-          </s-button>
-        </s-stack>
+            <s-button
+              variant="primary"
+              onClick={onGenerate}
+              loading={isGenerating || undefined}
+              disabled={disabled || !isPromptValid}
+            >
+              Generate Code
+            </s-button>
+          </s-stack>
+        </s-section>
       </s-card>
 
       {/* Template suggestions */}
       <s-card>
-        <TemplateSuggestions
-          onSelectTemplate={onPromptChange}
-          disabled={disabled}
-        />
+        <s-section heading="Quick Start Templates">
+          <TemplateSuggestions
+            onSelectTemplate={onPromptChange}
+            disabled={disabled}
+          />
+        </s-section>
       </s-card>
 
       {/* Prompt examples */}
       <s-card>
-        <PromptExamples
-          onSelectExample={onPromptChange}
-          disabled={disabled}
-        />
+        <s-section heading="Example Prompts">
+          <PromptExamples
+            onSelectExample={onPromptChange}
+            disabled={disabled}
+          />
+        </s-section>
       </s-card>
-    </s-stack>
+    </>
   );
 }

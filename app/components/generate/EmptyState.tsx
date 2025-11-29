@@ -11,6 +11,7 @@ export interface EmptyStateProps {
 /**
  * Empty state for preview column
  * Displayed when no code generated yet
+ * Follows Shopify's empty state pattern
  */
 export function EmptyState({
   heading,
@@ -19,31 +20,21 @@ export function EmptyState({
   action
 }: EmptyStateProps) {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        padding: 'var(--p-space-800)',
-        gap: 'var(--p-space-400)'
-      }}
+    <s-box
+      padding="large-200"
+      background="subdued"
+      borderRadius="base"
     >
-      <div style={{ fontSize: '48px', opacity: 0.5 }}>{icon}</div>
-
-      <s-text variant="headingMd" as="h3">
-        {heading}
-      </s-text>
-
-      <s-text variant="bodyMd" tone="subdued">
-        {message}
-      </s-text>
-
-      {action && (
-        <s-button onClick={action.onClick} variant="secondary">
-          {action.label}
-        </s-button>
-      )}
-    </div>
+      <s-stack gap="base" direction="block" alignItems="center">
+        <s-text>{icon}</s-text>
+        <s-heading>{heading}</s-heading>
+        <s-paragraph color="subdued">{message}</s-paragraph>
+        {action && (
+          <s-button onClick={action.onClick} variant="secondary">
+            {action.label}
+          </s-button>
+        )}
+      </s-stack>
+    </s-box>
   );
 }

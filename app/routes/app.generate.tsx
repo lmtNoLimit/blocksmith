@@ -220,7 +220,7 @@ export default function GeneratePage() {
 
   return (
     <>
-      <s-page title="Generate Section">
+      <s-page heading="Generate Section" inlineSize="large">
         <s-stack gap="large" direction="block">
           {/* Enhanced feedback banners */}
 

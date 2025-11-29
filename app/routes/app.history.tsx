@@ -104,7 +104,7 @@ export default function HistoryPage() {
 
   return (
     <>
-      <s-page title="Generation History">
+      <s-page heading="Generation History">
         <s-stack gap="large" direction="block">
           {actionData?.action === "delete" && (
             <s-banner tone="success" dismissible>
@@ -115,10 +115,9 @@ export default function HistoryPage() {
           <s-card>
             <s-stack gap="large" direction="block">
               {/* Filters */}
-              <s-stack gap="base">
+              <s-stack gap="base" direction="inline">
                 <s-button
                   variant={!currentStatus && !favoritesOnly ? "primary" : "secondary"}
-                  size="slim"
                   onClick={() => {
                     handleStatusFilter("");
                     handleFavoritesFilter(false);
@@ -128,21 +127,18 @@ export default function HistoryPage() {
                 </s-button>
                 <s-button
                   variant={currentStatus === "generated" ? "primary" : "secondary"}
-                  size="slim"
                   onClick={() => handleStatusFilter("generated")}
                 >
                   Generated
                 </s-button>
                 <s-button
                   variant={currentStatus === "saved" ? "primary" : "secondary"}
-                  size="slim"
                   onClick={() => handleStatusFilter("saved")}
                 >
                   Saved
                 </s-button>
                 <s-button
                   variant={favoritesOnly ? "primary" : "secondary"}
-                  size="slim"
                   onClick={() => handleFavoritesFilter(!favoritesOnly)}
                 >
                   Favorites
@@ -159,21 +155,19 @@ export default function HistoryPage() {
 
               {/* Pagination */}
               {history.totalPages > 1 && (
-                <s-stack gap="small" distribution="center">
+                <s-stack gap="small" direction="inline" justifyContent="center" alignItems="center">
                   <s-button
                     disabled={currentPage <= 1}
                     onClick={() => handlePageChange(currentPage - 1)}
-                    size="slim"
                   >
                     Previous
                   </s-button>
-                  <s-text variant="bodySm" tone="subdued">
+                  <s-text variant="bodySm" color="subdued">
                     Page {history.page} of {history.totalPages}
                   </s-text>
                   <s-button
                     disabled={currentPage >= history.totalPages}
                     onClick={() => handlePageChange(currentPage + 1)}
-                    size="slim"
                   >
                     Next
                   </s-button>
@@ -182,11 +176,11 @@ export default function HistoryPage() {
 
               {/* Empty state */}
               {history.items.length === 0 && (
-                <s-stack gap="large" direction="block" align="center">
-                  <s-text variant="headingMd" tone="subdued">
+                <s-stack gap="large" direction="block" alignItems="center">
+                  <s-text variant="headingMd" color="subdued">
                     No history entries found
                   </s-text>
-                  <s-text tone="subdued">
+                  <s-text color="subdued">
                     Generate some sections to see them here.
                   </s-text>
                 </s-stack>

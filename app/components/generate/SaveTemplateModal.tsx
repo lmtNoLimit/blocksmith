@@ -88,7 +88,7 @@ export function SaveTemplateModal({
               </s-button>
             </s-stack>
 
-            <s-text tone="subdued">
+            <s-text color="subdued">
               Save this generation as a reusable template for future use.
             </s-text>
 
