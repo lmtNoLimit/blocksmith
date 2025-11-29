@@ -21,8 +21,9 @@ export default function App() {
         <a href="/" rel="home">
           Home
         </a>
-        <a href="/app/additional">Additional page</a>
         <a href="/app/generate">Generate Section</a>
+        <a href="/app/templates">Templates</a>
+        <a href="/app/history">History</a>
       </ui-nav-menu>
       <Outlet />
     </AppProvider>

@@ -4,6 +4,8 @@ import { useActionData, useLoaderData, useNavigation, useSubmit } from "react-ro
 import { authenticate } from "../shopify.server";
 import { aiAdapter } from "../services/adapters/ai-adapter";
 import { themeAdapter } from "../services/adapters/theme-adapter";
+import { historyService } from "../services/history.server";
+import { templateService } from "../services/template.server";
 import { ServiceModeIndicator } from "../components/ServiceModeIndicator";
 import { serviceConfig } from "../services/config.server";
 import type { GenerateActionData, SaveActionData, Theme } from "../types";
@@ -11,6 +13,7 @@ import type { GenerateActionData, SaveActionData, Theme } from "../types";
 import { GenerateLayout } from "../components/generate/GenerateLayout";
 import { GenerateInputColumn } from "../components/generate/GenerateInputColumn";
 import { GeneratePreviewColumn } from "../components/generate/GeneratePreviewColumn";
+import { SaveTemplateModal } from "../components/generate/SaveTemplateModal";
 import type { AdvancedOptionsState } from "../components/generate/AdvancedOptions";
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -27,23 +30,50 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export async function action({ request }: ActionFunctionArgs) {
-  await authenticate.admin(request);
+  const { session } = await authenticate.admin(request);
+  const shop = session.shop;
   const formData = await request.formData();
   const actionType = formData.get("action");
 
   if (actionType === "generate") {
     const prompt = formData.get("prompt") as string;
+    const tone = formData.get("tone") as string | null;
+    const style = formData.get("style") as string | null;
+
     const code = await aiAdapter.generateSection(prompt);
-    return { code, prompt } satisfies GenerateActionData;
+
+    // Save to generation history
+    const historyEntry = await historyService.create({
+      shop,
+      prompt,
+      code,
+      tone: tone || undefined,
+      style: style || undefined,
+    });
+
+    return { code, prompt, historyId: historyEntry.id } satisfies GenerateActionData;
   }
 
   if (actionType === "save") {
     const themeId = formData.get("themeId") as string;
     const fileName = formData.get("fileName") as string;
     const content = formData.get("content") as string;
+    const historyId = formData.get("historyId") as string | null;
 
     try {
       const result = await themeAdapter.createSection(request, themeId, fileName, content);
+
+      // Update history entry with save info
+      if (historyId) {
+        const themeName = formData.get("themeName") as string | null;
+        await historyService.update(historyId, shop, {
+          themeId,
+          themeName: themeName || undefined,
+          fileName,
+          status: "saved",
+        });
+      }
+
       return {
         success: true,
         message: `Section saved successfully to ${result?.filename || fileName}!`
@@ -54,6 +84,39 @@ export async function action({ request }: ActionFunctionArgs) {
         success: false,
         message: error instanceof Error ? error.message : "Failed to save section. Please try again."
       } satisfies SaveActionData;
+    }
+  }
+
+  if (actionType === "saveAsTemplate") {
+    const title = formData.get("title") as string;
+    const description = formData.get("description") as string;
+    const category = formData.get("category") as string;
+    const icon = formData.get("icon") as string;
+    const prompt = formData.get("prompt") as string;
+    const code = formData.get("code") as string | null;
+
+    try {
+      await templateService.create({
+        shop,
+        title,
+        description,
+        category,
+        icon,
+        prompt,
+        code: code || undefined,
+      });
+
+      return {
+        success: true,
+        message: "Template saved successfully!",
+        templateSaved: true
+      };
+    } catch (error) {
+      console.error("Failed to save template:", error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to save template. Please try again."
+      };
     }
   }
 
@@ -68,6 +131,7 @@ export default function GeneratePage() {
 
   const [prompt, setPrompt] = useState(actionData?.prompt || "");
   const [generatedCode, setGeneratedCode] = useState(actionData?.code || "");
+  const [currentHistoryId, setCurrentHistoryId] = useState(actionData?.historyId || "");
 
   // Advanced options state (for future AI integration)
   const [advancedOptions, setAdvancedOptions] = useState<AdvancedOptionsState>({
@@ -81,6 +145,7 @@ export default function GeneratePage() {
   const [selectedTheme, setSelectedTheme] = useState(activeTheme?.id || themes[0]?.id || "");
 
   const [fileName, setFileName] = useState("ai-section");
+  const [showSaveTemplateModal, setShowSaveTemplateModal] = useState(false);
 
   const isLoading = navigation.state === "submitting";
   const isGenerating = isLoading && navigation.formData?.get("action") === "generate";
@@ -91,7 +156,13 @@ export default function GeneratePage() {
     if (actionData?.code && actionData.code !== generatedCode) {
       setGeneratedCode(actionData.code);
     }
-  }, [actionData?.code, generatedCode]);
+    if (actionData?.historyId && actionData.historyId !== currentHistoryId) {
+      setCurrentHistoryId(actionData.historyId);
+    }
+  }, [actionData?.code, actionData?.historyId, generatedCode, currentHistoryId]);
+
+  // Get theme name for success message and save handler
+  const selectedThemeName = themes.find((t: Theme) => t.id === selectedTheme)?.name || 'theme';
 
   // Handlers
   const handleGenerate = () => {
@@ -99,7 +170,8 @@ export default function GeneratePage() {
     const formData = new FormData();
     formData.append("action", "generate");
     formData.append("prompt", prompt);
-    // Future: pass advancedOptions to AI service
+    formData.append("tone", advancedOptions.tone);
+    formData.append("style", advancedOptions.style);
     submit(formData, { method: "post" });
   };
 
@@ -109,13 +181,42 @@ export default function GeneratePage() {
     formData.append("themeId", selectedTheme);
     formData.append("fileName", fileName);
     formData.append("content", generatedCode);
+    formData.append("themeName", selectedThemeName);
+    if (currentHistoryId) {
+      formData.append("historyId", currentHistoryId);
+    }
     submit(formData, { method: "post" });
   };
 
   const canSave = Boolean(generatedCode && fileName && selectedTheme);
 
-  // Get theme name for success message
-  const selectedThemeName = themes.find((t: Theme) => t.id === selectedTheme)?.name || 'theme';
+  const handleSaveAsTemplate = (data: {
+    title: string;
+    description: string;
+    category: string;
+    icon: string;
+    prompt: string;
+  }) => {
+    const formData = new FormData();
+    formData.append("action", "saveAsTemplate");
+    formData.append("title", data.title);
+    formData.append("description", data.description);
+    formData.append("category", data.category);
+    formData.append("icon", data.icon);
+    formData.append("prompt", data.prompt);
+    if (generatedCode) {
+      formData.append("code", generatedCode);
+    }
+    submit(formData, { method: "post" });
+    setShowSaveTemplateModal(false);
+  };
+
+  // Close modal on successful template save
+  useEffect(() => {
+    if (actionData?.templateSaved) {
+      setShowSaveTemplateModal(false);
+    }
+  }, [actionData?.templateSaved]);
 
   return (
     <>
@@ -123,8 +224,15 @@ export default function GeneratePage() {
         <s-stack gap="400" vertical>
           {/* Enhanced feedback banners */}
 
+          {/* Template saved banner */}
+          {actionData?.templateSaved && (
+            <s-banner tone="success" dismissible>
+              Template saved successfully! View your templates in the Templates Library.
+            </s-banner>
+          )}
+
           {/* Success banner after save */}
-          {actionData?.success && (
+          {actionData?.success && !actionData?.templateSaved && (
             <s-banner tone="success" dismissible>
               Section saved successfully to {selectedThemeName}! Visit the Theme Editor to customize your new section.
             </s-banner>
@@ -165,6 +273,7 @@ export default function GeneratePage() {
                 fileName={fileName}
                 onFileNameChange={setFileName}
                 onSave={handleSave}
+                onSaveAsTemplate={() => setShowSaveTemplateModal(true)}
                 isSaving={isSaving}
                 isGenerating={isGenerating}
                 canSave={canSave}
@@ -179,6 +288,15 @@ export default function GeneratePage() {
         aiMode={serviceMode.aiMode}
         showIndicator={serviceMode.showIndicator}
       />
+
+      {/* Save as Template Modal */}
+      {showSaveTemplateModal && (
+        <SaveTemplateModal
+          defaultPrompt={prompt}
+          onSave={handleSaveAsTemplate}
+          onClose={() => setShowSaveTemplateModal(false)}
+        />
+      )}
     </>
   );
 }

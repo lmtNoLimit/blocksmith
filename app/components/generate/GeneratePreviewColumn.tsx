@@ -13,6 +13,7 @@ export interface GeneratePreviewColumnProps {
   fileName: string;
   onFileNameChange: (name: string) => void;
   onSave: () => void;
+  onSaveAsTemplate?: () => void;
   isSaving: boolean;
   isGenerating?: boolean;
   canSave: boolean;
@@ -31,6 +32,7 @@ export function GeneratePreviewColumn({
   fileName,
   onFileNameChange,
   onSave,
+  onSaveAsTemplate,
   isSaving,
   isGenerating = false,
   canSave
@@ -88,14 +90,26 @@ export function GeneratePreviewColumn({
             disabled={isSaving}
           />
 
-          <s-button
-            variant="primary"
-            onClick={onSave}
-            loading={isSaving ? "true" : undefined}
-            disabled={!canSave || isSaving}
-          >
-            {isSaving ? 'Saving...' : 'Save to Theme'}
-          </s-button>
+          <s-stack gap="200">
+            <s-button
+              variant="primary"
+              onClick={onSave}
+              loading={isSaving ? "true" : undefined}
+              disabled={!canSave || isSaving}
+            >
+              {isSaving ? 'Saving...' : 'Save to Theme'}
+            </s-button>
+
+            {onSaveAsTemplate && (
+              <s-button
+                variant="secondary"
+                onClick={onSaveAsTemplate}
+                disabled={!generatedCode || isSaving}
+              >
+                Save as Template
+              </s-button>
+            )}
+          </s-stack>
         </s-stack>
       </s-card>
     </s-stack>

@@ -35,6 +35,8 @@ declare global {
       vertical?: boolean;
       direction?: string;
       align?: 'start' | 'center' | 'end' | 'baseline' | 'stretch';
+      distribution?: 'leading' | 'trailing' | 'center' | 'equalSpacing' | 'fill';
+      wrap?: boolean;
       children?: React.ReactNode;
     };
 
@@ -75,7 +77,9 @@ declare global {
       target?: string;
       type?: string;
       disclosure?: 'up' | 'down';
+      tone?: 'critical' | 'success';
       key?: string;
+      accessibilityLabel?: string;
       children?: React.ReactNode;
     };
 
@@ -165,6 +169,12 @@ declare global {
     's-divider': {
       borderWidth?: string;
       borderColor?: string;
+    };
+
+    's-badge': {
+      tone?: 'info' | 'success' | 'warning' | 'critical' | 'attention' | 'new';
+      progress?: 'incomplete' | 'partiallyComplete' | 'complete';
+      children?: React.ReactNode;
     };
   }
   }

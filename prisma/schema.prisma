@@ -38,3 +38,46 @@ model GeneratedSection {
   content   String
   createdAt DateTime @default(now())
 }
+
+// Generation history for tracking all AI generations
+model GenerationHistory {
+  id           String   @id @default(uuid())
+  shop         String
+  prompt       String
+  code         String   // Generated Liquid code
+  themeId      String?  // Theme it was saved to (if saved)
+  themeName    String?
+  fileName     String?
+
+  // Generation metadata
+  tone         String?  // professional, casual, friendly
+  style        String?  // minimal, bold, elegant
+
+  // Status
+  status       String   @default("generated") // generated, saved, error
+  isFavorite   Boolean  @default(false)
+
+  createdAt    DateTime @default(now())
+
+  @@index([shop])
+  @@index([createdAt])
+  @@index([status])
+}
+
+// Section templates for reusable prompts and generated code
+model SectionTemplate {
+  id          String   @id @default(uuid())
+  shop        String   // Merchant who owns template
+  title       String
+  description String
+  category    String   // marketing, product, content, layout
+  icon        String   // Emoji or icon identifier
+  prompt      String   // Original generation prompt
+  code        String?  // Liquid code (optional - can be prompt-only)
+  isFavorite  Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([shop])
+  @@index([category])
+}

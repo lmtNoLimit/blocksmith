@@ -108,8 +108,8 @@ Redesign the Generate screen (`app/routes/app.generate.tsx`) following Shopify P
 ---
 
 ### Phase 4: Advanced Features (Optional)
-**Status**: ⏳ Pending
-**Progress**: 0%
+**Status**: ✅ Partial (History Feature Complete)
+**Progress**: 25% (Phase 4C complete)
 **File**: [phase-04-advanced-features.md](./phase-04-advanced-features.md)
 
 **Scope**: Section templates library, brand kit integration, generation history

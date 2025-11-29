@@ -50,6 +50,7 @@ export interface GenerateActionData {
   code?: string;
   prompt?: string;
   message?: string;
+  historyId?: string;
 }
 
 export interface SaveActionData {
