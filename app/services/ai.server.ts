@@ -70,12 +70,27 @@ export class AIService implements AIServiceInterface {
       const response = result.response;
       const text = response.text();
 
-      return text.trim();
+      // Strip markdown code block wrappers if present
+      // AI sometimes returns ```liquid ... ``` despite instructions
+      return this.stripMarkdownFences(text.trim());
     } catch (error) {
       console.error("Gemini API error:", error);
       // Fallback to mock on error
       return this.getMockSection(prompt);
     }
+  }
+
+  /**
+   * Strip markdown code block wrappers from AI response
+   * Handles: ```liquid ... ```, ```html ... ```, ``` ... ```
+   */
+  private stripMarkdownFences(text: string): string {
+    // Match code block with optional language identifier
+    const codeBlockMatch = text.match(/^```(?:liquid|html|)?\s*\n?([\s\S]*?)```\s*$/);
+    if (codeBlockMatch) {
+      return codeBlockMatch[1].trim();
+    }
+    return text;
   }
 
   getMockSection(prompt: string): string {

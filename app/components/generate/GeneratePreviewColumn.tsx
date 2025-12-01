@@ -1,8 +1,14 @@
+import { useState } from "react";
 import { CodePreview } from "./CodePreview";
 import { LoadingState } from "./LoadingState";
 import { EmptyState } from "./EmptyState";
 import { ThemeSelector } from "./ThemeSelector";
 import { SectionNameInput } from "./SectionNameInput";
+import {
+  SectionPreview,
+  PreviewErrorBoundary,
+  EmptyPreviewState
+} from "../preview";
 import type { Theme } from "../../types";
 
 export interface GeneratePreviewColumnProps {
@@ -37,6 +43,9 @@ export function GeneratePreviewColumn({
   isGenerating = false,
   canSave
 }: GeneratePreviewColumnProps) {
+  // Tab state for Code/Preview toggle - must be at top level
+  const [activeTab, setActiveTab] = useState<'code' | 'preview'>('code');
+
   // Show loading state during generation
   if (isGenerating) {
     return (
@@ -69,13 +78,38 @@ export function GeneratePreviewColumn({
   // Show code preview and save controls
   return (
     <>
-      {/* Code Preview Card */}
+      {/* Code/Preview Card with Tabs */}
       <s-card>
-        <s-section heading="Generated Code">
-          <CodePreview
-            code={generatedCode}
-            fileName={fileName}
-          />
+        <s-section>
+          {/* Tab buttons */}
+          <s-stack gap="base" direction="block">
+            <div style={{ display: 'flex', gap: '4px' }}>
+              <s-button
+                variant={activeTab === 'code' ? 'primary' : 'tertiary'}
+                onClick={() => setActiveTab('code')}
+              >
+                Code
+              </s-button>
+              <s-button
+                variant={activeTab === 'preview' ? 'primary' : 'tertiary'}
+                onClick={() => setActiveTab('preview')}
+              >
+                Preview
+              </s-button>
+            </div>
+
+            {/* Tab content */}
+            {activeTab === 'code' ? (
+              <CodePreview
+                code={generatedCode}
+                fileName={fileName}
+              />
+            ) : (
+              <PreviewErrorBoundary onRetry={() => {}}>
+                <SectionPreview liquidCode={generatedCode} />
+              </PreviewErrorBoundary>
+            )}
+          </s-stack>
         </s-section>
       </s-card>
 
