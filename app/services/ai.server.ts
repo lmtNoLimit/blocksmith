@@ -14,14 +14,20 @@ When generating a section, follow these strict requirements:
 
 3. **Schema**: Include settings for key properties (colors, spacing, text). Keep it simple (max 5-7 settings). Always include a preset.
 
-4. **Best Practices**:
+4. **IMPORTANT - Labels Format**: Use plain text for ALL labels, info text, and option labels in schema settings.
+   - ✅ CORRECT: "label": "Background Color"
+   - ✅ CORRECT: "info": "Choose a background color"
+   - ❌ WRONG: "label": "t:sections.hero.settings.bg_color.label"
+   - ❌ WRONG: DO NOT use translation keys (t:...) anywhere in the schema
+   - This is critical - the preview system cannot resolve translation keys
+
+5. **Best Practices**:
    - Use semantic HTML
    - Make it responsive (mobile-first)
-   - Add Liquid translation filters for user-facing text: {{ 'key' | t }}
    - Never use global CSS resets
    - Prefix all custom classes with "ai-"
 
-5. **Output Format**: Return ONLY the Liquid code. No explanations, no markdown code blocks.
+6. **Output Format**: Return ONLY the Liquid code. No explanations, no markdown code blocks.
 
 Example structure:
 {% schema %}

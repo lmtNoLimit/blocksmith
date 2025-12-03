@@ -25,60 +25,52 @@ export function GenerateInputColumn({
   onAdvancedOptionsChange,
   disabled,
   onGenerate,
-  isGenerating
+  isGenerating,
 }: GenerateInputColumnProps) {
   // Validate prompt before enabling generate button (min 10, max 2000 chars)
-  const isPromptValid = prompt.trim().length >= 10 && prompt.trim().length <= 2000;
+  const isPromptValid =
+    prompt.trim().length >= 10 && prompt.trim().length <= 2000;
 
   return (
     <>
       {/* Main input section */}
-      <s-card>
-        <s-section heading="Describe your section">
-          <s-stack gap="large" direction="block">
-            <PromptInput
-              value={prompt}
-              onChange={onPromptChange}
-              disabled={disabled}
-            />
+      <s-section heading="Describe your section">
+        <s-stack gap="large" direction="block">
+          <PromptInput
+            value={prompt}
+            onChange={onPromptChange}
+            disabled={disabled}
+          />
 
-            <AdvancedOptions
-              value={advancedOptions}
-              onChange={onAdvancedOptionsChange}
-              disabled={disabled}
-            />
+          <AdvancedOptions
+            value={advancedOptions}
+            onChange={onAdvancedOptionsChange}
+            disabled={disabled}
+          />
 
-            <s-button
-              variant="primary"
-              onClick={onGenerate}
-              loading={isGenerating || undefined}
-              disabled={disabled || !isPromptValid}
-            >
-              Generate Code
-            </s-button>
-          </s-stack>
-        </s-section>
-      </s-card>
+          <s-button
+            variant="primary"
+            onClick={onGenerate}
+            loading={isGenerating || undefined}
+            disabled={disabled || !isPromptValid}
+          >
+            Generate Code
+          </s-button>
+        </s-stack>
+      </s-section>
 
       {/* Template suggestions */}
-      <s-card>
-        <s-section heading="Quick Start Templates">
-          <TemplateSuggestions
-            onSelectTemplate={onPromptChange}
-            disabled={disabled}
-          />
-        </s-section>
-      </s-card>
+      <s-section heading="Quick Start Templates">
+        <TemplateSuggestions
+          onSelectTemplate={onPromptChange}
+          disabled={disabled}
+        />
+      </s-section>
 
       {/* Prompt examples */}
-      <s-card>
-        <s-section heading="Example Prompts">
-          <PromptExamples
-            onSelectExample={onPromptChange}
-            disabled={disabled}
-          />
-        </s-section>
-      </s-card>
+      <s-section heading="Example Prompts">
+        <PromptExamples onSelectExample={onPromptChange} disabled={disabled} />
+      </s-section>
     </>
   );
 }
