@@ -62,7 +62,7 @@ export class AIService implements AIServiceInterface {
 
     try {
       const model = this.genAI.getGenerativeModel({
-        model: "gemini-2.0-flash-exp",
+        model: "gemini-2.5-flash",
         systemInstruction: SYSTEM_PROMPT
       });
 
