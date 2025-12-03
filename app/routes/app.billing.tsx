@@ -24,6 +24,7 @@ import {
   UsageDashboard,
   UsageAlertBanner,
 } from "../components/billing";
+import { useAppBridge } from "@shopify/app-bridge-react";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   const { session } = await authenticate.admin(request);
@@ -101,6 +102,7 @@ export default function BillingPage() {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const submit = useSubmit();
+  const shopify = useAppBridge();
 
   // Redirect to Shopify confirmation page
   useEffect(() => {
@@ -110,6 +112,13 @@ export default function BillingPage() {
       window.top!.location.href = actionData.confirmationUrl;
     }
   }, [actionData?.confirmationUrl]);
+
+  // Show toast on successful subscription cancellation
+  useEffect(() => {
+    if (actionData?.success) {
+      shopify.toast.show("Subscription cancelled successfully");
+    }
+  }, [actionData?.success, shopify]);
 
   // Handle plan selection
   const handlePlanSelect = (planName: PlanTier) => {
@@ -163,13 +172,6 @@ export default function BillingPage() {
       {actionData?.error && (
         <s-banner tone="critical">
           <s-paragraph>{actionData.error}</s-paragraph>
-        </s-banner>
-      )}
-
-      {/* Success Banner */}
-      {actionData?.success && (
-        <s-banner tone="success">
-          <s-paragraph>Subscription updated successfully.</s-paragraph>
         </s-banner>
       )}
 
