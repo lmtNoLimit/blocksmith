@@ -10,3 +10,4 @@ export { ProductDrop } from './ProductDrop';
 export { CollectionDrop } from './CollectionDrop';
 export { ArticleDrop } from './ArticleDrop';
 export { ShopDrop } from './ShopDrop';
+export { BlockDrop } from './BlockDrop';

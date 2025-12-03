@@ -5,12 +5,12 @@ import { useLiquidRenderer } from './hooks/useLiquidRenderer';
 import { usePreviewMessaging } from './hooks/usePreviewMessaging';
 import { useResourceDetection } from './hooks/useResourceDetection';
 import { useResourceFetcher } from './hooks/useResourceFetcher';
-import { parseSchema, extractSettings, buildInitialState } from './schema/parseSchema';
+import { parseSchema, extractSettings, buildInitialState, buildBlockInstancesFromPreset } from './schema/parseSchema';
 import { SettingsPanel } from './settings/SettingsPanel';
 import { getAllPresets } from './mockData/registry';
 import { buildPreviewContext } from './utils/buildPreviewContext';
 import type { DeviceSize, PreviewMessage, PreviewSettings } from './types';
-import type { SchemaSetting, SettingsState, SchemaDefinition } from './schema/SchemaTypes';
+import type { SchemaSetting, SettingsState, SchemaDefinition, BlockInstance } from './schema/SchemaTypes';
 import type { MockProduct, MockCollection } from './mockData/types';
 import type { SelectedResource } from './ResourceSelector';
 
@@ -59,10 +59,19 @@ export function SectionPreview({
     buildInitialState(schemaSettings)
   );
 
+  // Block state management
+  const [blocksState, setBlocksState] = useState<BlockInstance[]>([]);
+
   // Reset settings when schema changes
   useEffect(() => {
     setSettingsValues(buildInitialState(schemaSettings));
   }, [schemaSettings]);
+
+  // Initialize blocks from schema
+  useEffect(() => {
+    const blocks = buildBlockInstancesFromPreset(parsedSchema);
+    setBlocksState(blocks);
+  }, [parsedSchema]);
 
   const { render, isRendering } = useLiquidRenderer();
   const { sendMessage, setIframe } = usePreviewMessaging(
@@ -93,7 +102,7 @@ export function SectionPreview({
         preset: selectedPreset
       });
 
-      const { html, css } = await render(liquidCode, settingsValues, mockData as unknown as Record<string, unknown>);
+      const { html, css } = await render(liquidCode, settingsValues, blocksState, mockData as unknown as Record<string, unknown>);
       setRenderedHtml(html);
       sendMessage({ type: 'RENDER', html, css });
     } catch (err) {
@@ -101,7 +110,7 @@ export function SectionPreview({
       setError(errorMsg);
       sendMessage({ type: 'RENDER_ERROR', error: errorMsg });
     }
-  }, [liquidCode, settingsValues, selectedPreset, useRealData, selectedProduct, selectedCollection, render, sendMessage]);
+  }, [liquidCode, settingsValues, blocksState, selectedPreset, useRealData, selectedProduct, selectedCollection, render, sendMessage]);
 
   // Debounce renders on code/settings/preset/resource change
   useEffect(() => {
@@ -127,6 +136,24 @@ export function SectionPreview({
     setSettingsValues(newValues);
     onSettingsChange?.(newValues);
   }, [onSettingsChange]);
+
+  // Block setting change handler
+  const handleBlockSettingChange = useCallback(
+    (blockIndex: number, settingId: string, value: string | number | boolean) => {
+      setBlocksState(prev => {
+        const updated = [...prev];
+        updated[blockIndex] = {
+          ...updated[blockIndex],
+          settings: {
+            ...updated[blockIndex].settings,
+            [settingId]: value
+          }
+        };
+        return updated;
+      });
+    },
+    []
+  );
 
   // Product selection handler
   const handleProductSelect = useCallback(async (
@@ -211,13 +238,16 @@ export function SectionPreview({
 
   return (
     <s-stack gap="large" direction="block">
-      {/* Settings panel if schema has settings */}
-      {schemaSettings.length > 0 && (
+      {/* Settings panel if schema has settings or blocks */}
+      {(schemaSettings.length > 0 || blocksState.length > 0) && (
         <SettingsPanel
           settings={schemaSettings}
           values={settingsValues}
           onChange={handleSettingsChange}
           disabled={isRendering}
+          schema={parsedSchema}
+          blocks={blocksState}
+          onBlockSettingChange={handleBlockSettingChange}
         />
       )}
 

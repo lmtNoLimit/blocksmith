@@ -77,3 +77,13 @@ export interface SchemaDefinition {
 }
 
 export type SettingsState = Record<string, string | number | boolean>;
+
+/**
+ * Runtime block instance with settings
+ * Represents a single block in section.blocks array
+ */
+export interface BlockInstance {
+  id: string;           // Unique identifier (auto-generated)
+  type: string;         // Block type from schema
+  settings: SettingsState;  // Block-specific settings with defaults
+}

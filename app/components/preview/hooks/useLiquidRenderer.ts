@@ -1,6 +1,8 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { Liquid } from 'liquidjs';
 import type { PreviewSettings } from '../types';
+import type { BlockInstance } from '../schema/SchemaTypes';
+import { BlockDrop } from '../drops';
 
 interface RenderResult {
   html: string;
@@ -8,7 +10,7 @@ interface RenderResult {
 }
 
 interface UseLiquidRendererResult {
-  render: (template: string, settings: PreviewSettings, mockData?: Record<string, unknown>) => Promise<RenderResult>;
+  render: (template: string, settings: PreviewSettings, blocks?: BlockInstance[], mockData?: Record<string, unknown>) => Promise<RenderResult>;
   isRendering: boolean;
   error: string | null;
 }
@@ -140,6 +142,7 @@ export function useLiquidRenderer(): UseLiquidRendererResult {
   const render = useCallback(async (
     template: string,
     settings: PreviewSettings,
+    blocks: BlockInstance[] = [],
     mockData: Record<string, unknown> = {}
   ): Promise<RenderResult> => {
     if (!engineRef.current) {
@@ -173,12 +176,13 @@ export function useLiquidRenderer(): UseLiquidRendererResult {
       // Remove style tags from template for HTML-only rendering
       const htmlTemplate = processedTemplate.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
 
-      // Build render context with section object
+      // Build render context with section object including blocks
       const context = {
         ...mockData,
         section: {
           id: 'preview-section',
-          settings
+          settings,
+          blocks: blocks.map(block => new BlockDrop(block))
         },
         settings
       };

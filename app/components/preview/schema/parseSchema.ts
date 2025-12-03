@@ -1,4 +1,4 @@
-import type { SchemaDefinition, SchemaSetting, SettingsState } from './SchemaTypes';
+import type { SchemaDefinition, SchemaSetting, SettingsState, SchemaBlock, BlockInstance } from './SchemaTypes';
 
 /**
  * Extract and parse {% schema %} block from Liquid code
@@ -100,4 +100,48 @@ export function coerceValue(
     default:
       return String(value);
   }
+}
+
+/**
+ * Extract block definitions from schema
+ */
+export function extractBlocks(schema: SchemaDefinition | null): SchemaBlock[] {
+  if (!schema?.blocks) return [];
+
+  return schema.blocks.filter(block =>
+    block.type && block.name
+  );
+}
+
+/**
+ * Build block instances from preset configuration
+ * Initializes blocks with default settings from schema
+ */
+export function buildBlockInstancesFromPreset(
+  schema: SchemaDefinition | null
+): BlockInstance[] {
+  if (!schema) return [];
+
+  // Get blocks from first preset or default
+  const presetBlocks = schema.presets?.[0]?.blocks || schema.default?.blocks || [];
+
+  return presetBlocks.map((presetBlock, index) => {
+    // Find block definition in schema.blocks
+    const blockDef = schema.blocks?.find(b => b.type === presetBlock.type);
+
+    // Build settings with defaults from block definition
+    const blockSettings = blockDef?.settings || [];
+    const settings = buildInitialState(blockSettings);
+
+    // Apply preset overrides if any
+    if (presetBlock.settings) {
+      Object.assign(settings, presetBlock.settings);
+    }
+
+    return {
+      id: `block-${index}`,
+      type: presetBlock.type,
+      settings
+    };
+  });
 }
