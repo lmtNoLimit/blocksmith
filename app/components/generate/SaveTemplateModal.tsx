@@ -49,6 +49,7 @@ export function SaveTemplateModal({
   };
 
   return (
+    // eslint-disable-next-line jsx-a11y/no-static-element-interactions
     <div
       style={{
         position: 'fixed',
@@ -64,8 +65,17 @@ export function SaveTemplateModal({
         padding: '20px'
       }}
       onClick={onClose}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') {
+          onClose();
+        }
+      }}
     >
+      {/* eslint-disable-next-line jsx-a11y/no-noninteractive-element-interactions, jsx-a11y/click-events-have-key-events */}
       <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="save-template-title"
         style={{
           backgroundColor: 'var(--p-color-bg-surface)',
           borderRadius: '12px',
@@ -76,11 +86,11 @@ export function SaveTemplateModal({
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <s-card>
+        <s-section>
           <s-stack gap="large" direction="block">
             {/* Header */}
             <s-stack gap="small" direction="inline" justifyContent="space-between">
-              <s-text type="strong">
+              <s-text id="save-template-title" type="strong">
                 Save as Template
               </s-text>
               <s-button variant="tertiary" onClick={onClose}>
@@ -216,7 +226,7 @@ export function SaveTemplateModal({
               </s-button>
             </s-stack>
           </s-stack>
-        </s-card>
+        </s-section>
       </div>
     </div>
   );

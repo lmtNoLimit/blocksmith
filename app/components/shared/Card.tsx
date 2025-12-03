@@ -7,13 +7,13 @@ export interface CardProps {
 }
 
 /**
- * Wrapper for Polaris s-card web component
+ * Wrapper for Polaris s-section web component
  * Provides consistent card layout and styling
  */
-export function Card({ title, children, sectioned = false }: CardProps) {
+export function Card({ title, children }: CardProps) {
   return (
-    <s-card title={title} sectioned={sectioned}>
+    <s-section heading={title}>
       {children}
-    </s-card>
+    </s-section>
   );
 }

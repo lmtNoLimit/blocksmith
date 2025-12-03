@@ -92,7 +92,7 @@ app/components/
 - Supports all Polaris button variants (primary, secondary, plain, destructive)
 
 **`shared/Card.tsx`** (20 lines)
-- Wrapper for Polaris `<s-card>` web component
+- Wrapper for Polaris `<s-section>` web component
 - Props: title, children, sectioned
 - Provides consistent card layout
 
@@ -573,10 +573,10 @@ Historical record of generated sections (currently unused in UI).
 ### UI Components
 
 #### Polaris Web Components
-Used throughout the app (declared in `app/globals.d.ts`):
+Used throughout the app (declared in types `tsconfig.json`):
 - `<s-page>`: Page container
 - `<s-layout>`, `<s-layout-section>`: Layout system
-- `<s-card>`: Card container
+- `<s-section>`: Card container/Section container
 - `<s-stack>`: Flexbox stack
 - `<s-text>`, `<s-text-field>`: Text components
 - `<s-button>`: Button with loading state

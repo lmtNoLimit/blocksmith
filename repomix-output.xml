@@ -621,7 +621,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
     const current = payload.current as string[];
     if (session) {
-        await db.session.update({   
+        await db.session.update({
             where: {
                 id: session.id
             },
@@ -716,7 +716,7 @@ export class AIService {
     }
 
     try {
-      const model = this.genAI.getGenerativeModel({ 
+      const model = this.genAI.getGenerativeModel({
         model: "gemini-2.0-flash-exp",
         systemInstruction: SYSTEM_PROMPT
       });
@@ -804,14 +804,14 @@ export class ThemeService {
         }
       }`
     );
-    
+
     const data = await response.json();
     return data.data.themes.edges.map((edge: any) => edge.node);
   }
 
   async createSection(request: Request, themeId: string, fileName: string, content: string) {
     const { admin } = await authenticate.admin(request);
-    
+
     // Ensure filename ends with .liquid and is in sections/ folder if not specified
     const filename = fileName.includes('/') ? fileName : `sections/${fileName}`;
     const fullFilename = filename.endsWith('.liquid') ? filename : `${filename}.liquid`;
@@ -846,7 +846,7 @@ export class ThemeService {
     });
 
     const data = await response.json();
-    
+
     // Check for errors
     if (data.data?.themeFilesUpsert?.userErrors?.length > 0) {
       const errors = data.data.themeFilesUpsert.userErrors;
@@ -1398,18 +1398,18 @@ export async function action({ request }: { request: Request }) {
     const themeId = formData.get("themeId") as string;
     const fileName = formData.get("fileName") as string;
     const content = formData.get("content") as string;
-    
+
     try {
       const result = await themeService.createSection(request, themeId, fileName, content);
-      return { 
-        success: true, 
-        message: `Section saved successfully to ${result?.filename || fileName}!` 
+      return {
+        success: true,
+        message: `Section saved successfully to ${result?.filename || fileName}!`
       };
     } catch (error) {
       console.error("Failed to save section:", error);
-      return { 
-        success: false, 
-        message: error instanceof Error ? error.message : "Failed to save section. Please try again." 
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to save section. Please try again."
       };
     }
   }
@@ -1425,11 +1425,11 @@ export default function GeneratePage() {
 
   const [prompt, setPrompt] = useState(actionData?.prompt || "");
   const [generatedCode, setGeneratedCode] = useState(actionData?.code || "");
-  
+
   // Find the active (main) theme to set as default
   const activeTheme = themes.find((theme: any) => theme.role === "MAIN");
   const [selectedTheme, setSelectedTheme] = useState(activeTheme?.id || themes[0]?.id || "");
-  
+
   const [fileName, setFileName] = useState("ai-section");
 
   const isLoading = navigation.state === "submitting";
@@ -1467,86 +1467,80 @@ export default function GeneratePage() {
 
   return (
     <s-page title="Generate Section">
-      <s-layout>
-        <s-layout-section>
-          <s-card>
+      <s-section>
+        <s-stack gap="400" vertical>
+          <s-text variant="headingMd" as="h2">
+            Describe your section
+          </s-text>
+          <s-text-field
+            label="Prompt"
+            value={prompt}
+            onInput={(e: any) => setPrompt(e.target.value)}
+            multiline="4"
+            autoComplete="off"
+            placeholder="A hero section with a background image and centered text..."
+          ></s-text-field>
+          <s-button
+            loading={isGenerating ? "true" : undefined}
+            onClick={handleGenerate}
+            variant="primary"
+          >
+            Generate Code
+          </s-button>
+        </s-stack>
+      </s-section>
+
+      {generatedCode && (
+        <s-section>
+          <s-stack gap="400" vertical>
+            <s-text variant="headingMd" as="h2">
+              Preview & Save
+            </s-text>
+
+            {actionData?.success && (
+              <s-banner tone="success" heading="Success" dismissible>
+                {actionData.message}
+              </s-banner>
+            )}
+            {actionData?.success === false && (
+              <s-banner tone="critical" heading="Error">
+                {actionData.message}
+              </s-banner>
+            )}
+
+            <s-box padding="400" background="bg-surface-secondary" border-radius="200">
+              <pre style={{ overflowX: "auto" }}>{generatedCode}</pre>
+            </s-box>
+
             <s-stack gap="400" vertical>
-              <s-text variant="headingMd" as="h2">
-                Describe your section
-              </s-text>
-              <s-text-field
-                label="Prompt"
-                value={prompt}
-                onInput={(e: any) => setPrompt(e.target.value)}
-                multiline="4"
-                autoComplete="off"
-                placeholder="A hero section with a background image and centered text..."
-              ></s-text-field>
-              <s-button 
-                loading={isGenerating ? "true" : undefined} 
-                onClick={handleGenerate} 
-                variant="primary"
+              <s-select
+                label="Select Theme"
+                value={selectedTheme}
+                onChange={(e: any) => setSelectedTheme(e.target.value)}
               >
-                Generate Code
+                {themeOptions.map((option: any) => (
+                  <s-option key={option.value} value={option.value}>
+                    {option.label}
+                  </s-option>
+                ))}
+              </s-select>
+              <s-text-field
+                label="Section Filename"
+                value={fileName}
+                onInput={(e: any) => setFileName(e.target.value)}
+                suffix=".liquid"
+                autoComplete="off"
+              ></s-text-field>
+              <s-button
+                loading={isSaving ? "true" : undefined}
+                onClick={handleSave}
+              >
+                Save to Theme
               </s-button>
             </s-stack>
-          </s-card>
-        </s-layout-section>
-
-        {generatedCode && (
-          <s-layout-section>
-            <s-card>
-              <s-stack gap="400" vertical>
-                <s-text variant="headingMd" as="h2">
-                  Preview & Save
-                </s-text>
-                
-                {actionData?.success && (
-                  <s-banner tone="success" heading="Success" dismissible>
-                    {actionData.message}
-                  </s-banner>
-                )}
-                {actionData?.success === false && (
-                  <s-banner tone="critical" heading="Error">
-                    {actionData.message}
-                  </s-banner>
-                )}
-
-                <s-box padding="400" background="bg-surface-secondary" border-radius="200">
-                  <pre style={{ overflowX: "auto" }}>{generatedCode}</pre>
-                </s-box>
-
-                <s-stack gap="400" vertical>
-                  <s-select
-                    label="Select Theme"
-                    value={selectedTheme}
-                    onChange={(e: any) => setSelectedTheme(e.target.value)}
-                  >
-                    {themeOptions.map((option: any) => (
-                      <s-option key={option.value} value={option.value}>
-                        {option.label}
-                      </s-option>
-                    ))}
-                  </s-select>
-                  <s-text-field
-                    label="Section Filename"
-                    value={fileName}
-                    onInput={(e: any) => setFileName(e.target.value)}
-                    suffix=".liquid"
-                    autoComplete="off"
-                  ></s-text-field>
-                  <s-button 
-                    loading={isSaving ? "true" : undefined} 
-                    onClick={handleSave}
-                  >
-                    Save to Theme
-                  </s-button>
-                </s-stack>
-              </s-stack>
-            </s-card>
-          </s-layout-section>
-        )}
-      </s-layout>
+          </s-stack>
+        </s-section>
+      )}
     </s-page>
   );
 }
@@ -1597,27 +1591,6 @@ export const headers: HeadersFunction = (headersArgs) => {
 <file path="app/globals.d.ts">
 declare module "*.css";
 
-declare global {
-  namespace JSX {
-    interface IntrinsicElements {
-      "s-page": any;
-      "s-layout": any;
-      "s-layout-section": any;
-      "s-card": any;
-      "s-stack": any;
-      "s-text": any;
-      "s-text-field": any;
-      "s-button": any;
-      "s-banner": any;
-      "s-box": any;
-      "s-select": any;
-      "s-option": any;
-      "s-link": any;
-      "ui-nav-menu": any;
-      "ui-title-bar": any;
-    }
-  }
-}
 </file>
 
 <file path="prisma/schema.prisma">
@@ -1829,7 +1802,7 @@ Please read the [documentation for @shopify/shopify-app-react-router](https://sh
 
 ## Shopify Dev MCP
 
-This template is configured with the Shopify Dev MCP. This instructs [Cursor](https://cursor.com/), [GitHub Copilot](https://github.com/features/copilot) and [Claude Code](https://claude.com/product/claude-code) and [Google Gemini CLI](https://github.com/google-gemini/gemini-cli) to use the Shopify Dev MCP.  
+This template is configured with the Shopify Dev MCP. This instructs [Cursor](https://cursor.com/), [GitHub Copilot](https://github.com/features/copilot) and [Claude Code](https://claude.com/product/claude-code) and [Google Gemini CLI](https://github.com/google-gemini/gemini-cli) to use the Shopify Dev MCP.
 
 For more information on the Shopify Dev MCP please read [the  documentation](https://shopify.dev/docs/apps/build/devmcp).
 
@@ -1879,10 +1852,10 @@ pnpm run build
 
 When you're ready to set up your app in production, you can follow [our deployment documentation](https://shopify.dev/docs/apps/launch/deployment) to host it externally. From there, you have a few options:
 
-- [Google Cloud Run](https://shopify.dev/docs/apps/launch/deployment/deploy-to-google-cloud-run): This tutorial is written specifically for this example repo, and is compatible with the extended steps included in the subsequent [**Build your app**](tutorial) in the **Getting started** docs. It is the most detailed tutorial for taking a React Router-based Shopify app and deploying it to production. It includes configuring permissions and secrets, setting up a production database, and even hosting your apps behind a load balancer across multiple regions. 
-- [Fly.io](https://fly.io/docs/js/shopify/): Leverages the Fly.io CLI to quickly launch Shopify apps to a single machine. 
-- [Render](https://render.com/docs/deploy-shopify-app): This tutorial guides you through using Docker to deploy and install apps on a Dev store. 
-- [Manual deployment guide](https://shopify.dev/docs/apps/launch/deployment/deploy-to-hosting-service): This resource provides general guidance on the requirements of deployment including environment variables, secrets, and persistent data. 
+- [Google Cloud Run](https://shopify.dev/docs/apps/launch/deployment/deploy-to-google-cloud-run): This tutorial is written specifically for this example repo, and is compatible with the extended steps included in the subsequent [**Build your app**](tutorial) in the **Getting started** docs. It is the most detailed tutorial for taking a React Router-based Shopify app and deploying it to production. It includes configuring permissions and secrets, setting up a production database, and even hosting your apps behind a load balancer across multiple regions.
+- [Fly.io](https://fly.io/docs/js/shopify/): Leverages the Fly.io CLI to quickly launch Shopify apps to a single machine.
+- [Render](https://render.com/docs/deploy-shopify-app): This tutorial guides you through using Docker to deploy and install apps on a Dev store.
+- [Manual deployment guide](https://shopify.dev/docs/apps/launch/deployment/deploy-to-hosting-service): This resource provides general guidance on the requirements of deployment including environment variables, secrets, and persistent data.
 
 When you reach the step for [setting up environment variables](https://shopify.dev/docs/apps/deployment/web#set-env-vars), you also need to set the variable `NODE_ENV=production`.
 
@@ -1910,7 +1883,7 @@ This only applies if your app is embedded, which it will be by default.
 
 ### Webhooks: shop-specific webhook subscriptions aren't updated
 
-If you are registering webhooks in the `afterAuth` hook, using `shopify.registerWebhooks`, you may find that your subscriptions aren't being updated.  
+If you are registering webhooks in the `afterAuth` hook, using `shopify.registerWebhooks`, you may find that your subscriptions aren't being updated.
 
 Instead of using the `afterAuth` hook declare app-specific webhooks in the `shopify.app.toml` file.  This approach is easier since Shopify will automatically sync changes every time you run `deploy` (e.g: `npm run deploy`).  Please read these guides to understand more:
 
@@ -1926,7 +1899,7 @@ During normal development, the app won't need to re-authenticate most of the tim
 
 ### Webhooks: Admin created webhook failing HMAC validation
 
-Webhooks subscriptions created in the [Shopify admin](https://help.shopify.com/en/manual/orders/notifications/webhooks) will fail HMAC validation. This is because the webhook payload is not signed with your app's secret key.  
+Webhooks subscriptions created in the [Shopify admin](https://help.shopify.com/en/manual/orders/notifications/webhooks) will fail HMAC validation. This is because the webhook payload is not signed with your app's secret key.
 
 The recommended solution is to use [app-specific webhooks](https://shopify.dev/docs/apps/build/webhooks/subscribe#app-specific-subscriptions) defined in your toml file instead.  Test your webhooks by triggering events manually in the Shopify admin(e.g. Updating the product title to trigger a `PRODUCTS_UPDATE`).
 

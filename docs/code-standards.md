@@ -523,30 +523,26 @@ export async function action({ request }: ActionFunctionArgs) {
 ```typescript
 // ✅ Good - Use Polaris web components
 <s-page title="Generate Section">
-  <s-layout>
-    <s-layout-section>
-      <s-card>
-        <s-stack gap="400" vertical>
-          <s-text variant="headingMd" as="h2">
-            Section Generator
-          </s-text>
-          <s-text-field
-            label="Prompt"
-            value={prompt}
-            onInput={(e) => setPrompt(e.target.value)}
-            multiline="4"
-            autoComplete="off"
-          />
-          <s-button
-            variant="primary"
-            onClick={handleGenerate}
-          >
-            Generate
-          </s-button>
-        </s-stack>
-      </s-card>
-    </s-layout-section>
-  </s-layout>
+  <s-section>
+    <s-stack gap="400" vertical>
+      <s-text variant="headingMd" as="h2">
+        Section Generator
+      </s-text>
+      <s-text-field
+        label="Prompt"
+        value={prompt}
+        onInput={(e) => setPrompt(e.target.value)}
+        multiline="4"
+        autoComplete="off"
+      />
+      <s-button
+        variant="primary"
+        onClick={handleGenerate}
+      >
+        Generate
+      </s-button>
+    </s-stack>
+  </s-section>
 </s-page>
 ```
 

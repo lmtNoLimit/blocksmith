@@ -7,7 +7,6 @@ import { SectionNameInput } from "./SectionNameInput";
 import {
   SectionPreview,
   PreviewErrorBoundary,
-  EmptyPreviewState
 } from "../preview";
 import type { Theme } from "../../types";
 
@@ -49,29 +48,25 @@ export function GeneratePreviewColumn({
   // Show loading state during generation
   if (isGenerating) {
     return (
-      <s-card>
-        <s-section heading="Preview">
-          <LoadingState
-            message="Generating section code..."
-            subMessage="This may take 10-15 seconds"
-          />
-        </s-section>
-      </s-card>
+      <s-section heading="Preview">
+        <LoadingState
+          message="Generating section code..."
+          subMessage="This may take 10-15 seconds"
+        />
+      </s-section>
     );
   }
 
   // Show empty state if no code generated yet
   if (!generatedCode) {
     return (
-      <s-card>
-        <s-section heading="Preview">
-          <EmptyState
-            heading="No code yet"
-            message="Enter a prompt or choose a template to get started."
-            icon="📝"
-          />
-        </s-section>
-      </s-card>
+      <s-section heading="Preview">
+        <EmptyState
+          heading="No code yet"
+          message="Enter a prompt or choose a template to get started."
+          icon="📝"
+        />
+      </s-section>
     );
   }
 
@@ -79,80 +74,76 @@ export function GeneratePreviewColumn({
   return (
     <>
       {/* Code/Preview Card with Tabs */}
-      <s-card>
-        <s-section>
-          {/* Tab buttons */}
-          <s-stack gap="base" direction="block">
-            <div style={{ display: 'flex', gap: '4px' }}>
-              <s-button
-                variant={activeTab === 'code' ? 'primary' : 'tertiary'}
-                onClick={() => setActiveTab('code')}
-              >
-                Code
-              </s-button>
-              <s-button
-                variant={activeTab === 'preview' ? 'primary' : 'tertiary'}
-                onClick={() => setActiveTab('preview')}
-              >
-                Preview
-              </s-button>
-            </div>
+      <s-section>
+        {/* Tab buttons */}
+        <s-stack gap="base" direction="block">
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <s-button
+              variant={activeTab === 'code' ? 'primary' : 'tertiary'}
+              onClick={() => setActiveTab('code')}
+            >
+              Code
+            </s-button>
+            <s-button
+              variant={activeTab === 'preview' ? 'primary' : 'tertiary'}
+              onClick={() => setActiveTab('preview')}
+            >
+              Preview
+            </s-button>
+          </div>
 
-            {/* Tab content */}
-            {activeTab === 'code' ? (
-              <CodePreview
-                code={generatedCode}
-                fileName={fileName}
-              />
-            ) : (
-              <PreviewErrorBoundary onRetry={() => {}}>
-                <SectionPreview liquidCode={generatedCode} />
-              </PreviewErrorBoundary>
+          {/* Tab content */}
+          {activeTab === 'code' ? (
+            <CodePreview
+              code={generatedCode}
+              fileName={fileName}
+            />
+          ) : (
+            <PreviewErrorBoundary onRetry={() => {}}>
+              <SectionPreview liquidCode={generatedCode} />
+            </PreviewErrorBoundary>
+          )}
+        </s-stack>
+      </s-section>
+
+      {/* Save Options */}
+      <s-section heading="Save to Theme">
+        <s-stack gap="large" direction="block">
+          <ThemeSelector
+            themes={themes}
+            selectedThemeId={selectedTheme}
+            onChange={onThemeChange}
+            disabled={isSaving}
+          />
+
+          <SectionNameInput
+            value={fileName}
+            onChange={onFileNameChange}
+            disabled={isSaving}
+          />
+
+          <s-stack gap="base" direction="block">
+            <s-button
+              variant="primary"
+              onClick={onSave}
+              loading={isSaving || undefined}
+              disabled={!canSave || isSaving}
+            >
+              {isSaving ? 'Saving...' : 'Save to Theme'}
+            </s-button>
+
+            {onSaveAsTemplate && (
+              <s-button
+                variant="secondary"
+                onClick={onSaveAsTemplate}
+                disabled={!generatedCode || isSaving}
+              >
+                Save as Template
+              </s-button>
             )}
           </s-stack>
-        </s-section>
-      </s-card>
-
-      {/* Save Options Card */}
-      <s-card>
-        <s-section heading="Save to Theme">
-          <s-stack gap="large" direction="block">
-            <ThemeSelector
-              themes={themes}
-              selectedThemeId={selectedTheme}
-              onChange={onThemeChange}
-              disabled={isSaving}
-            />
-
-            <SectionNameInput
-              value={fileName}
-              onChange={onFileNameChange}
-              disabled={isSaving}
-            />
-
-            <s-stack gap="base" direction="block">
-              <s-button
-                variant="primary"
-                onClick={onSave}
-                loading={isSaving || undefined}
-                disabled={!canSave || isSaving}
-              >
-                {isSaving ? 'Saving...' : 'Save to Theme'}
-              </s-button>
-
-              {onSaveAsTemplate && (
-                <s-button
-                  variant="secondary"
-                  onClick={onSaveAsTemplate}
-                  disabled={!generatedCode || isSaving}
-                >
-                  Save as Template
-                </s-button>
-              )}
-            </s-stack>
-          </s-stack>
-        </s-section>
-      </s-card>
+        </s-stack>
+      </s-section>
     </>
   );
 }
