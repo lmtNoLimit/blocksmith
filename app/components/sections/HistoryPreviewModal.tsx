@@ -1,8 +1,8 @@
-import type { GenerationHistory } from "@prisma/client";
+import type { Section } from "@prisma/client";
 import { useState } from "react";
 
 export interface HistoryPreviewModalProps {
-  item: GenerationHistory;
+  item: Section;
   onClose: () => void;
 }
 

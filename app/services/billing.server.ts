@@ -210,7 +210,7 @@ export async function recordUsage(
   admin: AdminApiContext,
   input: RecordUsageInput,
 ): Promise<RecordUsageResult> {
-  const { shop, generationId, description, amount: customAmount } = input;
+  const { shop, sectionId, description, amount: customAmount } = input;
 
   // Get subscription
   const subscription = await getSubscription(shop);
@@ -225,14 +225,14 @@ export async function recordUsage(
 
   // Generate idempotency key (prevents duplicate charges)
   const timestamp = Date.now();
-  const idempotencyKey = `${shop}-${generationId}-${timestamp}`;
+  const idempotencyKey = `${shop}-${sectionId}-${timestamp}`;
 
   // Save usage record locally first
   const usageRecord = await prisma.usageRecord.create({
     data: {
       shop,
       subscriptionId: subscription.id,
-      generationId,
+      sectionId,
       idempotencyKey,
       amount,
       description,

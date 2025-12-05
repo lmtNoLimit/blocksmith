@@ -1,5 +1,5 @@
 import prisma from "../db.server";
-import type { GenerationHistory } from "@prisma/client";
+import type { Section } from "@prisma/client";
 
 /**
  * Generate a default section name from prompt text
@@ -19,7 +19,7 @@ function generateDefaultName(prompt: string): string {
   return truncated + "...";
 }
 
-export interface CreateHistoryInput {
+export interface CreateSectionInput {
   shop: string;
   prompt: string;
   code: string;
@@ -28,7 +28,7 @@ export interface CreateHistoryInput {
   style?: string;
 }
 
-export interface UpdateHistoryInput {
+export interface UpdateSectionInput {
   name?: string;
   themeId?: string;
   themeName?: string;
@@ -38,14 +38,14 @@ export interface UpdateHistoryInput {
 }
 
 /**
- * History service for managing generation history
+ * Section service for managing AI-generated sections
  */
-export const historyService = {
+export const sectionService = {
   /**
-   * Create a new history entry after generation
+   * Create a new section entry after generation
    */
-  async create(input: CreateHistoryInput): Promise<GenerationHistory> {
-    return prisma.generationHistory.create({
+  async create(input: CreateSectionInput): Promise<Section> {
+    return prisma.section.create({
       data: {
         shop: input.shop,
         name: input.name || generateDefaultName(input.prompt),
@@ -59,24 +59,24 @@ export const historyService = {
   },
 
   /**
-   * Update history entry (e.g., when saved to theme)
+   * Update section entry (e.g., when saved to theme)
    */
-  async update(id: string, shop: string, input: UpdateHistoryInput): Promise<GenerationHistory | null> {
+  async update(id: string, shop: string, input: UpdateSectionInput): Promise<Section | null> {
     // Verify ownership before update
-    const existing = await prisma.generationHistory.findFirst({
+    const existing = await prisma.section.findFirst({
       where: { id, shop },
     });
 
     if (!existing) return null;
 
-    return prisma.generationHistory.update({
+    return prisma.section.update({
       where: { id },
       data: input,
     });
   },
 
   /**
-   * Get paginated history for a shop
+   * Get paginated sections for a shop
    */
   async getByShop(
     shop: string,
@@ -88,7 +88,7 @@ export const historyService = {
       search?: string;
       sort?: "newest" | "oldest";
     } = {}
-  ): Promise<{ items: GenerationHistory[]; total: number; page: number; totalPages: number }> {
+  ): Promise<{ items: Section[]; total: number; page: number; totalPages: number }> {
     const { page = 1, limit = 20, status, favoritesOnly, search, sort = "newest" } = options;
     const skip = (page - 1) * limit;
 
@@ -105,13 +105,13 @@ export const historyService = {
     };
 
     const [items, total] = await Promise.all([
-      prisma.generationHistory.findMany({
+      prisma.section.findMany({
         where,
         orderBy: { createdAt: sort === "newest" ? "desc" : "asc" },
         skip,
         take: limit,
       }),
-      prisma.generationHistory.count({ where }),
+      prisma.section.count({ where }),
     ]);
 
     return {
@@ -123,10 +123,10 @@ export const historyService = {
   },
 
   /**
-   * Get single history entry by ID
+   * Get single section by ID
    */
-  async getById(id: string, shop: string): Promise<GenerationHistory | null> {
-    return prisma.generationHistory.findFirst({
+  async getById(id: string, shop: string): Promise<Section | null> {
+    return prisma.section.findFirst({
       where: { id, shop },
     });
   },
@@ -134,38 +134,38 @@ export const historyService = {
   /**
    * Toggle favorite status
    */
-  async toggleFavorite(id: string, shop: string): Promise<GenerationHistory | null> {
-    const existing = await prisma.generationHistory.findFirst({
+  async toggleFavorite(id: string, shop: string): Promise<Section | null> {
+    const existing = await prisma.section.findFirst({
       where: { id, shop },
     });
 
     if (!existing) return null;
 
-    return prisma.generationHistory.update({
+    return prisma.section.update({
       where: { id },
       data: { isFavorite: !existing.isFavorite },
     });
   },
 
   /**
-   * Delete history entry
+   * Delete section entry
    */
   async delete(id: string, shop: string): Promise<boolean> {
-    const existing = await prisma.generationHistory.findFirst({
+    const existing = await prisma.section.findFirst({
       where: { id, shop },
     });
 
     if (!existing) return false;
 
-    await prisma.generationHistory.delete({ where: { id } });
+    await prisma.section.delete({ where: { id } });
     return true;
   },
 
   /**
-   * Get most recent history entry for a shop
+   * Get most recent section for a shop
    */
-  async getMostRecent(shop: string): Promise<GenerationHistory | null> {
-    return prisma.generationHistory.findFirst({
+  async getMostRecent(shop: string): Promise<Section | null> {
+    return prisma.section.findFirst({
       where: { shop },
       orderBy: { createdAt: "desc" },
     });

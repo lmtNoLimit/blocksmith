@@ -1,8 +1,8 @@
-import type { GenerationHistory } from "@prisma/client";
+import type { Section } from "@prisma/client";
 
 export interface HistoryTableProps {
-  items: GenerationHistory[];
-  onPreview: (item: GenerationHistory) => void;
+  items: Section[];
+  onPreview: (item: Section) => void;
   onToggleFavorite: (id: string) => void;
   onDelete: (id: string) => void;
 }

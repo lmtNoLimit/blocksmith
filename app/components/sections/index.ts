@@ -1,5 +1,5 @@
 /**
- * History feature component exports
+ * Sections feature component exports
  */
 export { HistoryTable } from './HistoryTable';
 export { HistoryPreviewModal } from './HistoryPreviewModal';

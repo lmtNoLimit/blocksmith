@@ -61,7 +61,7 @@ export interface CreateSubscriptionResult {
  */
 export interface RecordUsageInput {
   shop: string;
-  generationId: string;
+  sectionId: string;
   description: string; // e.g., "Section generation - Hero banner"
   amount?: number; // If not provided, use plan's overage price
 }

@@ -4,7 +4,7 @@ import { useActionData, useLoaderData, useNavigation, useSubmit } from "react-ro
 import { authenticate } from "../shopify.server";
 import { aiAdapter } from "../services/adapters/ai-adapter";
 import { themeAdapter } from "../services/adapters/theme-adapter";
-import { historyService } from "../services/history.server";
+import { sectionService } from "../services/section.server";
 import { templateService } from "../services/template.server";
 import { canGenerate, trackGeneration } from "../services/usage-tracking.server";
 import type { GenerateActionData, SaveActionData, Theme } from "../types";
@@ -45,8 +45,8 @@ export async function action({ request }: ActionFunctionArgs) {
 
     const code = await aiAdapter.generateSection(prompt);
 
-    // Save to generation history
-    const historyEntry = await historyService.create({
+    // Save to sections
+    const sectionEntry = await sectionService.create({
       shop,
       prompt,
       code,
@@ -56,14 +56,14 @@ export async function action({ request }: ActionFunctionArgs) {
     });
 
     // Track usage (async, don't block response)
-    trackGeneration(admin, shop, historyEntry.id, prompt).catch((error) => {
+    trackGeneration(admin, shop, sectionEntry.id, prompt).catch((error) => {
       console.error("Failed to track generation:", error);
     });
 
     return {
       code,
       prompt,
-      historyId: historyEntry.id,
+      historyId: sectionEntry.id,
       quota: quotaCheck.quota,
     } satisfies GenerateActionData;
   }
@@ -77,10 +77,10 @@ export async function action({ request }: ActionFunctionArgs) {
     try {
       const result = await themeAdapter.createSection(request, themeId, fileName, content);
 
-      // Update history entry with save info
+      // Update section entry with save info
       if (historyId) {
         const themeName = formData.get("themeName") as string | null;
-        await historyService.update(historyId, shop, {
+        await sectionService.update(historyId, shop, {
           themeId,
           themeName: themeName || undefined,
           fileName,

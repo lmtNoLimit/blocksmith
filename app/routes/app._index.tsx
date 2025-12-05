@@ -27,9 +27,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
   // Fetch stats and onboarding state in parallel
   const [historyCount, templateCount, weeklyCount, shopSettings] =
     await Promise.all([
-      prisma.generationHistory.count({ where: { shop } }),
+      prisma.section.count({ where: { shop } }),
       prisma.sectionTemplate.count({ where: { shop } }),
-      prisma.generationHistory.count({
+      prisma.section.count({
         where: {
           shop,
           createdAt: { gte: getStartOfWeek() },

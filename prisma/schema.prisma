@@ -32,8 +32,8 @@ model Session {
   @@index([shop])
 }
 
-// Generation history for tracking all AI generations
-model GenerationHistory {
+// Section model for AI-generated theme sections
+model Section {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   shop         String
   name         String?  // User-friendly section name (auto-generated from prompt if not provided)
@@ -122,7 +122,7 @@ model UsageRecord {
   id              String   @id @default(auto()) @map("_id") @db.ObjectId
   shop            String
   subscriptionId  String   @db.ObjectId // Link to Subscription model
-  generationId    String   @db.ObjectId // Link to GenerationHistory
+  sectionId       String   @db.ObjectId // Link to Section
   idempotencyKey  String   @unique // Prevent duplicate charges: ${shop}-${generationId}-${timestamp}
 
   // Charge details
@@ -175,7 +175,7 @@ model PlanConfiguration {
 model FailedUsageCharge {
   id            String   @id @default(auto()) @map("_id") @db.ObjectId
   shop          String
-  generationId  String   @db.ObjectId
+  sectionId     String   @db.ObjectId
   errorMessage  String
   retryCount    Int      @default(0)
   createdAt     DateTime @default(now())

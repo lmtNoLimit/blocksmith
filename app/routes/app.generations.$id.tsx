@@ -4,7 +4,7 @@ import { useActionData, useLoaderData, useNavigation, useSubmit, useNavigate, da
 import { authenticate } from "../shopify.server";
 import { aiAdapter } from "../services/adapters/ai-adapter";
 import { themeAdapter } from "../services/adapters/theme-adapter";
-import { historyService } from "../services/history.server";
+import { sectionService } from "../services/section.server";
 import { templateService } from "../services/template.server";
 import { canGenerate, trackGeneration } from "../services/usage-tracking.server";
 import type { GenerateActionData, SaveActionData, Theme } from "../types";
@@ -25,7 +25,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw data({ message: "Generation ID is required" }, { status: 400 });
   }
 
-  const generation = await historyService.getById(id, shop);
+  const generation = await sectionService.getById(id, shop);
 
   if (!generation) {
     throw data({ message: "Generation not found" }, { status: 404 });
@@ -61,8 +61,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const code = await aiAdapter.generateSection(prompt);
 
-    // Create a NEW history entry (regenerate creates new, doesn't update old)
-    const historyEntry = await historyService.create({
+    // Create a NEW section entry (regenerate creates new, doesn't update old)
+    const sectionEntry = await sectionService.create({
       shop,
       prompt,
       code,
@@ -72,14 +72,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
     });
 
     // Track usage (async, don't block response)
-    trackGeneration(admin, shop, historyEntry.id, prompt).catch((error) => {
+    trackGeneration(admin, shop, sectionEntry.id, prompt).catch((error) => {
       console.error("Failed to track generation:", error);
     });
 
     return {
       code,
       prompt,
-      historyId: historyEntry.id,
+      historyId: sectionEntry.id,
       quota: quotaCheck.quota,
       regenerated: true,
     } satisfies GenerateActionData & { regenerated?: boolean };
@@ -94,11 +94,11 @@ export async function action({ request, params }: ActionFunctionArgs) {
     try {
       const result = await themeAdapter.createSection(request, themeId, fileName, content);
 
-      // Update history entry with save info
+      // Update section entry with save info
       const entryToUpdate = historyId || id;
       if (entryToUpdate) {
         const themeName = formData.get("themeName") as string | null;
-        await historyService.update(entryToUpdate, shop, {
+        await sectionService.update(entryToUpdate, shop, {
           themeId,
           themeName: themeName || undefined,
           fileName,
@@ -158,7 +158,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       return { success: false, message: "Generation ID is required" };
     }
 
-    await historyService.update(id, shop, { name });
+    await sectionService.update(id, shop, { name });
     return { success: true, nameUpdated: true, message: "Section name updated" };
   }
 
@@ -167,7 +167,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       return { success: false, message: "Generation ID is required" };
     }
 
-    const deleted = await historyService.delete(id, shop);
+    const deleted = await sectionService.delete(id, shop);
 
     if (!deleted) {
       return { success: false, message: "Failed to delete generation" };

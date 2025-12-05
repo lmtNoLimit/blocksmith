@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import { useActionData, useLoaderData, useSearchParams, useSubmit, useNavigate, useNavigation } from "react-router";
 import { authenticate } from "../shopify.server";
-import { historyService } from "../services/history.server";
+import { sectionService } from "../services/section.server";
 import { GenerationsEmptyState } from "../components/generations/GenerationsEmptyState";
 import { DeleteConfirmModal } from "../components/generations/DeleteConfirmModal";
 
@@ -21,7 +21,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const search = url.searchParams.get("search") || undefined;
   const sort = url.searchParams.get("sort") || "newest";
 
-  const history = await historyService.getByShop(shop, {
+  const history = await sectionService.getByShop(shop, {
     page,
     limit: 20,
     status,
@@ -41,13 +41,13 @@ export async function action({ request }: ActionFunctionArgs) {
 
   if (actionType === "toggleFavorite") {
     const id = formData.get("id") as string;
-    await historyService.toggleFavorite(id, shop);
+    await sectionService.toggleFavorite(id, shop);
     return { success: true, action: "toggleFavorite" };
   }
 
   if (actionType === "delete") {
     const id = formData.get("id") as string;
-    await historyService.delete(id, shop);
+    await sectionService.delete(id, shop);
     return { success: true, action: "delete", message: "Generation deleted successfully." };
   }
 
@@ -57,7 +57,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // Delete in parallel, max 50 at a time
     const idsToDelete = ids.slice(0, 50);
-    await Promise.all(idsToDelete.map(id => historyService.delete(id, shop)));
+    await Promise.all(idsToDelete.map(id => sectionService.delete(id, shop)));
 
     return {
       success: true,

@@ -36,7 +36,7 @@ export async function canGenerate(shop: string): Promise<{ allowed: boolean; quo
 /**
  * Record generation usage after successful AI generation
  */
-export async function trackGeneration(admin: AdminApiContext, shop: string, generationId: string, prompt: string) {
+export async function trackGeneration(admin: AdminApiContext, shop: string, sectionId: string, prompt: string) {
   try {
     // Check if this is an overage generation
     const subscription = await getSubscription(shop);
@@ -53,12 +53,12 @@ export async function trackGeneration(admin: AdminApiContext, shop: string, gene
     // Record usage (will charge if overage)
     const result = await recordUsage(admin, {
       shop,
-      generationId,
+      sectionId,
       description,
     });
 
     console.log(`[Usage] Recorded usage for ${shop}:`, {
-      generationId,
+      sectionId,
       amount: result.amount,
       status: result.chargeStatus,
     });
@@ -72,13 +72,13 @@ export async function trackGeneration(admin: AdminApiContext, shop: string, gene
     await prisma.failedUsageCharge.create({
       data: {
         shop,
-        generationId,
+        sectionId,
         errorMessage: error instanceof Error ? error.message : "Unknown error",
       },
     });
 
     // Alert monitoring (TODO: integrate with Sentry/Datadog)
-    // await alertMonitoring('usage_charge_failed', { shop, generationId, error });
+    // await alertMonitoring('usage_charge_failed', { shop, sectionId, error });
 
     // Don't throw - allow generation to succeed
   }
