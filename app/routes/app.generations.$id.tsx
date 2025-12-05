@@ -45,6 +45,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
   if (actionType === "generate") {
     const prompt = formData.get("prompt") as string;
+    const name = formData.get("name") as string | null;
     const tone = formData.get("tone") as string | null;
     const style = formData.get("style") as string | null;
 
@@ -65,6 +66,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
       shop,
       prompt,
       code,
+      name: name || undefined,
       tone: tone || undefined,
       style: style || undefined,
     });
@@ -150,6 +152,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
     }
   }
 
+  if (actionType === "updateName") {
+    const name = formData.get("name") as string;
+    if (!id) {
+      return { success: false, message: "Generation ID is required" };
+    }
+
+    await historyService.update(id, shop, { name });
+    return { success: true, nameUpdated: true, message: "Section name updated" };
+  }
+
   if (actionType === "delete") {
     if (!id) {
       return { success: false, message: "Generation ID is required" };
@@ -186,6 +198,7 @@ export default function GenerationEditPage() {
 
   // Initialize state from loaded generation
   const [prompt, setPrompt] = useState(generation.prompt);
+  const [sectionName, setSectionName] = useState(generation.name || "");
   const [generatedCode, setGeneratedCode] = useState(generation.code);
   const [currentHistoryId, setCurrentHistoryId] = useState(generation.id);
 
@@ -248,9 +261,20 @@ export default function GenerationEditPage() {
     const formData = new FormData();
     formData.append("action", "generate");
     formData.append("prompt", prompt);
+    formData.append("name", sectionName);
     formData.append("tone", advancedOptions.tone);
     formData.append("style", advancedOptions.style);
     submit(formData, { method: "post" });
+  };
+
+  // Save name on blur
+  const handleNameBlur = () => {
+    if (sectionName !== (generation.name || "")) {
+      const formData = new FormData();
+      formData.append("action", "updateName");
+      formData.append("name", sectionName);
+      submit(formData, { method: "post" });
+    }
   };
 
   const handleSave = () => {
@@ -358,6 +382,9 @@ export default function GenerationEditPage() {
               <GenerateInputColumn
                 prompt={prompt}
                 onPromptChange={setPrompt}
+                sectionName={sectionName}
+                onSectionNameChange={setSectionName}
+                onSectionNameBlur={handleNameBlur}
                 advancedOptions={advancedOptions}
                 onAdvancedOptionsChange={setAdvancedOptions}
                 disabled={isGenerating || isSaving}

@@ -6,6 +6,9 @@ import { AdvancedOptions, type AdvancedOptionsState } from "./AdvancedOptions";
 export interface GenerateInputColumnProps {
   prompt: string;
   onPromptChange: (value: string) => void;
+  sectionName?: string;
+  onSectionNameChange?: (value: string) => void;
+  onSectionNameBlur?: () => void;
   advancedOptions: AdvancedOptionsState;
   onAdvancedOptionsChange: (options: AdvancedOptionsState) => void;
   disabled: boolean;
@@ -21,6 +24,9 @@ export interface GenerateInputColumnProps {
 export function GenerateInputColumn({
   prompt,
   onPromptChange,
+  sectionName,
+  onSectionNameChange,
+  onSectionNameBlur,
   advancedOptions,
   onAdvancedOptionsChange,
   disabled,
@@ -41,6 +47,21 @@ export function GenerateInputColumn({
             onChange={onPromptChange}
             disabled={disabled}
           />
+
+          {/* Section name input - optional, auto-generated if empty */}
+          {onSectionNameChange && (
+            <s-stack gap="small" direction="block">
+              <s-text-field
+                label="Section Name"
+                value={sectionName || ""}
+                onInput={(e) => onSectionNameChange((e as unknown as { currentTarget: { value: string } }).currentTarget.value)}
+                onBlur={onSectionNameBlur}
+                placeholder="Auto-generated from prompt if empty"
+                disabled={disabled}
+              />
+              <s-text color="subdued">A friendly name to identify this section in your history</s-text>
+            </s-stack>
+          )}
 
           <AdvancedOptions
             value={advancedOptions}

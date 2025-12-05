@@ -352,7 +352,7 @@ export default function GenerationsPage() {
                     onChange={handleSelectAll}
                   />
                 </s-table-header>
-                <s-table-header listSlot="primary">Prompt</s-table-header>
+                <s-table-header listSlot="primary">Name</s-table-header>
                 <s-table-header listSlot="inline">Status</s-table-header>
                 <s-table-header listSlot="labeled">Theme</s-table-header>
                 <s-table-header listSlot="labeled">Created</s-table-header>
@@ -378,7 +378,7 @@ export default function GenerationsPage() {
                             <s-badge tone="warning" icon="star-filled">Fav</s-badge>
                           )}
                           <s-link id={`link-${item.id}`} href={`/app/generations/${item.id}`}>
-                            {truncateText(item.prompt, 50)}
+                            {item.name || truncateText(item.prompt, 50)}
                           </s-link>
                         </s-stack>
                       </s-table-cell>

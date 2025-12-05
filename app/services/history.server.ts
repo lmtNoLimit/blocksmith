@@ -1,15 +1,35 @@
 import prisma from "../db.server";
 import type { GenerationHistory } from "@prisma/client";
 
+/**
+ * Generate a default section name from prompt text
+ * Truncates to ~50 chars at last word boundary
+ */
+function generateDefaultName(prompt: string): string {
+  const maxLength = 50;
+  const trimmed = prompt.trim();
+  if (trimmed.length <= maxLength) return trimmed;
+
+  const truncated = trimmed.substring(0, maxLength);
+  const lastSpace = truncated.lastIndexOf(" ");
+
+  if (lastSpace > 20) {
+    return truncated.substring(0, lastSpace) + "...";
+  }
+  return truncated + "...";
+}
+
 export interface CreateHistoryInput {
   shop: string;
   prompt: string;
   code: string;
+  name?: string;
   tone?: string;
   style?: string;
 }
 
 export interface UpdateHistoryInput {
+  name?: string;
   themeId?: string;
   themeName?: string;
   fileName?: string;
@@ -28,6 +48,7 @@ export const historyService = {
     return prisma.generationHistory.create({
       data: {
         shop: input.shop,
+        name: input.name || generateDefaultName(input.prompt),
         prompt: input.prompt,
         code: input.code,
         tone: input.tone,

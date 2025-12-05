@@ -36,6 +36,7 @@ model Session {
 model GenerationHistory {
   id           String   @id @default(auto()) @map("_id") @db.ObjectId
   shop         String
+  name         String?  // User-friendly section name (auto-generated from prompt if not provided)
   prompt       String
   code         String   // Generated Liquid code
   themeId      String?  // Theme it was saved to (if saved)

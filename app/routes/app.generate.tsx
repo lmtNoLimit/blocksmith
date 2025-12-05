@@ -29,6 +29,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
   if (actionType === "generate") {
     const prompt = formData.get("prompt") as string;
+    const name = formData.get("name") as string | null;
     const tone = formData.get("tone") as string | null;
     const style = formData.get("style") as string | null;
 
@@ -49,6 +50,7 @@ export async function action({ request }: ActionFunctionArgs) {
       shop,
       prompt,
       code,
+      name: name || undefined,
       tone: tone || undefined,
       style: style || undefined,
     });
@@ -142,6 +144,7 @@ export default function GeneratePage() {
   const submit = useSubmit();
 
   const [prompt, setPrompt] = useState(actionData?.prompt || "");
+  const [sectionName, setSectionName] = useState("");
   const [generatedCode, setGeneratedCode] = useState(actionData?.code || "");
   const [currentHistoryId, setCurrentHistoryId] = useState(actionData?.historyId || "");
 
@@ -182,6 +185,7 @@ export default function GeneratePage() {
     const formData = new FormData();
     formData.append("action", "generate");
     formData.append("prompt", prompt);
+    formData.append("name", sectionName);
     formData.append("tone", advancedOptions.tone);
     formData.append("style", advancedOptions.style);
     submit(formData, { method: "post" });
@@ -269,6 +273,8 @@ export default function GeneratePage() {
               <GenerateInputColumn
                 prompt={prompt}
                 onPromptChange={setPrompt}
+                sectionName={sectionName}
+                onSectionNameChange={setSectionName}
                 advancedOptions={advancedOptions}
                 onAdvancedOptionsChange={setAdvancedOptions}
                 disabled={isGenerating || isSaving}
