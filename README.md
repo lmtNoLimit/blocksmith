@@ -18,7 +18,7 @@ AI Section Generator is a Shopify embedded app that lets merchants create custom
 - **AI-Powered Generation**: Uses Google Gemini 2.0 Flash to generate Shopify Liquid sections
 - **Theme Integration**: Fetches merchant themes and saves sections via Shopify Admin API
 - **Code Preview**: Review generated code before saving
-- **Polaris UI**: Native Shopify admin experience with Polaris web components
+- **Polaris Web Components**: Native Shopify admin experience using `<s-*>` elements
 
 ## Documentation
 

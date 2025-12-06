@@ -570,10 +570,10 @@ Historical record of generated sections (currently unused in UI).
 - CORS: preflight continue
 - Asset inline limit: 0 (prevent inlining)
 
-### UI Components
+### UI Components (Polaris Web Components)
 
-#### Polaris Web Components
-Used throughout the app (declared in types `tsconfig.json`):
+The app uses **Polaris Web Components** (native HTML elements, not React components).
+Types provided by `@shopify/polaris-types` in devDependencies.
 - `<s-page>`: Page container
 - `<s-layout>`, `<s-layout-section>`: Layout system
 - `<s-section>`: Card container/Section container
@@ -674,12 +674,11 @@ Redirect to /app (embedded in Shopify admin)
 
 ## Dependencies
 
-### Production Dependencies (12)
+### Production Dependencies (11)
 - `@google/generative-ai`: Google Gemini SDK
 - `@prisma/client`: Database ORM client
 - `@react-router/*`: React Router v7 packages (dev, fs-routes, node, serve)
 - `@shopify/app-bridge-react`: App Bridge for embedded apps
-- `@shopify/polaris`: Polaris component library
 - `@shopify/shopify-app-react-router`: Shopify app framework
 - `@shopify/shopify-app-session-storage-prisma`: Prisma session storage adapter
 - `isbot`: Bot detection
