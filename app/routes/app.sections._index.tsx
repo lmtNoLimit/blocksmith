@@ -1,6 +1,13 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { useActionData, useLoaderData, useSearchParams, useSubmit, useNavigate, useNavigation } from "react-router";
+import {
+  useActionData,
+  useLoaderData,
+  useSearchParams,
+  useSubmit,
+  useNavigate,
+  useNavigation,
+} from "react-router";
 import { authenticate } from "../shopify.server";
 import { sectionService } from "../services/section.server";
 import { SectionsEmptyState } from "../components/sections/SectionsEmptyState";
@@ -10,16 +17,40 @@ import { DeleteConfirmModal } from "../components/sections/DeleteConfirmModal";
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type ShopifyEvent = any;
 
+// View type for tab switching
+type ViewType = "all" | "active" | "draft" | "archived";
+
+// Map view tabs to status filters
+const viewStatusMap: Record<ViewType, string | undefined> = {
+  all: undefined,
+  active: "saved",
+  draft: "generated",
+  archived: undefined, // TODO: implement archived flag in future
+};
+
 export async function loader({ request }: LoaderFunctionArgs) {
   const { session } = await authenticate.admin(request);
   const shop = session.shop;
 
   const url = new URL(request.url);
   const page = parseInt(url.searchParams.get("page") || "1", 10);
-  const status = url.searchParams.get("status") || undefined;
+  const view = (url.searchParams.get("view") || "all") as ViewType;
+  const statusParam = url.searchParams.get("status") || "";
   const favoritesOnly = url.searchParams.get("favorites") === "true";
   const search = url.searchParams.get("search") || undefined;
   const sort = url.searchParams.get("sort") || "newest";
+
+  // Parse multi-status from comma-separated param
+  const statusArray = statusParam.split(",").filter(Boolean);
+
+  // Determine final status filter: explicit param > view-derived
+  let status: string | undefined;
+  if (statusArray.length === 1) {
+    status = statusArray[0];
+  } else if (statusArray.length === 0) {
+    status = viewStatusMap[view];
+  }
+  // If multiple statuses selected, we filter client-side (getByShop doesn't support multi-status yet)
 
   const history = await sectionService.getByShop(shop, {
     page,
@@ -30,7 +61,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     sort: sort as "newest" | "oldest",
   });
 
-  return { history, shop };
+  return { history, shop, currentView: view, statusFilter: statusArray };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -48,7 +79,11 @@ export async function action({ request }: ActionFunctionArgs) {
   if (actionType === "delete") {
     const id = formData.get("id") as string;
     await sectionService.delete(id, shop);
-    return { success: true, action: "delete", message: "Section deleted successfully." };
+    return {
+      success: true,
+      action: "delete",
+      message: "Section deleted successfully.",
+    };
   }
 
   if (actionType === "bulkDelete") {
@@ -57,13 +92,13 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // Delete in parallel, max 50 at a time
     const idsToDelete = ids.slice(0, 50);
-    await Promise.all(idsToDelete.map(id => sectionService.delete(id, shop)));
+    await Promise.all(idsToDelete.map((id) => sectionService.delete(id, shop)));
 
     return {
       success: true,
       action: "bulkDelete",
-      message: `${idsToDelete.length} section${idsToDelete.length > 1 ? 's' : ''} deleted successfully.`,
-      deletedCount: idsToDelete.length
+      message: `${idsToDelete.length} section${idsToDelete.length > 1 ? "s" : ""} deleted successfully.`,
+      deletedCount: idsToDelete.length,
     };
   }
 
@@ -81,9 +116,9 @@ function formatRelativeDate(date: Date | string): string {
   } else if (diffDays === 1) {
     return "Yesterday";
   } else if (diffDays < 7) {
-    return d.toLocaleDateString('en-US', { weekday: 'short' });
+    return d.toLocaleDateString("en-US", { weekday: "short" });
   } else {
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
   }
 }
 
@@ -103,7 +138,6 @@ export default function SectionsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleteTarget, setDeleteTarget] = useState<"single" | "bulk">("single");
   const [singleDeleteId, setSingleDeleteId] = useState<string | null>(null);
-  const [searchValue, setSearchValue] = useState(searchParams.get("search") || "");
 
   // Modal ID for commandFor pattern
   const DELETE_MODAL_ID = "delete-confirm-modal";
@@ -112,65 +146,11 @@ export default function SectionsPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const tableRef = useRef<any>(null);
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
-  const currentStatus = searchParams.get("status") || "";
-  const favoritesOnly = searchParams.get("favorites") === "true";
-  const currentSort = searchParams.get("sort") || "newest";
 
-  const isDeleting = navigation.state === "submitting" &&
+  const isDeleting =
+    navigation.state === "submitting" &&
     (navigation.formData?.get("action") === "delete" ||
-     navigation.formData?.get("action") === "bulkDelete");
-
-  // Sync search value when URL changes
-  useEffect(() => {
-    setSearchValue(searchParams.get("search") || "");
-  }, [searchParams]);
-
-  // Debounced search
-  const debouncedSearch = useCallback((value: string) => {
-    const params = new URLSearchParams(searchParams);
-    if (value) {
-      params.set("search", value);
-    } else {
-      params.delete("search");
-    }
-    params.set("page", "1");
-    setSearchParams(params);
-  }, [searchParams, setSearchParams]);
-
-  // Debounce timer ref
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const handleSearchInput = (e: ShopifyEvent) => {
-    const value = e.currentTarget?.value || "";
-    setSearchValue(value);
-
-    if (debounceRef.current) {
-      clearTimeout(debounceRef.current);
-    }
-    debounceRef.current = setTimeout(() => {
-      debouncedSearch(value);
-    }, 300);
-  };
-
-  const handleStatusChange = (e: ShopifyEvent) => {
-    const params = new URLSearchParams(searchParams);
-    const value = e.currentTarget?.value || "";
-    if (value) {
-      params.set("status", value);
-      params.delete("favorites");
-    } else {
-      params.delete("status");
-    }
-    params.set("page", "1");
-    setSearchParams(params);
-  };
-
-  const handleSortChange = (e: ShopifyEvent) => {
-    const params = new URLSearchParams(searchParams);
-    params.set("sort", e.currentTarget?.value || "newest");
-    params.set("page", "1");
-    setSearchParams(params);
-  };
+      navigation.formData?.get("action") === "bulkDelete");
 
   const handleToggleFavorite = (id: string) => {
     const formData = new FormData();
@@ -207,7 +187,7 @@ export default function SectionsPage() {
 
   const handleSelectAll = (e: ShopifyEvent) => {
     if (e.currentTarget?.checked) {
-      setSelectedIds(new Set(history.items.map(item => item.id)));
+      setSelectedIds(new Set(history.items.map((item) => item.id)));
     } else {
       setSelectedIds(new Set());
     }
@@ -257,13 +237,17 @@ export default function SectionsPage() {
     };
   }, [handleNextPage, handlePreviousPage]);
 
-  const allSelected = history.items.length > 0 && selectedIds.size === history.items.length;
-  const someSelected = selectedIds.size > 0 && selectedIds.size < history.items.length;
-  const hasFilters = Boolean(currentStatus || favoritesOnly || searchValue);
+  const allSelected =
+    history.items.length > 0 && selectedIds.size === history.items.length;
+  const someSelected =
+    selectedIds.size > 0 && selectedIds.size < history.items.length;
 
   // Show toast for delete success messages
   useEffect(() => {
-    if (actionData?.success && (actionData.action === "delete" || actionData.action === "bulkDelete")) {
+    if (
+      actionData?.success &&
+      (actionData.action === "delete" || actionData.action === "bulkDelete")
+    ) {
       shopify.toast.show(actionData.message || "Section deleted successfully");
     }
   }, [actionData]);
@@ -272,22 +256,27 @@ export default function SectionsPage() {
     <>
       <s-page heading="Sections" inlineSize="large">
         {/* Primary action button */}
-        <s-button slot="primary-action" variant="primary" href="/app/sections/new">
+        <s-button
+          slot="primary-action"
+          variant="primary"
+          href="/app/sections/new"
+        >
           Create Section
         </s-button>
 
-        {/* Success messages now use Toast (see useEffect above) */}
-
         {/* Bulk action bar when items selected */}
         {selectedIds.size > 0 && (
-          <s-box
-            padding="base"
-            background="subdued"
-            borderRadius="base"
-          >
-            <s-stack direction="inline" alignItems="center" justifyContent="space-between">
+          <s-box padding="base" background="subdued" borderRadius="base">
+            <s-stack
+              direction="inline"
+              alignItems="center"
+              justifyContent="space-between"
+            >
               <s-text>
-                <strong>{selectedIds.size} {selectedIds.size === 1 ? "item" : "items"} selected</strong>
+                <strong>
+                  {selectedIds.size} {selectedIds.size === 1 ? "item" : "items"}{" "}
+                  selected
+                </strong>
               </s-text>
               <s-button
                 tone="critical"
@@ -303,7 +292,7 @@ export default function SectionsPage() {
 
         {/* Table section */}
         <s-section padding="none" accessibilityLabel="Sections table">
-          {history.items.length > 0 || hasFilters ? (
+          {history.items.length > 0 ? (
             <s-table
               ref={tableRef}
               paginate={history.totalPages > 1}
@@ -311,47 +300,16 @@ export default function SectionsPage() {
               hasNextPage={currentPage < history.totalPages}
               loading={navigation.state === "loading"}
             >
-              {/* Filters slot */}
-              <s-grid slot="filters" gap="small" gridTemplateColumns="1fr auto auto">
-                <s-text-field
-                  label="Search sections"
-                  labelAccessibilityVisibility="exclusive"
-                  icon="search"
-                  placeholder="Search sections..."
-                  value={searchValue}
-                  onInput={handleSearchInput}
-                />
-                <s-select
-                  label="Status"
-                  labelAccessibilityVisibility="exclusive"
-                  value={currentStatus}
-                  onChange={handleStatusChange}
-                >
-                  <s-option value="">All statuses</s-option>
-                  <s-option value="generated">Generated</s-option>
-                  <s-option value="saved">Saved</s-option>
-                </s-select>
-                <s-select
-                  label="Sort"
-                  labelAccessibilityVisibility="exclusive"
-                  value={currentSort}
-                  onChange={handleSortChange}
-                >
-                  <s-option value="newest">Newest first</s-option>
-                  <s-option value="oldest">Oldest first</s-option>
-                </s-select>
-              </s-grid>
-
               {/* Table header */}
               <s-table-header-row>
-                <s-table-header>
+                {/* <s-table-header>
                   <s-checkbox
                     accessibilityLabel="Select all sections"
                     checked={allSelected}
                     indeterminate={someSelected}
                     onChange={handleSelectAll}
                   />
-                </s-table-header>
+                </s-table-header> */}
                 <s-table-header listSlot="primary">Name</s-table-header>
                 <s-table-header listSlot="inline">Status</s-table-header>
                 <s-table-header listSlot="labeled">Theme</s-table-header>
@@ -361,86 +319,85 @@ export default function SectionsPage() {
 
               {/* Table body */}
               <s-table-body>
-                {history.items.length > 0 ? (
-                  history.items.map((item) => (
-                    <s-table-row key={item.id} clickDelegate={`link-${item.id}`}>
-                      <s-table-cell>
-                        <s-checkbox
-                          id={`checkbox-${item.id}`}
-                          accessibilityLabel={`Select section: ${truncateText(item.prompt, 30)}`}
-                          checked={selectedIds.has(item.id)}
-                          onChange={(e: ShopifyEvent) => handleSelectOne(item.id, e)}
-                        />
-                      </s-table-cell>
-                      <s-table-cell>
-                        <s-stack gap="small" direction="inline" alignItems="center">
-                          {item.isFavorite && (
-                            <s-badge tone="warning" icon="star-filled">Fav</s-badge>
-                          )}
-                          <s-link id={`link-${item.id}`} href={`/app/sections/${item.id}`}>
-                            {item.name || truncateText(item.prompt, 50)}
-                          </s-link>
-                        </s-stack>
-                      </s-table-cell>
-                      <s-table-cell>
-                        {item.status === "saved" ? (
-                          <s-badge tone="success">Saved</s-badge>
-                        ) : (
-                          <s-badge tone="neutral">Draft</s-badge>
-                        )}
-                      </s-table-cell>
-                      <s-table-cell>
-                        {item.themeName ? (
-                          <s-text>{truncateText(item.themeName, 20)}</s-text>
-                        ) : (
-                          <s-text color="subdued">-</s-text>
-                        )}
-                      </s-table-cell>
-                      <s-table-cell>
-                        <s-text color="subdued">
-                          {formatRelativeDate(item.createdAt)}
-                        </s-text>
-                      </s-table-cell>
-                      <s-table-cell>
-                        <s-stack gap="small" direction="inline">
-                          <s-button
-                            icon={item.isFavorite ? "star-filled" : "star"}
-                            variant="tertiary"
-                            accessibilityLabel={item.isFavorite ? "Remove from favorites" : "Add to favorites"}
-                            onClick={() => handleToggleFavorite(item.id)}
-                          />
-                          <s-button
-                            icon="delete"
-                            variant="tertiary"
-                            tone="critical"
-                            accessibilityLabel="Delete section"
-                            command="--show"
-                            commandFor={DELETE_MODAL_ID}
-                            onClick={() => handleDeleteClick(item.id)}
-                          />
-                        </s-stack>
-                      </s-table-cell>
-                    </s-table-row>
-                  ))
-                ) : (
-                  <s-table-row>
+                {history.items.map((item) => (
+                  <s-table-row key={item.id} clickDelegate={`link-${item.id}`}>
+                    {/* <s-table-cell>
+                      <s-checkbox
+                        id={`checkbox-${item.id}`}
+                        accessibilityLabel={`Select section: ${truncateText(item.prompt, 30)}`}
+                        checked={selectedIds.has(item.id)}
+                        onChange={(e: ShopifyEvent) =>
+                          handleSelectOne(item.id, e)
+                        }
+                      />
+                    </s-table-cell> */}
                     <s-table-cell>
-                      <s-box padding="large">
-                        <s-stack gap="base" alignItems="center">
-                          <s-paragraph>No sections match your filters.</s-paragraph>
-                          <s-button
-                            onClick={() => {
-                              setSearchParams(new URLSearchParams());
-                              setSearchValue("");
-                            }}
-                          >
-                            Clear filters
-                          </s-button>
-                        </s-stack>
-                      </s-box>
+                      <s-stack
+                        gap="small"
+                        direction="inline"
+                        alignItems="center"
+                      >
+                        {item.isFavorite && (
+                          <s-badge tone="warning" icon="star-filled">
+                            Fav
+                          </s-badge>
+                        )}
+                        <s-text
+                          id={`link-${item.id}`}
+                          // href={`/app/sections/${item.id}`}
+                        >
+                          {item.name || truncateText(item.prompt, 50)}
+                        </s-text>
+                      </s-stack>
+                    </s-table-cell>
+                    <s-table-cell>
+                      {item.status === "saved" ? (
+                        <s-badge tone="success">Saved</s-badge>
+                      ) : (
+                        <s-badge tone="neutral">Draft</s-badge>
+                      )}
+                    </s-table-cell>
+                    <s-table-cell>
+                      {item.themeName ? (
+                        <s-text>{truncateText(item.themeName, 20)}</s-text>
+                      ) : (
+                        <s-text color="subdued">-</s-text>
+                      )}
+                    </s-table-cell>
+                    <s-table-cell>
+                      <s-text color="subdued">
+                        {formatRelativeDate(item.createdAt)}
+                      </s-text>
+                    </s-table-cell>
+                    <s-table-cell>
+                      <s-stack
+                        gap="small"
+                        direction="inline"
+                        // justifyContent="end"
+                      >
+                        <s-button
+                          icon={item.isFavorite ? "star-filled" : "star"}
+                          variant="tertiary"
+                          accessibilityLabel={
+                            item.isFavorite
+                              ? "Remove from favorites"
+                              : "Add to favorites"
+                          }
+                          onClick={() => handleToggleFavorite(item.id)}
+                        />
+                        <s-button
+                          icon="delete"
+                          variant="tertiary"
+                          tone="critical"
+                          accessibilityLabel="Delete section"
+                          command="--show"
+                          commandFor={DELETE_MODAL_ID}
+                          onClick={() => handleDeleteClick(item.id)}
+                        />
+                      </s-stack>
                     </s-table-cell>
                   </s-table-row>
-                )}
+                ))}
               </s-table-body>
             </s-table>
           ) : (
@@ -452,13 +409,16 @@ export default function SectionsPage() {
           )}
         </s-section>
 
-        {/* Page info */}
-        {history.totalPages > 1 && (
-          <s-stack direction="inline" justifyContent="center" gap="base">
-            <s-text color="subdued">
-              Page {history.page} of {history.totalPages} ({history.total} sections)
-            </s-text>
-          </s-stack>
+        {/* Results count - Shopify Products style: "1-20 of 50" */}
+        {history.total > 0 && (
+          <s-box padding="base">
+            <s-stack direction="inline" justifyContent="center" gap="base">
+              <s-text color="subdued">
+                {(history.page - 1) * 20 + 1}-
+                {Math.min(history.page * 20, history.total)} of {history.total}
+              </s-text>
+            </s-stack>
+          </s-box>
         )}
       </s-page>
 
