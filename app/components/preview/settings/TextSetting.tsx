@@ -7,47 +7,64 @@ export interface TextSettingProps {
   disabled?: boolean;
 }
 
+/**
+ * TextSetting - Renders text inputs using Polaris Web Components
+ * Supports: text, textarea, richtext, url, html types
+ */
 export function TextSetting({ setting, value, onChange, disabled }: TextSettingProps) {
   const isMultiline = setting.type === 'textarea' || setting.type === 'richtext' || setting.type === 'html';
 
-  const inputStyle = {
-    width: '100%',
-    padding: '8px 12px',
-    border: '1px solid #c9cccf',
-    borderRadius: '4px',
-    fontSize: '14px',
-    fontFamily: 'inherit'
+  // Use native Event type for Polaris Web Components
+  const handleInput = (e: Event) => {
+    const target = e.target as HTMLInputElement | HTMLTextAreaElement;
+    onChange(target.value);
   };
 
-  return (
-    <div style={{ marginBottom: '8px' }}>
-      <label style={{ display: 'block', marginBottom: '4px', fontWeight: 500 }}>
-        {setting.label}
-      </label>
-      {isMultiline ? (
-        <textarea
+  if (isMultiline) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <s-text-area
+          label={setting.label}
           value={value}
           placeholder={setting.placeholder}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
+          disabled={disabled || undefined}
           rows={4}
-          style={{ ...inputStyle, resize: 'vertical' }}
+          onInput={handleInput}
         />
-      ) : (
-        <input
-          type="text"
+        {setting.info && (
+          <span style={{ fontSize: '13px', color: '#6d7175' }}>{setting.info}</span>
+        )}
+      </div>
+    );
+  }
+
+  if (setting.type === 'url') {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+        <s-text-field
+          label={setting.label}
           value={value}
           placeholder={setting.placeholder}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.value)}
-          style={inputStyle}
+          disabled={disabled || undefined}
+          onInput={handleInput}
         />
-      )}
-      {setting.info && (
-        <p style={{ color: '#6d7175', fontSize: '13px', margin: '4px 0 0' }}>
-          {setting.info}
-        </p>
-      )}
+        {setting.info && (
+          <span style={{ fontSize: '13px', color: '#6d7175' }}>{setting.info}</span>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <s-text-field
+        label={setting.label}
+        value={value}
+        placeholder={setting.placeholder}
+        disabled={disabled || undefined}
+        details={setting.info}
+        onInput={handleInput}
+      />
     </div>
   );
 }

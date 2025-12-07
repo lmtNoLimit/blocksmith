@@ -1,6 +1,7 @@
 /**
  * CollectionSetting Component
  * Renders resource picker for schema settings with type: "collection"
+ * Uses Polaris Web Components for styling
  */
 
 import type { SchemaSetting } from '../schema/SchemaTypes';
@@ -37,20 +38,13 @@ export function CollectionSetting({
   };
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      {/* Label */}
-      <label style={{ fontSize: '13px', fontWeight: 500, color: '#202223' }}>
-        {setting.label}
-      </label>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+      <span style={{ fontWeight: 500 }}>{setting.label}</span>
 
-      {/* Info text */}
       {setting.info && (
-        <p style={{ fontSize: '13px', color: '#6d7175', margin: 0 }}>
-          {setting.info}
-        </p>
+        <span style={{ fontSize: '13px', color: '#6d7175' }}>{setting.info}</span>
       )}
 
-      {/* Resource selector */}
       <ResourceSelector
         resourceType="collection"
         onSelect={handleSelect}

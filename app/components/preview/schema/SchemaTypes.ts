@@ -1,30 +1,50 @@
 /**
  * Shopify section schema types
+ * Supports all 31 input setting types from Shopify theme documentation
  */
 
 export type SettingType =
+  // Basic Input
   | 'text'
   | 'textarea'
   | 'richtext'
+  | 'inline_richtext'
   | 'number'
   | 'range'
   | 'checkbox'
   | 'select'
+  | 'radio'
+  // Color & Design
   | 'color'
   | 'color_background'
-  | 'image_picker'
-  | 'url'
-  | 'video_url'
   | 'font_picker'
+  | 'text_alignment'
+  // Media
+  | 'image_picker'
+  | 'video'
+  | 'video_url'
+  // Rich Content
+  | 'url'
   | 'html'
+  | 'liquid'
+  // Resource Pickers
   | 'article'
   | 'blog'
   | 'collection'
   | 'page'
   | 'product'
   | 'link_list'
+  // Resource Lists
+  | 'collection_list'
+  | 'product_list'
+  // Sidebar
   | 'header'
-  | 'paragraph';
+  | 'paragraph'
+  // Advanced (deferred)
+  | 'color_scheme'
+  | 'color_scheme_group'
+  | 'metaobject'
+  | 'metaobject_list';
 
 export interface SelectOption {
   value: string;
@@ -47,6 +67,10 @@ export interface SchemaSetting {
   unit?: string;
   // Header/paragraph content
   content?: string;
+  // Video URL specific
+  accept?: string[];
+  // List types
+  limit?: number;
 }
 
 export interface SchemaBlock {

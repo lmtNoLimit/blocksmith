@@ -21,6 +21,9 @@ export interface SettingsPanelProps {
   resourceSettings?: Record<string, SelectedResource | null>;
   onResourceSelect?: (settingId: string, resourceId: string | null, resource: SelectedResource | null) => void;
   isLoadingResource?: boolean;
+  // Multi-select resource props
+  multiResourceSettings?: Record<string, SelectedResource[]>;
+  onMultiResourceSelect?: (settingId: string, resources: SelectedResource[]) => void;
   // Preview controls (formerly in toolbar)
   deviceSize?: DeviceSize;
   onDeviceSizeChange?: (size: DeviceSize) => void;
@@ -32,7 +35,7 @@ export interface SettingsPanelProps {
 }
 
 /**
- * Collapsible panel displaying schema settings form
+ * Collapsible panel displaying schema settings form using Polaris Web Components
  */
 export function SettingsPanel({
   settings,
@@ -45,6 +48,8 @@ export function SettingsPanel({
   resourceSettings,
   onResourceSelect,
   isLoadingResource,
+  multiResourceSettings,
+  onMultiResourceSelect,
   // Preview controls
   deviceSize = 'desktop',
   onDeviceSizeChange,
@@ -57,130 +62,88 @@ export function SettingsPanel({
   const [isExpanded, setIsExpanded] = useState(true);
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({});
 
-  // Group presets by category
-  const productPresets = presets.filter(p => p.id.startsWith('product'));
-  const collectionPresets = presets.filter(p => p.id.startsWith('collection'));
-  const cartPresets = presets.filter(p => p.id.startsWith('cart'));
+  // Local multi-resource state if not provided externally
+  const [localMultiResourceSettings, setLocalMultiResourceSettings] = useState<Record<string, SelectedResource[]>>({});
+
+  // Use external state if provided, otherwise use local state
+  const effectiveMultiResourceSettings = multiResourceSettings ?? localMultiResourceSettings;
+  const handleMultiResourceSelect = onMultiResourceSelect ?? ((settingId: string, resources: SelectedResource[]) => {
+    setLocalMultiResourceSettings(prev => ({
+      ...prev,
+      [settingId]: resources
+    }));
+  });
+
+  // Flatten presets for s-select (no optgroup support)
+  const flattenedPresets = presets.map(p => {
+    let prefix = '';
+    if (p.id.startsWith('product')) prefix = 'Product: ';
+    else if (p.id.startsWith('collection')) prefix = 'Collection: ';
+    else if (p.id.startsWith('cart')) prefix = 'Cart: ';
+    return { ...p, displayName: prefix + p.name };
+  });
+
+  // Use native Event type for Polaris Web Components
+  const handlePresetChange = (e: Event) => {
+    const target = e.target as HTMLSelectElement;
+    onPresetChange?.(target.value);
+  };
 
   // Preview controls toolbar (always shown)
   const previewControls = (
-    <div style={{
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center',
-      flexWrap: 'wrap',
-      gap: '12px',
-      marginBottom: '16px',
-      paddingBottom: '16px',
-      borderBottom: '1px solid #e1e3e5'
-    }}>
-      {/* Device size selector */}
-      {onDeviceSizeChange && (
-        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-          <button
-            onClick={() => onDeviceSizeChange('mobile')}
-            style={{
-              padding: '6px 12px',
-              backgroundColor: deviceSize === 'mobile' ? '#008060' : 'transparent',
-              color: deviceSize === 'mobile' ? '#fff' : '#202223',
-              border: deviceSize === 'mobile' ? 'none' : '1px solid #c9cccf',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '13px'
-            }}
-          >
-            Mobile
-          </button>
-          <button
-            onClick={() => onDeviceSizeChange('tablet')}
-            style={{
-              padding: '6px 12px',
-              backgroundColor: deviceSize === 'tablet' ? '#008060' : 'transparent',
-              color: deviceSize === 'tablet' ? '#fff' : '#202223',
-              border: deviceSize === 'tablet' ? 'none' : '1px solid #c9cccf',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '13px'
-            }}
-          >
-            Tablet
-          </button>
-          <button
-            onClick={() => onDeviceSizeChange('desktop')}
-            style={{
-              padding: '6px 12px',
-              backgroundColor: deviceSize === 'desktop' ? '#008060' : 'transparent',
-              color: deviceSize === 'desktop' ? '#fff' : '#202223',
-              border: deviceSize === 'desktop' ? 'none' : '1px solid #c9cccf',
-              borderRadius: '4px',
-              cursor: 'pointer',
-              fontSize: '13px'
-            }}
-          >
-            Desktop
-          </button>
+    <div style={{ paddingBottom: '16px', borderBottom: '1px solid #e1e3e5', marginBottom: '16px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+        {/* Device size selector */}
+        {onDeviceSizeChange && (
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <s-button
+              variant={deviceSize === 'mobile' ? 'primary' : 'secondary'}
+              onClick={() => onDeviceSizeChange('mobile')}
+            >
+              Mobile
+            </s-button>
+            <s-button
+              variant={deviceSize === 'tablet' ? 'primary' : 'secondary'}
+              onClick={() => onDeviceSizeChange('tablet')}
+            >
+              Tablet
+            </s-button>
+            <s-button
+              variant={deviceSize === 'desktop' ? 'primary' : 'secondary'}
+              onClick={() => onDeviceSizeChange('desktop')}
+            >
+              Desktop
+            </s-button>
+          </div>
+        )}
+
+        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+          {/* Data preset selector */}
+          {onPresetChange && presets.length > 0 && (
+            <s-select
+              value={selectedPreset}
+              onChange={handlePresetChange}
+              label="Data Preset"
+            >
+              <option value="">Default Data</option>
+              {flattenedPresets.map(p => (
+                <option key={p.id} value={p.id}>{p.displayName}</option>
+              ))}
+            </s-select>
+          )}
+
+          {/* Refresh button */}
+          {onRefresh && (
+            <s-button
+              variant="secondary"
+              onClick={onRefresh}
+              disabled={isRendering || undefined}
+              loading={isRendering || undefined}
+            >
+              Refresh
+            </s-button>
+          )}
         </div>
-      )}
-
-      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        {/* Data preset selector */}
-        {onPresetChange && presets.length > 0 && (
-          <select
-            value={selectedPreset}
-            onChange={(e) => onPresetChange(e.target.value)}
-            style={{
-              padding: '6px 12px',
-              borderRadius: '6px',
-              border: '1px solid #c9cccf',
-              fontSize: '13px',
-              backgroundColor: '#fff',
-              cursor: 'pointer'
-            }}
-            aria-label="Select preview data preset"
-          >
-            <option value="">Default Data</option>
-            {productPresets.length > 0 && (
-              <optgroup label="Product">
-                {productPresets.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </optgroup>
-            )}
-            {collectionPresets.length > 0 && (
-              <optgroup label="Collection">
-                {collectionPresets.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </optgroup>
-            )}
-            {cartPresets.length > 0 && (
-              <optgroup label="Cart">
-                {cartPresets.map(p => (
-                  <option key={p.id} value={p.id}>{p.name}</option>
-                ))}
-              </optgroup>
-            )}
-          </select>
-        )}
-
-        {/* Refresh button */}
-        {onRefresh && (
-          <button
-            onClick={onRefresh}
-            disabled={isRendering}
-            style={{
-              padding: '6px 12px',
-              backgroundColor: 'transparent',
-              border: '1px solid #c9cccf',
-              borderRadius: '4px',
-              cursor: isRendering ? 'not-allowed' : 'pointer',
-              fontSize: '13px',
-              opacity: isRendering ? 0.5 : 1
-            }}
-          >
-            {isRendering ? 'Rendering...' : 'Refresh'}
-          </button>
-        )}
       </div>
     </div>
   );
@@ -194,9 +157,9 @@ export function SettingsPanel({
         padding: '16px'
       }}>
         {previewControls}
-        <p style={{ color: '#6d7175', fontSize: '14px', margin: 0 }}>
+        <span style={{ color: '#6d7175' }}>
           No customizable settings found in section schema.
-        </p>
+        </span>
       </div>
     );
   }
@@ -239,7 +202,18 @@ export function SettingsPanel({
             defaults[setting.id] = '#000000';
             break;
           case 'select':
+          case 'radio':
             defaults[setting.id] = setting.options?.[0]?.value ?? '';
+            break;
+          case 'font_picker':
+            defaults[setting.id] = 'system-ui';
+            break;
+          case 'text_alignment':
+            defaults[setting.id] = 'left';
+            break;
+          case 'collection_list':
+          case 'product_list':
+            defaults[setting.id] = '[]';
             break;
           default:
             defaults[setting.id] = '';
@@ -259,47 +233,30 @@ export function SettingsPanel({
       {/* Preview controls */}
       {previewControls}
 
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        <div style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <h3 style={{ margin: 0, fontSize: '14px', fontWeight: 600 }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+        {/* Settings header */}
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <span style={{ fontSize: '14px', fontWeight: 600 }}>
             Settings ({settings.length})
-          </h3>
+          </span>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button
+            <s-button
+              variant="secondary"
               onClick={handleResetDefaults}
-              disabled={disabled}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: 'transparent',
-                border: '1px solid #c9cccf',
-                borderRadius: '4px',
-                cursor: disabled ? 'not-allowed' : 'pointer',
-                fontSize: '13px',
-                opacity: disabled ? 0.5 : 1
-              }}
+              disabled={disabled || undefined}
             >
               Reset
-            </button>
-            <button
+            </s-button>
+            <s-button
+              variant="secondary"
               onClick={() => setIsExpanded(!isExpanded)}
-              style={{
-                padding: '6px 12px',
-                backgroundColor: 'transparent',
-                border: '1px solid #c9cccf',
-                borderRadius: '4px',
-                cursor: 'pointer',
-                fontSize: '13px'
-              }}
             >
               {isExpanded ? 'Collapse' : 'Expand'}
-            </button>
+            </s-button>
           </div>
         </div>
 
+        {/* Settings form */}
         {isExpanded && settings.length > 0 && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
             {settings.map((setting) => (
@@ -312,6 +269,8 @@ export function SettingsPanel({
                 resourceSettings={resourceSettings}
                 onResourceSelect={onResourceSelect}
                 isLoadingResource={isLoadingResource}
+                multiResourceSettings={effectiveMultiResourceSettings}
+                onMultiResourceSelect={handleMultiResourceSelect}
               />
             ))}
           </div>
@@ -320,13 +279,13 @@ export function SettingsPanel({
         {/* Block Settings */}
         {isExpanded && blocks && blocks.length > 0 && (
           <div style={{ marginTop: settings.length > 0 ? '16px' : 0 }}>
-            <div style={{
-              borderTop: settings.length > 0 ? '1px solid #e1e3e5' : 'none',
-              paddingTop: settings.length > 0 ? '16px' : 0
-            }}>
-              <h3 style={{ margin: '0 0 12px 0', fontSize: '14px', fontWeight: 600 }}>
+            {settings.length > 0 && (
+              <div style={{ borderTop: '1px solid #e1e3e5', paddingTop: '16px' }} />
+            )}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <span style={{ fontSize: '14px', fontWeight: 600 }}>
                 Blocks ({blocks.length})
-              </h3>
+              </span>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                 {blocks.map((block, blockIndex) => {
                   const blockDef = schema?.blocks?.find(b => b.type === block.type);
@@ -362,11 +321,7 @@ export function SettingsPanel({
                           textAlign: 'left'
                         }}
                       >
-                        <span style={{
-                          fontSize: '13px',
-                          fontWeight: 500,
-                          color: '#202223'
-                        }}>
+                        <span style={{ fontSize: '13px', fontWeight: 500, color: '#202223' }}>
                           {blockTitle} #{blockIndex + 1}
                         </span>
                         <span style={{
@@ -398,6 +353,8 @@ export function SettingsPanel({
                                 onBlockSettingChange?.(blockIndex, setting.id, value);
                               }}
                               disabled={disabled}
+                              multiResourceSettings={effectiveMultiResourceSettings}
+                              onMultiResourceSelect={handleMultiResourceSelect}
                             />
                           ))}
                         </div>

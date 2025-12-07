@@ -7,24 +7,23 @@ export interface CheckboxSettingProps {
   disabled?: boolean;
 }
 
+/**
+ * CheckboxSetting - Renders boolean toggle using Polaris Web Components
+ */
 export function CheckboxSetting({ setting, value, onChange, disabled }: CheckboxSettingProps) {
+  // Use native Event type for Polaris Web Components
+  const handleChange = (e: Event) => {
+    const target = e.currentTarget as HTMLInputElement;
+    onChange(target.checked);
+  };
+
   return (
-    <div style={{ marginBottom: '8px' }}>
-      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
-        <input
-          type="checkbox"
-          checked={value}
-          disabled={disabled}
-          onChange={(e) => onChange(e.target.checked)}
-          style={{ width: '18px', height: '18px' }}
-        />
-        <span>{setting.label}</span>
-      </label>
-      {setting.info && (
-        <p style={{ color: '#6d7175', fontSize: '13px', margin: '4px 0 0 26px' }}>
-          {setting.info}
-        </p>
-      )}
-    </div>
+    <s-checkbox
+      label={setting.label}
+      checked={value || undefined}
+      disabled={disabled || undefined}
+      details={setting.info}
+      onChange={handleChange}
+    />
   );
 }
