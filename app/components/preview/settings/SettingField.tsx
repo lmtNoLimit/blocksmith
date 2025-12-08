@@ -36,6 +36,8 @@ export interface SettingFieldProps {
   // Multi-select resource props (for collection_list/product_list types)
   multiResourceSettings?: Record<string, SelectedResource[]>;
   onMultiResourceSelect?: (settingId: string, resources: SelectedResource[]) => void;
+  // Block context for unique identification
+  blockId?: string;
 }
 
 /**
@@ -50,11 +52,16 @@ export function SettingField({
   onResourceSelect,
   isLoadingResource,
   multiResourceSettings,
-  onMultiResourceSelect
+  onMultiResourceSelect,
+  blockId
 }: SettingFieldProps) {
   const handleChange = (newValue: string | number | boolean) => {
     onChange(setting.id, newValue);
   };
+
+  // Generate unique identifier for settings that need instance-specific identification
+  // This is critical for image picker in blocks where multiple blocks may have the same setting.id
+  const uniqueId = blockId ? `${blockId}-${setting.id}` : setting.id;
 
   switch (setting.type) {
     // Basic text inputs
@@ -139,6 +146,7 @@ export function SettingField({
           value={String(value || '')}
           onChange={handleChange}
           disabled={disabled}
+          uniqueId={uniqueId}
         />
       );
 

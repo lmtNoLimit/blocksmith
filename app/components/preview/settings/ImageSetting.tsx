@@ -7,14 +7,20 @@ export interface ImageSettingProps {
   value: string;
   onChange: (value: string) => void;
   disabled?: boolean;
+  /** Unique identifier for this specific setting instance (e.g., "block-123-image" for block settings) */
+  uniqueId?: string;
 }
 
 /**
  * ImageSetting - Renders image picker button using Polaris Web Components
  * Uses commandFor/command pattern to open modal declaratively
  */
-export function ImageSetting({ setting, value, onChange, disabled }: ImageSettingProps) {
+export function ImageSetting({ setting, value, onChange, disabled, uniqueId }: ImageSettingProps) {
   const [hasError, setHasError] = useState(false);
+
+  // Use uniqueId if provided, otherwise fall back to setting.id
+  // This is critical for block settings where multiple blocks may have the same setting.id
+  const instanceId = uniqueId ?? setting.id;
 
   // Reset error state when value changes
   useEffect(() => {
@@ -24,7 +30,7 @@ export function ImageSetting({ setting, value, onChange, disabled }: ImageSettin
   // Dispatch event to tell modal which setting opened it
   const handleOpenClick = () => {
     window.dispatchEvent(new CustomEvent('image-picker-open', {
-      detail: { settingId: setting.id }
+      detail: { settingId: instanceId }
     }));
   };
 
@@ -32,7 +38,8 @@ export function ImageSetting({ setting, value, onChange, disabled }: ImageSettin
   useEffect(() => {
     const handleImageSelected = (event: Event) => {
       const customEvent = event as CustomEvent<{ settingId: string; imageUrl: string }>;
-      if (customEvent.detail.settingId === setting.id) {
+      // Only respond if this specific instance is targeted
+      if (customEvent.detail.settingId === instanceId) {
         onChange(customEvent.detail.imageUrl);
       }
     };
@@ -41,7 +48,7 @@ export function ImageSetting({ setting, value, onChange, disabled }: ImageSettin
     return () => {
       window.removeEventListener('image-picker-select', handleImageSelected);
     };
-  }, [setting.id, onChange]);
+  }, [instanceId, onChange]);
 
   const handleClear = () => {
     onChange('');

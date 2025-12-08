@@ -321,6 +321,7 @@ export function SettingsPanel({
                               disabled={disabled}
                               multiResourceSettings={effectiveMultiResourceSettings}
                               onMultiResourceSelect={handleMultiResourceSelect}
+                              blockId={block.id}
                             />
                           ))}
                         </div>
