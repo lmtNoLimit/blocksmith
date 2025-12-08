@@ -3,6 +3,7 @@ import type { SchemaSetting, SettingsState, BlockInstance, SchemaDefinition } fr
 import type { SelectedResource } from '../ResourceSelector';
 import type { DeviceSize } from '../types';
 import { SettingField } from './SettingField';
+import { ImagePickerModal } from './ImagePickerModal';
 
 export interface DataPreset {
   id: string;
@@ -367,6 +368,9 @@ export function SettingsPanel({
           </div>
         )}
       </div>
+
+      {/* Image Picker Modal - rendered once at SettingsPanel level */}
+      <ImagePickerModal />
     </div>
   );
 }

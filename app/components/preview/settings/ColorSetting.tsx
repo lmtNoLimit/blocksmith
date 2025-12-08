@@ -25,13 +25,12 @@ export function ColorSetting({ setting, value, onChange, disabled }: ColorSettin
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-      <span style={{ fontWeight: 500 }}>{setting.label}</span>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
         <s-color-field
           value={value || ''}
           placeholder="#000000"
           disabled={disabled || undefined}
-          label="Color value"
+          label={setting.label}
           onChange={handleColorChange}
           onInput={handleTextChange}
         />
