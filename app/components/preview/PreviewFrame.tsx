@@ -107,6 +107,17 @@ const IFRAME_HTML = `
           handleImageError(img);
         }
       });
+
+      // Handle elements with data-block-type="image" that don't have actual images
+      document.querySelectorAll('[data-block-type="image"]:not([data-placeholder-handled])').forEach(function(el) {
+        el.dataset.placeholderHandled = 'true';
+        // If element has no img child or only contains text like "image"
+        var hasImg = el.querySelector('img');
+        var textContent = el.textContent.trim().toLowerCase();
+        if (!hasImg && (textContent === 'image' || textContent === 'placeholder' || textContent === '')) {
+          el.innerHTML = '<img src="' + PLACEHOLDER_SVG + '" alt="Image placeholder" class="placeholder-image" style="width:100%;height:auto;min-height:100px;display:block;" />';
+        }
+      });
     });
     observer.observe(document.getElementById('preview-content'), { childList: true, subtree: true });
   </script>

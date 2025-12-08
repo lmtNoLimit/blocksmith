@@ -151,6 +151,10 @@ export function buildInitialState(settings: SchemaSetting[]): SettingsState {
         case 'select':
           state[setting.id] = setting.options?.[0]?.value ?? '';
           break;
+        case 'image_picker':
+          // Use 'placeholder' marker which Liquid filters will convert to actual placeholder SVG
+          state[setting.id] = 'placeholder';
+          break;
         default:
           state[setting.id] = '';
       }

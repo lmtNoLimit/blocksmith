@@ -43,7 +43,7 @@ export function useLiquidRenderer(): UseLiquidRendererResult {
     });
 
     engine.registerFilter('image_url', (image: string | { src: string } | null) => {
-      if (!image) return PLACEHOLDER_IMAGE;
+      if (!image || image === 'placeholder') return PLACEHOLDER_IMAGE;
       return typeof image === 'string' ? image : image.src;
     });
 
