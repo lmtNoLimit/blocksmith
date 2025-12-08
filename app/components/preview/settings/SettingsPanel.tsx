@@ -199,11 +199,20 @@ export function SettingsPanel({
       {/* Preview controls */}
       {previewControls}
 
+      {/* Info Banner */}
+      <div style={{ marginBottom: '16px' }}>
+        <s-banner tone="info">
+          <strong>Preview Mode</strong> – These settings are for testing only.
+          To customize your section in production, use the Shopify Theme Editor
+          after saving this section to your theme.
+        </s-banner>
+      </div>
+
       <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
         {/* Settings header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <span style={{ fontSize: '14px', fontWeight: 600 }}>
-            Settings ({settings.length})
+            Preview Settings ({settings.length})
           </span>
           <div style={{ display: 'flex', gap: '8px' }}>
             <s-button
