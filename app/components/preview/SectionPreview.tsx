@@ -6,8 +6,6 @@ import { useResourceFetcher } from './hooks/useResourceFetcher';
 import { parseSchema, extractSettings, buildInitialState, buildBlockInstancesFromPreset } from './schema/parseSchema';
 import { SettingsPanel } from './settings/SettingsPanel';
 import { buildPreviewContext } from './utils/buildPreviewContext';
-import { getAllPresets } from './mockData/registry';
-import { defaultCollection } from './mockData/presets/collection';
 import type { DeviceSize, PreviewMessage, PreviewSettings } from './types';
 import type { SchemaSetting, SettingsState, SchemaDefinition, BlockInstance } from './schema/SchemaTypes';
 import type { MockProduct, MockCollection } from './mockData/types';
@@ -21,7 +19,6 @@ export interface SectionPreviewProps {
 /**
  * Main section preview component
  * Renders Liquid code in sandboxed iframe with settings editor
- * Supports both mock data presets and real Shopify data
  */
 export function SectionPreview({
   liquidCode,
@@ -29,7 +26,6 @@ export function SectionPreview({
 }: SectionPreviewProps) {
   const [deviceSize, setDeviceSize] = useState<DeviceSize>('desktop');
   const [error, setError] = useState<string | null>(null);
-  const [selectedPreset, setSelectedPreset] = useState<string>('');
 
   // Settings-based resources (from schema settings with type: product/collection)
   const [settingsResourceSelections, setSettingsResourceSelections] = useState<Record<string, SelectedResource | null>>({});
@@ -89,36 +85,21 @@ export function SectionPreview({
     try {
       setError(null);
 
-      // Identify collection/product settings that need fallback when no selection is made
-      // This allows templates like Product Grid to render products out-of-the-box
-      const resourceFallbacks: Record<string, MockProduct | MockCollection> = {};
-      for (const setting of schemaSettings) {
-        if (setting.type === 'collection' && !settingsResources[setting.id]) {
-          resourceFallbacks[setting.id] = defaultCollection;
-        }
-        // Product settings could also use fallback if needed in the future
-      }
-
-      // Merge fallback resources with user-selected resources
-      const allSettingsResources = { ...resourceFallbacks, ...settingsResources };
-
-      // Build context with mock data preset and settings-based resources
-      const mockData = buildPreviewContext({
-        useRealData: false,
-        preset: selectedPreset,
-        settingsResources: allSettingsResources
+      // Build context with settings-based resources
+      const previewData = buildPreviewContext({
+        settingsResources
       });
 
-      const { html, css } = await render(liquidCode, settingsValues, blocksState, mockData as unknown as Record<string, unknown>);
+      const { html, css } = await render(liquidCode, settingsValues, blocksState, previewData as unknown as Record<string, unknown>);
       sendMessage({ type: 'RENDER', html, css });
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Render failed';
       setError(errorMsg);
       sendMessage({ type: 'RENDER_ERROR', error: errorMsg });
     }
-  }, [liquidCode, settingsValues, blocksState, selectedPreset, settingsResources, schemaSettings, render, sendMessage]);
+  }, [liquidCode, settingsValues, blocksState, settingsResources, render, sendMessage]);
 
-  // Debounce renders on code/settings/preset/resource change
+  // Debounce renders on code/settings/resource change
   useEffect(() => {
     if (renderTimeoutRef.current) {
       clearTimeout(renderTimeoutRef.current);
@@ -228,8 +209,6 @@ export function SectionPreview({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [triggerRender]);
 
-  const presets = getAllPresets();
-
   // Combine errors
   const displayError = error || fetchError;
 
@@ -252,9 +231,6 @@ export function SectionPreview({
         onDeviceSizeChange={setDeviceSize}
         onRefresh={triggerRender}
         isRendering={isRendering}
-        selectedPreset={selectedPreset}
-        onPresetChange={setSelectedPreset}
-        presets={presets}
       />
 
       {/* Error banner */}

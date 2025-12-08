@@ -5,10 +5,6 @@ import type { DeviceSize } from '../types';
 import { SettingField } from './SettingField';
 import { ImagePickerModal } from './ImagePickerModal';
 
-export interface DataPreset {
-  id: string;
-  name: string;
-}
 
 export interface SettingsPanelProps {
   settings: SchemaSetting[];
@@ -30,9 +26,7 @@ export interface SettingsPanelProps {
   onDeviceSizeChange?: (size: DeviceSize) => void;
   onRefresh?: () => void;
   isRendering?: boolean;
-  selectedPreset?: string;
-  onPresetChange?: (presetId: string) => void;
-  presets?: DataPreset[];
+
 }
 
 /**
@@ -55,10 +49,7 @@ export function SettingsPanel({
   deviceSize = 'desktop',
   onDeviceSizeChange,
   onRefresh,
-  isRendering,
-  selectedPreset = '',
-  onPresetChange,
-  presets = []
+  isRendering
 }: SettingsPanelProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const [expandedBlocks, setExpandedBlocks] = useState<Record<string, boolean>>({});
@@ -75,20 +66,7 @@ export function SettingsPanel({
     }));
   });
 
-  // Flatten presets for s-select (no optgroup support)
-  const flattenedPresets = presets.map(p => {
-    let prefix = '';
-    if (p.id.startsWith('product')) prefix = 'Product: ';
-    else if (p.id.startsWith('collection')) prefix = 'Collection: ';
-    else if (p.id.startsWith('cart')) prefix = 'Cart: ';
-    return { ...p, displayName: prefix + p.name };
-  });
 
-  // Use native Event type for Polaris Web Components
-  const handlePresetChange = (e: Event) => {
-    const target = e.target as HTMLSelectElement;
-    onPresetChange?.(target.value);
-  };
 
   // Preview controls toolbar (always shown)
   const previewControls = (
@@ -119,19 +97,6 @@ export function SettingsPanel({
         )}
 
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          {/* Data preset selector */}
-          {onPresetChange && presets.length > 0 && (
-            <s-select
-              value={selectedPreset}
-              onChange={handlePresetChange}
-              label="Data Preset"
-            >
-              <option value="">Default Data</option>
-              {flattenedPresets.map(p => (
-                <option key={p.id} value={p.id}>{p.displayName}</option>
-              ))}
-            </s-select>
-          )}
 
           {/* Refresh button */}
           {onRefresh && (

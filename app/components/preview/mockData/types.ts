@@ -131,10 +131,3 @@ export interface MockDataContext {
   customer?: MockCustomer | null;
   request?: MockRequest;
 }
-
-export interface DataPreset {
-  id: string;
-  name: string;
-  description: string;
-  data: Partial<MockDataContext>;
-}
