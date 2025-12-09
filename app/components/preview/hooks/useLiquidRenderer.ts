@@ -37,14 +37,35 @@ export function useLiquidRenderer(): UseLiquidRendererResult {
     const PLACEHOLDER_IMAGE = 'data:image/svg+xml,' + encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="300" height="200" viewBox="0 0 300 200"><rect fill="#f0f0f0" width="300" height="200"/><rect fill="#e0e0e0" x="110" y="60" width="80" height="80" rx="4"/><circle fill="#ccc" cx="130" cy="85" r="8"/><polygon fill="#ccc" points="120,130 150,95 180,130"/><polygon fill="#d0d0d0" points="140,130 160,110 180,130"/></svg>');
 
     // Register Shopify-specific filter stubs
-    engine.registerFilter('img_url', (image: string | { src: string } | null) => {
+    engine.registerFilter('img_url', (image: unknown, size?: string) => {
       if (!image) return PLACEHOLDER_IMAGE;
-      return typeof image === 'string' ? image : image.src || PLACEHOLDER_IMAGE;
+      if (typeof image === 'string') return image;
+
+      // Handle ImageDrop or any object with src property
+      const imageObj = image as { src?: string; url?: string; img_url?: (size?: string) => string };
+
+      // Check if it has an img_url method (like ImageDrop)
+      if (typeof imageObj.img_url === 'function') {
+        return imageObj.img_url(size);
+      }
+
+      // Fall back to src or url property
+      return imageObj.src || imageObj.url || PLACEHOLDER_IMAGE;
     });
 
-    engine.registerFilter('image_url', (image: string | { src: string } | null) => {
+    engine.registerFilter('image_url', (image: unknown, options?: { width?: number; height?: number } | string) => {
       if (!image || image === 'placeholder') return PLACEHOLDER_IMAGE;
-      return typeof image === 'string' ? image : image.src;
+      if (typeof image === 'string') return image;
+
+      // Handle ImageDrop or any object with src property
+      const imageObj = image as { src?: string; url?: string };
+      const baseUrl = imageObj.src || imageObj.url;
+
+      if (!baseUrl) return PLACEHOLDER_IMAGE;
+
+      // In real Shopify, options would add width/height params
+      // For preview, just return the base URL
+      return baseUrl;
     });
 
     engine.registerFilter('money', (cents: number) => {
@@ -102,8 +123,15 @@ export function useLiquidRenderer(): UseLiquidRendererResult {
       return `<img src="${url}" alt="${alt || ''}" />`;
     });
 
-    engine.registerFilter('link_to', (url: string, title: string) => {
-      return `<a href="${url}">${title}</a>`;
+    engine.registerFilter('link_to', (text: string, url?: string) => {
+      // Shopify syntax: {{ 'text' | link_to: '/url' }}
+      // text is the pipe input, url is the filter parameter
+      return `<a href="${url || '#'}">${text || ''}</a>`;
+    });
+
+    // Payment button filter stub - renders placeholder button
+    engine.registerFilter('payment_button', () => {
+      return `<button type="button" class="shopify-payment-button" style="padding: 12px 24px; background: #5c6ac4; color: white; border: none; border-radius: 4px; cursor: pointer;">Buy with Shop Pay</button>`;
     });
 
     engine.registerFilter('product_url', (product: { url?: string; handle?: string }) => {
@@ -170,8 +198,24 @@ export function useLiquidRenderer(): UseLiquidRendererResult {
           formType = match ? match[1] : 'generic';
         }
 
+        // Create form context variable (Shopify provides this inside {% form %} blocks)
+        const formContext = {
+          errors: [],
+          posted_successfully: false,
+          id: `form-${formType}-preview`,
+          // toString returns empty string to prevent [object Object] output
+          toString: () => '',
+          valueOf: () => ''
+        };
+
+        // Push form variable to context
+        ctx.push({ form: formContext });
+
         // Render inner template content
         const bodyHtml = await this.liquid.renderer.renderTemplates(this.tpl, ctx);
+
+        // Pop the form context
+        ctx.pop();
 
         // Return form HTML wrapper
         return `<form method="post" class="shopify-form shopify-form-${formType}" data-preview="true">\n${bodyHtml}\n</form>`;

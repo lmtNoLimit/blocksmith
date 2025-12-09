@@ -1,5 +1,4 @@
 import type { SectionTemplate } from "@prisma/client";
-import { useState } from "react";
 
 export interface TemplateCardProps {
   template: SectionTemplate;
@@ -19,12 +18,11 @@ export function TemplateCard({
   template,
   onUseAsIs,
   onCustomize,
-  onEdit,
+  onEdit: _onEdit,           // Reserved for future user templates
   onToggleFavorite,
-  onDuplicate,
-  onDelete
+  onDuplicate: _onDuplicate, // Reserved for future user templates
+  onDelete: _onDelete        // Reserved for future user templates
 }: TemplateCardProps) {
-  const [showActions, setShowActions] = useState(false);
   const hasCode = Boolean(template.code);
 
   return (
@@ -85,38 +83,20 @@ export function TemplateCard({
           )}
         </s-box>
 
-        {/* Primary Actions - Dual Buttons */}
-        <s-stack gap="small" direction="block">
-          <s-stack gap="small" direction="inline">
-            {hasCode && (
-              <s-button variant="primary" onClick={onUseAsIs}>
-                Use As-Is
-              </s-button>
-            )}
-            <s-button
-              variant={hasCode ? "secondary" : "primary"}
-              onClick={onCustomize}
-            >
-              {hasCode ? "Customize with AI" : "Generate with AI"}
+        {/* Primary Actions - Use/Customize only (system templates) */}
+        {/* Note: Edit/Duplicate/Delete actions reserved for future user templates */}
+        <s-stack gap="small" direction="inline">
+          {hasCode && (
+            <s-button variant="primary" onClick={onUseAsIs}>
+              Use As-Is
             </s-button>
-          </s-stack>
-
-          {/* Toggle for more actions */}
-          <s-button
-            variant="tertiary"
-            onClick={() => setShowActions(!showActions)}
-          >
-            {showActions ? "Hide actions" : "More actions..."}
-          </s-button>
-
-          {/* Secondary Actions (collapsible) */}
-          {showActions && (
-            <s-stack gap="small" direction="inline">
-              <s-button onClick={onEdit}>Edit</s-button>
-              <s-button onClick={onDuplicate}>Duplicate</s-button>
-              <s-button tone="critical" onClick={onDelete}>Delete</s-button>
-            </s-stack>
           )}
+          <s-button
+            variant={hasCode ? "secondary" : "primary"}
+            onClick={onCustomize}
+          >
+            {hasCode ? "Customize with AI" : "Generate with AI"}
+          </s-button>
         </s-stack>
       </s-stack>
     </s-box>

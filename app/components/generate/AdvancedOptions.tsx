@@ -3,6 +3,7 @@ import { useState } from 'react';
 export interface AdvancedOptionsState {
   tone: 'professional' | 'casual' | 'friendly';
   style: 'minimal' | 'bold' | 'elegant';
+  // includeSchema is now controlled by sectionType in parent component
   includeSchema: boolean;
 }
 
@@ -14,7 +15,7 @@ export interface AdvancedOptionsProps {
 
 /**
  * Collapsible advanced options for generation customization
- * Tone, style, schema settings
+ * Tone and style settings (includeSchema controlled by SectionTypeSelector)
  */
 export function AdvancedOptions({
   value,
@@ -31,11 +32,6 @@ export function AdvancedOptions({
   const handleStyleChange = (e: Event) => {
     const target = e.target as HTMLSelectElement;
     onChange({ ...value, style: target.value as AdvancedOptionsState['style'] });
-  };
-
-  const handleSchemaChange = (e: Event) => {
-    const target = e.target as HTMLInputElement;
-    onChange({ ...value, includeSchema: target.checked });
   };
 
   return (
@@ -79,14 +75,6 @@ export function AdvancedOptions({
             <option value="bold">Bold</option>
             <option value="elegant">Elegant</option>
           </s-select>
-
-          {/* Switch for schema */}
-          <s-switch
-            label="Include customizable schema settings"
-            checked={value.includeSchema || undefined}
-            onChange={handleSchemaChange}
-            disabled={disabled || undefined}
-          />
         </s-stack>
       )}
     </s-stack>

@@ -86,7 +86,25 @@ export function SectionPreview({
       setError(null);
 
       // Build context with settings-based resources
+      // Extract collection/product from settingsResources to also provide as global context
+      // This is needed because AI-generated templates use `collection.products` (global), not just section.settings
+      let collectionFromSettings: import('./mockData/types').MockCollection | null = null;
+      let productFromSettings: import('./mockData/types').MockProduct | null = null;
+
+      for (const [_settingId, resource] of Object.entries(settingsResources)) {
+        // Check if it's a collection (has products array)
+        if ('products' in resource && Array.isArray((resource as { products?: unknown }).products)) {
+          collectionFromSettings = resource as import('./mockData/types').MockCollection;
+        }
+        // Check if it's a product (has variants)
+        else if ('variants' in resource) {
+          productFromSettings = resource as import('./mockData/types').MockProduct;
+        }
+      }
+
       const previewData = buildPreviewContext({
+        collection: collectionFromSettings,
+        product: productFromSettings,
         settingsResources
       });
 

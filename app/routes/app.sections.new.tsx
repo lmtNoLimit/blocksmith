@@ -14,6 +14,7 @@ import { GenerateInputColumn } from "../components/generate/GenerateInputColumn"
 import { GeneratePreviewColumn } from "../components/generate/GeneratePreviewColumn";
 import { SaveTemplateModal } from "../components/generate/SaveTemplateModal";
 import type { AdvancedOptionsState } from "../components/generate/AdvancedOptions";
+import type { SectionType } from "../components/generate/SectionTypeSelector";
 
 export async function loader({ request }: LoaderFunctionArgs) {
   await authenticate.admin(request);
@@ -157,12 +158,23 @@ export default function CreateSectionPage() {
   const [generatedCode, setGeneratedCode] = useState(urlCode || actionData?.code || "");
   const [currentHistoryId, setCurrentHistoryId] = useState(actionData?.historyId || "");
 
+  // Section type state (customizable vs production-ready)
+  const [sectionType, setSectionType] = useState<SectionType>('customizable');
+
   // Advanced options state (for future AI integration)
   const [advancedOptions, setAdvancedOptions] = useState<AdvancedOptionsState>({
     tone: 'professional',
     style: 'minimal',
     includeSchema: true
   });
+
+  // Auto-sync includeSchema with sectionType
+  useEffect(() => {
+    setAdvancedOptions(prev => ({
+      ...prev,
+      includeSchema: sectionType === 'customizable'
+    }));
+  }, [sectionType]);
 
   // Find the active (main) theme to set as default
   const activeTheme = themes.find((theme: Theme) => theme.role === "MAIN");
@@ -212,9 +224,10 @@ export default function CreateSectionPage() {
       formData.append("name", "");
       formData.append("tone", advancedOptions.tone);
       formData.append("style", advancedOptions.style);
+      formData.append("sectionType", sectionType);
       submit(formData, { method: "post" });
     }
-  }, [urlPrompt, urlCode, navigation.state, prompt, advancedOptions, submit, setSearchParams]);
+  }, [urlPrompt, urlCode, navigation.state, prompt, advancedOptions, sectionType, submit, setSearchParams]);
 
   // Get theme name for success message and save handler
   const selectedThemeName = themes.find((t: Theme) => t.id === selectedTheme)?.name || 'theme';
@@ -228,6 +241,7 @@ export default function CreateSectionPage() {
     formData.append("name", sectionName);
     formData.append("tone", advancedOptions.tone);
     formData.append("style", advancedOptions.style);
+    formData.append("sectionType", sectionType);
     submit(formData, { method: "post" });
   };
 
@@ -316,6 +330,8 @@ export default function CreateSectionPage() {
                 onPromptChange={setPrompt}
                 sectionName={sectionName}
                 onSectionNameChange={setSectionName}
+                sectionType={sectionType}
+                onSectionTypeChange={setSectionType}
                 advancedOptions={advancedOptions}
                 onAdvancedOptionsChange={setAdvancedOptions}
                 disabled={isGenerating || isSaving}
