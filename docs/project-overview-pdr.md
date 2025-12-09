@@ -69,6 +69,22 @@ AI Section Generator is a Shopify embedded app that enables merchants to generat
   - Clean up on app uninstall
 - **Status**: Implemented
 
+#### FR5: Draft & Saved Section Management
+- **Priority**: P1 (High)
+- **Description**: Support two-action save flow with draft persistence and theme publishing
+- **Acceptance Criteria**:
+  - Generate action returns code only (no DB save)
+  - "Save Draft" creates section with status="draft" (no theme required)
+  - "Publish to Theme" saves section with status="saved" + publishes to Shopify theme
+  - Draft sections can be edited and regenerated without affecting saved versions
+  - Saved sections retain theme and filename metadata
+  - Both create and edit pages support the dual-action save flow
+  - Toast notification "Section saved" on successful save
+  - Auto-redirect to edit page after save
+  - Display status badge (Draft/Saved) on edit page
+- **Dependencies**: Section database model with status, themeId, themeName, fileName fields
+- **Status**: Implemented
+
 ### Non-Functional Requirements
 
 #### NFR1: Performance
@@ -113,19 +129,32 @@ AI Section Generator is a Shopify embedded app that enables merchants to generat
 ### Application Structure
 ```
 app/
-├── routes/              # React Router file-based routing
-│   ├── app._index.tsx   # Home page (template demo)
-│   ├── app.generate.tsx # AI section generator (core feature)
-│   ├── app.additional.tsx
-│   ├── app.tsx          # Layout with nav
-│   ├── webhooks.*.tsx   # Webhook handlers
-│   └── auth.*.tsx       # Auth flows
-├── services/            # Business logic
-│   ├── ai.server.ts     # Gemini integration
-│   └── theme.server.ts  # Shopify theme operations
-├── shopify.server.ts    # Shopify app config
-├── db.server.ts         # Prisma client
-└── root.tsx             # HTML root
+├── routes/                    # React Router file-based routing
+│   ├── app._index.tsx        # Home page (template demo)
+│   ├── app.sections.new.tsx  # Create section with dual-action save
+│   ├── app.sections.$id.tsx  # Edit section with regenerate + save
+│   ├── app.generate.tsx      # Legacy AI section generator (deprecated)
+│   ├── app.additional.tsx    # Demo page
+│   ├── app.tsx               # Layout with nav
+│   ├── webhooks.*.tsx        # Webhook handlers
+│   └── auth.*.tsx            # Auth flows
+├── services/                 # Business logic
+│   ├── section.server.ts     # Section CRUD operations
+│   ├── ai.server.ts          # Gemini integration
+│   ├── theme.server.ts       # Shopify theme operations
+│   └── usage-tracking.server.ts # Generation tracking
+├── components/               # Reusable UI components
+│   ├── generate/            # Generate feature components
+│   │   ├── GenerateLayout.tsx
+│   │   ├── GenerateInputColumn.tsx
+│   │   ├── GeneratePreviewColumn.tsx
+│   │   ├── CodePreview.tsx
+│   │   ├── ThemeSelector.tsx
+│   │   └── ...
+│   └── preview/             # Preview rendering components
+├── shopify.server.ts         # Shopify app config
+├── db.server.ts              # Prisma client
+└── root.tsx                  # HTML root
 ```
 
 ### Key APIs & Integrations

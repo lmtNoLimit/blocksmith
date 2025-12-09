@@ -206,6 +206,66 @@ import {
 - All components fully typed with TypeScript interfaces
 - Components are now testable in isolation
 
+#### `/app/routes/app.sections.new.tsx` (427 lines)
+**Purpose**: Create new AI-generated section with two-action save flow
+**Key Features**:
+- Prompt input, section name, advanced options (tone, style, section type)
+- Generate button (AI generation without DB save)
+- Live code/preview toggle for generated Liquid
+- Side-by-side action buttons: "Save Draft" + "Publish to Theme"
+- Theme selector (required for publish, optional for draft)
+- Filename input (required for publish, optional for draft)
+- Save as Template modal
+- Success/error banners with recovery guidance
+- Auto-redirect to edit page after successful save
+
+**Actions**:
+1. **generate**: Calls `aiAdapter.generateSection()`, returns code only (no DB save)
+2. **saveDraft**: Creates section with status="draft" (no theme required)
+3. **save**: Publishes to theme (saves to Shopify + DB with status="saved")
+4. **saveAsTemplate**: Saves prompt/code as reusable template
+
+**Data Flow**:
+1. **Loader**: Fetches merchant themes via `themeAdapter.getThemes()`
+2. **Action (generate)**: Returns { code, prompt, name?, tone?, style? }
+3. **Action (saveDraft)**: Creates section in DB, redirects to /app/sections/{id}
+4. **Action (save)**: Publishes to theme, creates section in DB, redirects
+5. **UI**: Displays code, shows appropriate feedback messages, redirects on success
+
+**Component Used**: `GeneratePreviewColumn` with dual-action buttons
+
+#### `/app/routes/app.sections.$id.tsx` (586 lines)
+**Purpose**: Edit existing section with regenerate + dual-save capabilities
+**Key Features**:
+- Display existing section metadata (created date, status badge, theme info)
+- Edit prompt to regenerate code
+- Regeneration notification banner ("New section created...")
+- Same dual-action save buttons as create page: "Save Draft" + "Publish to Theme"
+- Delete button with confirmation modal
+- Name editing (auto-saves on blur)
+- Theme selector (uses original theme if saved)
+- Save as Template modal
+- Status badge: "Draft" (neutral) or "Saved" (success)
+
+**Actions**:
+1. **generate**: Regenerates code, returns updated code
+2. **saveDraft**: Updates section to status="draft" with new code
+3. **save**: Publishes updated code to theme
+4. **updateName**: Auto-saves section name on blur
+5. **delete**: Deletes section with confirmation
+6. **saveAsTemplate**: Saves as template
+
+**Data Flow**:
+1. **Loader**: Fetches section by ID + merchant themes
+2. **Action (generate)**: Regenerates without affecting existing section
+3. **Action (saveDraft)**: Updates section code, keeps as draft
+4. **Action (save)**: Updates section code + theme info, publishes to theme
+5. **UI**: Displays section info banner, allows editing and re-publishing
+
+**Component Used**: Same `GeneratePreviewColumn` as create page
+
+**Error Boundary**: Custom error page for 404/missing sections
+
 #### `/app/routes/app._index.tsx` (1,637 tokens, 255 lines)
 **Purpose**: Template demo page (Shopify app starter)
 **Features**:
@@ -607,26 +667,195 @@ Generated Liquid Code (schema + style + markup)
 UI: Display in <pre> block for preview
 ```
 
-### Theme Save Flow
+### Section Save Flow (Two-Action Model)
+
+The section save flow has been redesigned to separate draft saves from theme publication. Both create page (`app.sections.new.tsx`) and edit page (`app.sections.$id.tsx`) support two save actions:
+
+#### Action 1: Save Draft
+User saves section to database with "draft" status (without publishing to theme).
 
 ```
-User: Select Theme + Enter Filename + Click Save
+User: Click "Save Draft" button
   ↓
-[app.generate.tsx] action (action=save)
+[app.sections.new.tsx or app.sections.$id.tsx] action (action=saveDraft)
+  ↓
+[services/section.server.ts] create() or update()
+  ↓
+Database: Insert/Update Section record with status="draft"
+  ↓
+[services/usage-tracking.server.ts] trackGeneration() - log usage
+  ↓
+[Success] Return { success: true, message: "Draft saved successfully!", sectionId }
+[Error] Return { success: false, message: error message }
+  ↓
+Toast notification: "Section saved"
+  ↓
+Redirect to edit page: /app/sections/{sectionId}
+```
+
+**Section Record Created/Updated**:
+```typescript
+{
+  shop: string;
+  prompt: string;
+  code: string;
+  name?: string;              // From generated schema or user input
+  tone?: string;              // Advanced option: professional, friendly, etc
+  style?: string;             // Advanced option: minimal, detailed, etc
+  status: "draft";            // Not yet published to theme
+  themeId?: undefined;        // No theme associated yet
+  themeName?: undefined;
+  fileName?: undefined;
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+#### Action 2: Publish to Theme (Save + Publish)
+User saves section to database AND publishes to selected Shopify theme with "saved" status.
+
+```
+User: Enter filename + Select theme + Click "Publish to Theme"
+  ↓
+[app.sections.new.tsx or app.sections.$id.tsx] action (action=save)
   ↓
 [services/theme.server.ts] createSection(request, themeId, fileName, content)
   ↓
-Validate filename (add sections/, .liquid)
+Validate filename (add sections/, .liquid if needed)
   ↓
 Shopify Admin API: themeFilesUpsert mutation
   ↓
 Check response.data.themeFilesUpsert.userErrors
   ↓
-[Success] Return { success: true, message }
-[Error] Return { success: false, message }
+[If theme save successful]
   ↓
-UI: Display <s-banner> with result
+[services/section.server.ts] create() or update()
+  ↓
+Database: Insert/Update Section with status="saved" + theme info
+  ↓
+[services/usage-tracking.server.ts] trackGeneration() - log usage
+  ↓
+[Success] Return { success: true, message: "Section published to {filename}!", sectionId }
+[If theme save failed] Return { success: false, message: error from Shopify }
+[If DB save failed] Return { success: false, message: database error }
+  ↓
+Toast notification: "Section saved"
+  ↓
+Redirect to edit page: /app/sections/{sectionId}
 ```
+
+**Section Record Created/Updated**:
+```typescript
+{
+  shop: string;
+  prompt: string;
+  code: string;
+  name?: string;              // From generated schema or user input
+  tone?: string;
+  style?: string;
+  status: "saved";            // Published to theme
+  themeId: string;            // Associated theme ID
+  themeName: string;          // Theme display name
+  fileName: string;           // sections/ai-section.liquid
+  createdAt: Date;
+  updatedAt: Date;
+}
+```
+
+#### Key Type Changes
+
+**`app/types/service.types.ts`**:
+```typescript
+export interface GenerateActionData {
+  success?: boolean;
+  code?: string;
+  prompt?: string;
+  message?: string;
+  error?: string;
+  quota?: QuotaCheck;
+  // Generation metadata - saved to DB only when user saves
+  name?: string;
+  tone?: string;
+  style?: string;
+}
+
+export interface SaveActionData {
+  success: boolean;
+  message: string;
+  sectionId?: string;        // ID of created/updated section
+  templateSaved?: boolean;   // For Save as Template action
+}
+```
+
+**`app/services/section.server.ts`** - Extended `CreateSectionInput`:
+```typescript
+export interface CreateSectionInput {
+  shop: string;
+  prompt: string;
+  code: string;
+  name?: string;
+  tone?: string;
+  style?: string;
+  status?: string;           // "draft" or "saved" (default: "draft")
+  themeId?: string;          // Optional - set when publishing to theme
+  themeName?: string;        // Optional - theme display name
+  fileName?: string;         // Optional - only when publishing
+}
+```
+
+#### UI Changes - GeneratePreviewColumn
+
+Both create and edit pages render the same `GeneratePreviewColumn` component with two save buttons side-by-side:
+
+```
+┌─ Save Draft Button ─┐    ┌─ Publish to Theme Button ─┐
+│  Creates draft      │    │  Saves to DB + Theme      │
+│  No theme required  │    │  Requires theme selected   │
+│  Disabled: No code  │    │  Disabled: No code/theme   │
+└────────────────────┘    └───────────────────────────┘
+```
+
+**Props Interface**:
+```typescript
+export interface GeneratePreviewColumnProps {
+  generatedCode: string;
+  themes: Theme[];
+  selectedTheme: string;
+  onThemeChange: (themeId: string) => void;
+  fileName: string;
+  onFileNameChange: (name: string) => void;
+  // Create page - two save options
+  onSaveDraft?: () => void;
+  onPublish?: () => void;
+  isSavingDraft?: boolean;
+  isPublishing?: boolean;
+  canPublish?: boolean;
+  // Common
+  onSaveAsTemplate?: () => void;
+  isGenerating?: boolean;
+}
+```
+
+#### Critical Behavior Changes
+
+1. **Generate Action**: No longer saves to database automatically
+   - Only returns code in `GenerateActionData`
+   - Section only created when user explicitly clicks "Save Draft" or "Publish"
+
+2. **Save Draft**: Creates section with "draft" status
+   - No theme integration
+   - Can be edited and published later
+   - Useful for saving work-in-progress sections
+
+3. **Publish to Theme**: Creates section with "saved" status
+   - Immediately publishes to selected Shopify theme
+   - Theme info (themeId, themeName, fileName) stored in database
+   - Replaces existing file if it exists
+
+4. **Edit Page Redesign**: Same flow applies to editing sections
+   - Can regenerate code without losing section
+   - Can save draft of regenerated code
+   - Can publish changes to theme
 
 ### Authentication Flow
 
