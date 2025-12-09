@@ -51,6 +51,10 @@ export interface CreateSectionInput {
   name?: string;
   tone?: string;
   style?: string;
+  status?: string;
+  themeId?: string;
+  themeName?: string;
+  fileName?: string;
 }
 
 export interface UpdateSectionInput {
@@ -83,7 +87,10 @@ export const sectionService = {
         code: input.code,
         tone: input.tone,
         style: input.style,
-        status: "generated",
+        status: input.status || "draft",
+        themeId: input.themeId,
+        themeName: input.themeName,
+        fileName: input.fileName,
       },
     });
   },

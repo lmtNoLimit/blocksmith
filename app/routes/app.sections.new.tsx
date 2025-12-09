@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
-import { useActionData, useLoaderData, useNavigation, useSubmit, useSearchParams } from "react-router";
+import { useActionData, useLoaderData, useNavigation, useSubmit, useSearchParams, useNavigate } from "react-router";
 import { authenticate } from "../shopify.server";
 import { aiAdapter } from "../services/adapters/ai-adapter";
 import { themeAdapter } from "../services/adapters/theme-adapter";
@@ -46,53 +46,91 @@ export async function action({ request }: ActionFunctionArgs) {
 
     const code = await aiAdapter.generateSection(prompt);
 
-    // Save to sections
-    const sectionEntry = await sectionService.create({
-      shop,
-      prompt,
-      code,
-      name: name || undefined,
-      tone: tone || undefined,
-      style: style || undefined,
-    });
-
-    // Track usage (async, don't block response)
-    trackGeneration(admin, shop, sectionEntry.id, prompt).catch((error) => {
-      console.error("Failed to track generation:", error);
-    });
-
+    // Return code only - section saved to DB only when user clicks Save Draft or Publish
     return {
       code,
       prompt,
-      historyId: sectionEntry.id,
+      name: name || undefined,
+      tone: tone || undefined,
+      style: style || undefined,
       quota: quotaCheck.quota,
     } satisfies GenerateActionData;
+  }
+
+  if (actionType === "saveDraft") {
+    const prompt = formData.get("prompt") as string;
+    const content = formData.get("content") as string;
+    const sectionName = formData.get("sectionName") as string | null;
+    const tone = formData.get("tone") as string | null;
+    const style = formData.get("style") as string | null;
+
+    try {
+      // Create section in DB with draft status
+      const sectionEntry = await sectionService.create({
+        shop,
+        prompt,
+        code: content,
+        name: sectionName || undefined,
+        tone: tone || undefined,
+        style: style || undefined,
+        status: "draft",
+      });
+
+      // Track usage
+      trackGeneration(admin, shop, sectionEntry.id, prompt).catch((error) => {
+        console.error("Failed to track generation:", error);
+      });
+
+      return {
+        success: true,
+        message: "Draft saved successfully!",
+        sectionId: sectionEntry.id,
+      } satisfies SaveActionData;
+    } catch (error) {
+      console.error("Failed to save draft:", error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to save draft. Please try again."
+      } satisfies SaveActionData;
+    }
   }
 
   if (actionType === "save") {
     const themeId = formData.get("themeId") as string;
     const fileName = formData.get("fileName") as string;
     const content = formData.get("content") as string;
-    const historyId = formData.get("historyId") as string | null;
+    const prompt = formData.get("prompt") as string;
     const sectionName = formData.get("sectionName") as string | null;
+    const themeName = formData.get("themeName") as string | null;
+    const tone = formData.get("tone") as string | null;
+    const style = formData.get("style") as string | null;
 
     try {
+      // Save to theme first
       const result = await themeAdapter.createSection(request, themeId, fileName, content, sectionName || undefined);
 
-      // Update section entry with save info
-      if (historyId) {
-        const themeName = formData.get("themeName") as string | null;
-        await sectionService.update(historyId, shop, {
-          themeId,
-          themeName: themeName || undefined,
-          fileName,
-          status: "saved",
-        });
-      }
+      // Create section in DB with saved status
+      const sectionEntry = await sectionService.create({
+        shop,
+        prompt,
+        code: content,
+        name: sectionName || undefined,
+        tone: tone || undefined,
+        style: style || undefined,
+        themeId,
+        themeName: themeName || undefined,
+        fileName,
+      });
+
+      // Track usage
+      trackGeneration(admin, shop, sectionEntry.id, prompt).catch((error) => {
+        console.error("Failed to track generation:", error);
+      });
 
       return {
         success: true,
-        message: `Section saved successfully to ${result?.filename || fileName}!`
+        message: `Section published to ${result?.filename || fileName}!`,
+        sectionId: sectionEntry.id,
       } satisfies SaveActionData;
     } catch (error) {
       console.error("Failed to save section:", error);
@@ -144,6 +182,7 @@ export default function CreateSectionPage() {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const submit = useSubmit();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Get params from URL (from template navigation)
@@ -156,7 +195,6 @@ export default function CreateSectionPage() {
   const [prompt, setPrompt] = useState(urlPrompt || actionData?.prompt || "");
   const [sectionName, setSectionName] = useState(urlName || "");
   const [generatedCode, setGeneratedCode] = useState(urlCode || actionData?.code || "");
-  const [currentHistoryId, setCurrentHistoryId] = useState(actionData?.historyId || "");
 
   // Section type state (customizable vs production-ready)
   const [sectionType, setSectionType] = useState<SectionType>('customizable');
@@ -185,17 +223,16 @@ export default function CreateSectionPage() {
 
   const isLoading = navigation.state === "submitting";
   const isGenerating = isLoading && navigation.formData?.get("action") === "generate";
-  const isSaving = isLoading && navigation.formData?.get("action") === "save";
+  const isSaving = isLoading && (navigation.formData?.get("action") === "save" || navigation.formData?.get("action") === "saveDraft");
+  const isSavingDraft = isLoading && navigation.formData?.get("action") === "saveDraft";
+  const isPublishing = isLoading && navigation.formData?.get("action") === "save";
 
   // Update state when action data changes
   useEffect(() => {
     if (actionData?.code && actionData.code !== generatedCode) {
       setGeneratedCode(actionData.code);
     }
-    if (actionData?.historyId && actionData.historyId !== currentHistoryId) {
-      setCurrentHistoryId(actionData.historyId);
-    }
-  }, [actionData?.code, actionData?.historyId, generatedCode, currentHistoryId]);
+  }, [actionData?.code, generatedCode]);
 
   // Load pre-built code from URL (Use As-Is flow)
   useEffect(() => {
@@ -245,21 +282,33 @@ export default function CreateSectionPage() {
     submit(formData, { method: "post" });
   };
 
-  const handleSave = () => {
+  const handleSaveDraft = () => {
+    const formData = new FormData();
+    formData.append("action", "saveDraft");
+    formData.append("prompt", prompt);
+    formData.append("content", generatedCode);
+    formData.append("sectionName", sectionName);
+    formData.append("tone", advancedOptions.tone);
+    formData.append("style", advancedOptions.style);
+    submit(formData, { method: "post" });
+  };
+
+  const handlePublish = () => {
     const formData = new FormData();
     formData.append("action", "save");
     formData.append("themeId", selectedTheme);
     formData.append("fileName", fileName);
     formData.append("content", generatedCode);
+    formData.append("prompt", prompt);
     formData.append("themeName", selectedThemeName);
     formData.append("sectionName", sectionName);
-    if (currentHistoryId) {
-      formData.append("historyId", currentHistoryId);
-    }
+    formData.append("tone", advancedOptions.tone);
+    formData.append("style", advancedOptions.style);
     submit(formData, { method: "post" });
   };
 
-  const canSave = Boolean(generatedCode && fileName && selectedTheme);
+  const canSave = Boolean(generatedCode);
+  const canPublish = Boolean(generatedCode && fileName && selectedTheme);
 
   const handleSaveAsTemplate = (data: {
     title: string;
@@ -289,6 +338,14 @@ export default function CreateSectionPage() {
     }
   }, [actionData?.templateSaved]);
 
+  // Redirect to edit page after successful section save
+  useEffect(() => {
+    if (actionData?.success && actionData?.sectionId && !actionData?.templateSaved) {
+      shopify.toast.show("Section saved");
+      navigate(`/app/sections/${actionData.sectionId}`);
+    }
+  }, [actionData?.success, actionData?.sectionId, actionData?.templateSaved, navigate]);
+
   return (
     <>
       <s-page heading="Create Section" inlineSize="large">
@@ -302,12 +359,7 @@ export default function CreateSectionPage() {
             </s-banner>
           )}
 
-          {/* Success banner after save */}
-          {actionData?.success && !actionData?.templateSaved && (
-            <s-banner tone="success" dismissible>
-              Section saved successfully to {selectedThemeName}! Visit the Theme Editor to customize your new section.
-            </s-banner>
-          )}
+          {/* Note: Section save success banner removed - user is redirected to edit page */}
 
           {/* Error banner with recovery guidance */}
           {actionData?.success === false && (
@@ -347,11 +399,14 @@ export default function CreateSectionPage() {
                 onThemeChange={setSelectedTheme}
                 fileName={fileName}
                 onFileNameChange={setFileName}
-                onSave={handleSave}
+                onSaveDraft={handleSaveDraft}
+                onPublish={handlePublish}
                 onSaveAsTemplate={() => setShowSaveTemplateModal(true)}
-                isSaving={isSaving}
+                isSavingDraft={isSavingDraft}
+                isPublishing={isPublishing}
                 isGenerating={isGenerating}
                 canSave={canSave}
+                canPublish={canPublish}
               />
             }
           />

@@ -13,6 +13,7 @@ import { aiAdapter } from "../services/adapters/ai-adapter";
 import { themeAdapter } from "../services/adapters/theme-adapter";
 import { sectionService } from "../services/section.server";
 import { templateService } from "../services/template.server";
+import prisma from "../db.server";
 import {
   canGenerate,
   trackGeneration,
@@ -72,25 +73,24 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
     const code = await aiAdapter.generateSection(prompt);
 
-    // Create a NEW section entry (regenerate creates new, doesn't update old)
-    const sectionEntry = await sectionService.create({
-      shop,
-      prompt,
-      code,
-      name: name || undefined,
-      tone: tone || undefined,
-      style: style || undefined,
-    });
+    // Update existing section with new code (edit page regenerate updates in-place)
+    if (id) {
+      await sectionService.update(id, shop, {
+        name: name || undefined,
+      });
 
-    // Track usage (async, don't block response)
-    trackGeneration(admin, shop, sectionEntry.id, prompt).catch((error) => {
-      console.error("Failed to track generation:", error);
-    });
+      // Track usage
+      trackGeneration(admin, shop, id, prompt).catch((error) => {
+        console.error("Failed to track generation:", error);
+      });
+    }
 
     return {
       code,
       prompt,
-      historyId: sectionEntry.id,
+      name: name || undefined,
+      tone: tone || undefined,
+      style: style || undefined,
       quota: quotaCheck.quota,
       regenerated: true,
     } satisfies GenerateActionData & { regenerated?: boolean };
@@ -100,8 +100,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
     const themeId = formData.get("themeId") as string;
     const fileName = formData.get("fileName") as string;
     const content = formData.get("content") as string;
-    const historyId = formData.get("historyId") as string | null;
+    const prompt = formData.get("prompt") as string;
     const sectionName = formData.get("sectionName") as string | null;
+    const themeName = formData.get("themeName") as string | null;
 
     try {
       const result = await themeAdapter.createSection(
@@ -112,21 +113,31 @@ export async function action({ request, params }: ActionFunctionArgs) {
         sectionName || undefined
       );
 
-      // Update section entry with save info
-      const entryToUpdate = historyId || id;
-      if (entryToUpdate) {
-        const themeName = formData.get("themeName") as string | null;
-        await sectionService.update(entryToUpdate, shop, {
+      // Update existing section entry with new code and save info
+      if (id) {
+        await sectionService.update(id, shop, {
           themeId,
           themeName: themeName || undefined,
           fileName,
           status: "saved",
+          name: sectionName || undefined,
+        });
+
+        // Also update the code if it was regenerated
+        // We need to update the code separately since update() doesn't handle it
+        await prisma.section.update({
+          where: { id },
+          data: {
+            code: content,
+            prompt: prompt,
+          },
         });
       }
 
       return {
         success: true,
         message: `Section saved successfully to ${result?.filename || fileName}!`,
+        sectionId: id,
       } satisfies SaveActionData;
     } catch (error) {
       console.error("Failed to save section:", error);
@@ -136,6 +147,42 @@ export async function action({ request, params }: ActionFunctionArgs) {
           error instanceof Error
             ? error.message
             : "Failed to save section. Please try again.",
+      } satisfies SaveActionData;
+    }
+  }
+
+  if (actionType === "saveDraft") {
+    const content = formData.get("content") as string;
+    const prompt = formData.get("prompt") as string;
+    const sectionName = formData.get("sectionName") as string | null;
+
+    try {
+      // Update existing section with new code (keep as draft)
+      if (id) {
+        await sectionService.update(id, shop, {
+          name: sectionName || undefined,
+          status: "draft",
+        });
+
+        await prisma.section.update({
+          where: { id },
+          data: {
+            code: content,
+            prompt: prompt,
+          },
+        });
+      }
+
+      return {
+        success: true,
+        message: "Draft saved!",
+        sectionId: id,
+      } satisfies SaveActionData;
+    } catch (error) {
+      console.error("Failed to save draft:", error);
+      return {
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to save draft.",
       } satisfies SaveActionData;
     }
   }
@@ -232,7 +279,6 @@ export default function SectionEditPage() {
   const [prompt, setPrompt] = useState(generation.prompt);
   const [sectionName, setSectionName] = useState(generation.name || "");
   const [generatedCode, setGeneratedCode] = useState(generation.code);
-  const [currentHistoryId, setCurrentHistoryId] = useState(generation.id);
 
   // Section type state (customizable vs production-ready) - default based on existing section
   const [sectionType, setSectionType] = useState<SectionType>('customizable');
@@ -268,7 +314,9 @@ export default function SectionEditPage() {
   const isLoading = navigation.state === "submitting";
   const isGenerating =
     isLoading && navigation.formData?.get("action") === "generate";
-  const isSaving = isLoading && navigation.formData?.get("action") === "save";
+  const isSavingDraft = isLoading && navigation.formData?.get("action") === "saveDraft";
+  const isPublishing = isLoading && navigation.formData?.get("action") === "save";
+  const isSaving = isSavingDraft || isPublishing;
   const isDeleting =
     isLoading && navigation.formData?.get("action") === "delete";
 
@@ -277,15 +325,7 @@ export default function SectionEditPage() {
     if (actionData?.code && actionData.code !== generatedCode) {
       setGeneratedCode(actionData.code);
     }
-    if (actionData?.historyId && actionData.historyId !== currentHistoryId) {
-      setCurrentHistoryId(actionData.historyId);
-    }
-  }, [
-    actionData?.code,
-    actionData?.historyId,
-    generatedCode,
-    currentHistoryId,
-  ]);
+  }, [actionData?.code, generatedCode]);
 
   // Handle delete success - show toast and navigate back to sections list
   useEffect(() => {
@@ -301,6 +341,13 @@ export default function SectionEditPage() {
       setShowSaveTemplateModal(false);
     }
   }, [actionData?.templateSaved]);
+
+  // Show toast on successful save (draft or publish)
+  useEffect(() => {
+    if (actionData?.success && !actionData?.templateSaved && !actionData?.deleted && !actionData?.nameUpdated) {
+      shopify.toast.show("Section saved");
+    }
+  }, [actionData?.success, actionData?.templateSaved, actionData?.deleted, actionData?.nameUpdated]);
 
   // Get theme name for success message
   const selectedThemeName =
@@ -329,17 +376,24 @@ export default function SectionEditPage() {
     }
   };
 
-  const handleSave = () => {
+  const handleSaveDraft = () => {
+    const formData = new FormData();
+    formData.append("action", "saveDraft");
+    formData.append("content", generatedCode);
+    formData.append("prompt", prompt);
+    formData.append("sectionName", sectionName);
+    submit(formData, { method: "post" });
+  };
+
+  const handlePublish = () => {
     const formData = new FormData();
     formData.append("action", "save");
     formData.append("themeId", selectedTheme);
     formData.append("fileName", fileName);
     formData.append("content", generatedCode);
+    formData.append("prompt", prompt);
     formData.append("themeName", selectedThemeName);
     formData.append("sectionName", sectionName);
-    if (currentHistoryId) {
-      formData.append("historyId", currentHistoryId);
-    }
     submit(formData, { method: "post" });
   };
 
@@ -349,7 +403,8 @@ export default function SectionEditPage() {
     submit(formData, { method: "post" });
   };
 
-  const canSave = Boolean(generatedCode && fileName && selectedTheme);
+  const canSave = Boolean(generatedCode);
+  const canPublish = Boolean(generatedCode && fileName && selectedTheme);
 
   const handleSaveAsTemplate = (templateData: {
     title: string;
@@ -423,15 +478,7 @@ export default function SectionEditPage() {
             </s-banner>
           )}
 
-          {/* Success banner after save */}
-          {actionData?.success &&
-            !actionData?.templateSaved &&
-            !actionData?.deleted && (
-              <s-banner tone="success" dismissible>
-                Section saved successfully to {selectedThemeName}!{" "}
-                <a href="/app/sections">Back to Sections</a>
-              </s-banner>
-            )}
+          {/* Note: Section save success banner removed - toast notification used instead */}
 
           {/* Error banner */}
           {actionData?.success === false && (
@@ -464,11 +511,14 @@ export default function SectionEditPage() {
                 onThemeChange={setSelectedTheme}
                 fileName={fileName}
                 onFileNameChange={setFileName}
-                onSave={handleSave}
+                onSaveDraft={handleSaveDraft}
+                onPublish={handlePublish}
                 onSaveAsTemplate={() => setShowSaveTemplateModal(true)}
-                isSaving={isSaving}
+                isSavingDraft={isSavingDraft}
+                isPublishing={isPublishing}
                 isGenerating={isGenerating}
                 canSave={canSave}
+                canPublish={canPublish}
               />
             }
           />
@@ -480,6 +530,7 @@ export default function SectionEditPage() {
               command="--show"
               commandFor={DELETE_MODAL_ID}
               disabled={isDeleting}
+              variant="primary"
             >
               Delete Section
             </s-button>

@@ -14,11 +14,19 @@ export interface GeneratePreviewColumnProps {
   onThemeChange: (themeId: string) => void;
   fileName: string;
   onFileNameChange: (name: string) => void;
-  onSave: () => void;
+  // For Create page - two save options
+  onSaveDraft?: () => void;
+  onPublish?: () => void;
+  isSavingDraft?: boolean;
+  isPublishing?: boolean;
+  canPublish?: boolean;
+  // For Edit page - single save to theme
+  onSave?: () => void;
+  isSaving?: boolean;
+  canSave?: boolean;
+  // Common
   onSaveAsTemplate?: () => void;
-  isSaving: boolean;
   isGenerating?: boolean;
-  canSave: boolean;
 }
 
 /**
@@ -33,12 +41,23 @@ export function GeneratePreviewColumn({
   onThemeChange,
   fileName,
   onFileNameChange,
+  // Create page props
+  onSaveDraft,
+  onPublish,
+  isSavingDraft = false,
+  isPublishing = false,
+  canPublish = false,
+  // Edit page props
   onSave,
+  isSaving = false,
+  canSave = false,
+  // Common
   onSaveAsTemplate,
-  isSaving,
   isGenerating = false,
-  canSave,
 }: GeneratePreviewColumnProps) {
+  // Determine if we're in "Create" mode (has draft option) or "Edit" mode (single save)
+  const isCreateMode = Boolean(onSaveDraft);
+  const isAnyActionLoading = isSavingDraft || isPublishing || isSaving;
   // Tab state for Code/Preview toggle - must be at top level
   const [activeTab, setActiveTab] = useState<"code" | "preview">("preview");
 
@@ -101,41 +120,70 @@ export function GeneratePreviewColumn({
       </s-section>
 
       {/* Save Options */}
-      <s-section heading="Save to Theme">
+      <s-section heading={isCreateMode ? "Save Options" : "Save to Theme"}>
         <s-stack gap="large" direction="block">
+          {/* Theme selector and file name - always shown */}
           <ThemeSelector
             themes={themes}
             selectedThemeId={selectedTheme}
             onChange={onThemeChange}
-            disabled={isSaving}
+            disabled={isAnyActionLoading}
           />
 
           <SectionNameInput
             value={fileName}
             onChange={onFileNameChange}
-            disabled={isSaving}
+            disabled={isAnyActionLoading}
           />
 
-          <s-stack gap="base" direction="block">
+          {/* Create Mode: Save Draft + Publish buttons side by side */}
+          {isCreateMode && (
+            <s-stack gap="small-100" direction="inline">
+              {onSaveDraft && (
+                <s-button
+                  variant="secondary"
+                  onClick={onSaveDraft}
+                  loading={isSavingDraft || undefined}
+                  disabled={!generatedCode || isAnyActionLoading}
+                >
+                  Save Draft
+                </s-button>
+              )}
+              {onPublish && (
+                <s-button
+                  variant="primary"
+                  onClick={onPublish}
+                  loading={isPublishing || undefined}
+                  disabled={!canPublish || isAnyActionLoading}
+                >
+                  Publish to Theme
+                </s-button>
+              )}
+            </s-stack>
+          )}
+
+          {/* Edit Mode: Single Save button */}
+          {!isCreateMode && onSave && (
             <s-button
               variant="primary"
               onClick={onSave}
               loading={isSaving || undefined}
-              disabled={!canSave || isSaving}
+              disabled={!canSave || isAnyActionLoading}
             >
-              {isSaving ? "Saving..." : "Save to Theme"}
+              Save to Theme
             </s-button>
+          )}
 
-            {onSaveAsTemplate && (
-              <s-button
-                variant="secondary"
-                onClick={onSaveAsTemplate}
-                disabled={!generatedCode || isSaving}
-              >
-                Save as Template
-              </s-button>
-            )}
-          </s-stack>
+          {/* Save as Template - available in both modes */}
+          {onSaveAsTemplate && (
+            <s-button
+              variant="tertiary"
+              onClick={onSaveAsTemplate}
+              disabled={!generatedCode || isAnyActionLoading}
+            >
+              Save as Template
+            </s-button>
+          )}
         </s-stack>
       </s-section>
     </>

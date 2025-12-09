@@ -55,12 +55,17 @@ export interface GenerateActionData {
   code?: string;
   prompt?: string;
   message?: string;
-  historyId?: string;
   error?: string;
   quota?: QuotaCheck;
+  // Generation metadata (no DB save until user saves)
+  name?: string;
+  tone?: string;
+  style?: string;
 }
 
 export interface SaveActionData {
   success: boolean;
   message: string;
+  sectionId?: string;
+  templateSaved?: boolean;
 }
