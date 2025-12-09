@@ -91,7 +91,7 @@ export function SectionPreview({
       let collectionFromSettings: import('./mockData/types').MockCollection | null = null;
       let productFromSettings: import('./mockData/types').MockProduct | null = null;
 
-      for (const [_settingId, resource] of Object.entries(settingsResources)) {
+      for (const [, resource] of Object.entries(settingsResources)) {
         // Check if it's a collection (has products array)
         if ('products' in resource && Array.isArray((resource as { products?: unknown }).products)) {
           collectionFromSettings = resource as import('./mockData/types').MockCollection;

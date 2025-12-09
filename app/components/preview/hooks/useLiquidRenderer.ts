@@ -53,7 +53,7 @@ export function useLiquidRenderer(): UseLiquidRendererResult {
       return imageObj.src || imageObj.url || PLACEHOLDER_IMAGE;
     });
 
-    engine.registerFilter('image_url', (image: unknown, options?: { width?: number; height?: number } | string) => {
+    engine.registerFilter('image_url', (image: unknown, _options?: { width?: number; height?: number } | string) => {
       if (!image || image === 'placeholder') return PLACEHOLDER_IMAGE;
       if (typeof image === 'string') return image;
 
