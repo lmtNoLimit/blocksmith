@@ -15,9 +15,11 @@ AI Section Generator is a Shopify embedded app that lets merchants create custom
 
 ## Features
 
-- **AI-Powered Generation**: Uses Google Gemini 2.0 Flash to generate Shopify Liquid sections
+- **AI-Powered Generation**: Uses Google Gemini 2.5 Flash to generate Shopify Liquid sections
 - **Theme Integration**: Fetches merchant themes and saves sections via Shopify Admin API
-- **Code Preview**: Review generated code before saving
+- **Dual-Action Save**: Save Draft or Publish to Theme with immediate redirect
+- **Code Preview**: Review generated code with syntax highlighting before saving
+- **Section Editing**: Edit saved sections and regenerate code without losing history
 - **Polaris Web Components**: Native Shopify admin experience using `<s-*>` elements
 
 ## Documentation
@@ -31,24 +33,30 @@ AI Section Generator is a Shopify embedded app that lets merchants create custom
 
 **Current Version**: 1.0 (Development)
 
-**Completed**:
-- ✅ AI section generation with Google Gemini
+**Completed (Phase 3)** - 96% Complete:
+- ✅ AI section generation with Google Gemini 2.5 Flash
 - ✅ Theme fetching and selection
-- ✅ Section saving to themes
-- ✅ Polaris UI implementation
+- ✅ Dual-action save flow (Save Draft + Publish to Theme)
+- ✅ Redirect after save with toast notifications
+- ✅ Edit saved sections with regeneration capability
+- ✅ Section code preview with syntax highlighting
+- ✅ Polaris UI implementation with Web Components (`<s-*>`)
 - ✅ Authentication and session management
-- ✅ Feature flag system
-- ✅ TypeScript type system for services and APIs
-- ✅ Component-based architecture with reusable UI components
+- ✅ Feature flag system with adapter pattern
+- ✅ TypeScript type safety for services and APIs
+- ✅ Component-based architecture (9 reusable UI components)
+- ✅ Comprehensive error handling and user feedback
 
 **Pending**:
 - ⏳ Production deployment
+- ⏳ Scope approval (write_themes) from Shopify
 
-**Future Enhancements**:
-- Section editing and versioning
-- Section history viewer
-- Template library
-- Multi-language support
+**Future Enhancements** (Phase 4+):
+- Section template library with auto-seeding
+- Section history and versioning
+- Section marketplace and sharing
+- Advanced customization options
+- Batch section generation
 
 ## Quick start
 

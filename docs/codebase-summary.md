@@ -4,9 +4,10 @@
 
 AI Section Generator is a Shopify embedded app built with React Router 7, Prisma, and Google Gemini AI. The app enables merchants to generate custom Liquid theme sections via natural language prompts and save them directly to their Shopify themes.
 
-**Total Files**: 43 files (9 new component files added in Phase 04)
-**Total Tokens**: ~17,500 tokens (estimated)
-**Lines of Code**: ~2,200 lines (excluding migrations, config)
+**Total Files**: 90+ files (routes: 17, services: 15, components: 60+, types: 4)
+**Total Tokens**: ~18,500 tokens (estimated)
+**Lines of Code**: ~2,500+ lines (excluding migrations, config)
+**Architecture**: Clean service layer with adapter pattern, singleton pattern, comprehensive billing system, multi-tenant support
 
 ## Directory Structure
 
@@ -1051,13 +1052,13 @@ FLAG_SIMULATE_API_LATENCY=true
 
 ---
 
-**Document Version**: 1.3
-**Last Updated**: 2025-12-02
-**Codebase Size**: ~18,500 tokens across 49 files
+**Document Version**: 1.4
+**Last Updated**: 2025-12-09
+**Codebase Size**: ~18,500 tokens across 90+ files
 **Primary Language**: TypeScript (TSX)
-**Recent Changes**:
+**Recent Changes** (December 2025):
+- **251209**: Redirect after save feature with toast notifications
+- **251209**: s-select and s-text-field component consolidation
 - **251202**: Billing system fixes - webhook type safety, GraphQL fallback, upgrade flow
-- Added billing service documentation with critical fixes
-- Documented webhook processing flow and pending subscription handling
-- **Phase 04**: Component-based architecture (9 UI components)
-- Phase 03: Feature flag system, adapter pattern, mock services
+- **Phase 04**: Component-based architecture (9 reusable UI components)
+- **Phase 03**: Feature flag system, adapter pattern, mock services, dual-action save flow

@@ -61,34 +61,53 @@ AI Section Generator is a Shopify embedded app that leverages Google Gemini AI t
 
 ---
 
-### Phase 3: User Experience Enhancements (In Progress)
-**Status**: ✅ 95% Complete
-**Duration**: Current
+### Phase 3: User Experience Enhancements (Active - 96% Complete)
+**Status**: ✅ 96% Complete
+**Duration**: December 2025 (near completion)
 
 #### Code Preview & Management
 - ✅ Syntax-highlighted code preview
 - ✅ Liquid template display
 - ✅ Copy-to-clipboard functionality
 - ✅ JSON schema validation display
+- ✅ Responsive code preview with scrolling
 
-#### Save Workflow Improvements
-- ✅ Save Draft option (persists to database)
-- ✅ Publish to Theme option
-- ✅ Section metadata tracking
-- ✅ Redirect after save functionality (NEW - 2025-12-09)
+#### Save Workflow Improvements (Dual-Action Model)
+- ✅ Save Draft option (persists to database with status="draft")
+- ✅ Publish to Theme option (saves to DB + theme with status="saved")
+- ✅ Section metadata tracking (prompt, name, tone, style)
+- ✅ Redirect after save functionality with toast notifications
+- ✅ Theme selection for publish action
+- ✅ Filename validation and normalization
 
 #### Edit Capabilities
-- ✅ Edit saved sections
-- ✅ Update section metadata
-- ✅ Regenerate section code
-- ✅ Section history tracking
+- ✅ Edit saved sections with metadata
+- ✅ Update section metadata (name auto-save)
+- ✅ Regenerate section code without losing history
+- ✅ Section history tracking (created/updated dates)
+- ✅ Status badges (Draft/Saved)
+- ✅ Delete section with confirmation
+- ✅ Save regenerated sections as drafts or publish
 
-**Recent Completion (2025-12-09)**:
-- ✅ Redirect to Edit Screen After Section Save
-  - Backend response now returns sectionId
-  - Frontend redirects to `/sections/:id` on save
+#### Component-Based Architecture (Phase 04 - Complete)
+- ✅ 9 reusable UI components extracted
+- ✅ Shared components (Button, Card, Banner)
+- ✅ Feature components (PromptInput, ThemeSelector, CodePreview, SectionNameInput, GenerateActions)
+- ✅ Barrel export for centralized imports
+- ✅ Full TypeScript type safety
+- ✅ s-select and s-text-field consolidation
+
+**Recent Completions (December 2025)**:
+- **2025-12-09**: Redirect to Edit Screen After Section Save (COMPLETE)
+  - Backend returns sectionId
+  - Frontend redirects to `/app/sections/{sectionId}` on save
   - Toast notification "Section saved"
-  - Both create and edit pages have consistent Save Draft + Publish buttons
+  - Both create and edit pages have consistent dual-action save buttons
+- **2025-12-09**: s-select and s-text-field component consolidation
+  - Unified Web Components usage
+  - Improved consistency across forms
+- **2025-12-05**: Dual-action save flow finalized
+- **2025-12-08**: Section edit and regenerate functionality
 
 ---
 
@@ -173,24 +192,30 @@ AI Section Generator is a Shopify embedded app that leverages Google Gemini AI t
 
 ---
 
-## Current Sprint: Phase 3 (96% Complete)
+## Current Sprint: Phase 3 Final (96% Complete)
 
-### Completed in Current Sprint
-1. ✅ Section type selection
-2. ✅ Enhanced Liquid preview context
-3. ✅ Info banner for preview mode
-4. ✅ Settings header text updates
-5. ✅ Placeholder image support for image picker fields
-6. ✅ Unique identification for settings within blocks
-7. ✅ **Redirect after save functionality** (2025-12-09)
+### Completed in Current Sprint (December 2025)
+1. ✅ Dual-action save flow implementation (Save Draft + Publish to Theme)
+2. ✅ Section edit and regenerate capabilities
+3. ✅ Redirect after section save functionality
+4. ✅ Toast notifications for user feedback
+5. ✅ s-select and s-text-field consolidation
+6. ✅ Component-based architecture (Phase 04)
+7. ✅ Subscription billing system fixes (webhook, upgrade flow, GraphQL fallback)
+8. ✅ Section metadata tracking and status badges
 
 ### In Progress
-- None currently
+- Documentation updates for Phase 3 completion
 
-### Next Sprint Tasks
-- Section template library (Phase 4)
-- Version history implementation (Phase 4)
-- Performance optimization (Phase 5)
+### Blocked by
+- ⏳ Shopify write_themes scope approval (production deployment)
+
+### Next Phase Tasks (Phase 4 - Q1 2026)
+- Section template library with auto-seeding
+- Version history and rollback
+- Template sharing and management
+- Performance optimization
+- Analytics tracking
 
 ---
 
@@ -363,5 +388,7 @@ For questions about this roadmap or project status:
 
 ---
 
-**Last Updated**: 2025-12-09 by Project Manager
+**Document Version**: 1.1
+**Last Updated**: 2025-12-09 (Documentation Update)
+**Status**: Phase 3 at 96% - Production Ready for Testing
 **Next Review**: 2025-12-16 (Weekly Review)

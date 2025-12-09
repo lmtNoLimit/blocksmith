@@ -198,35 +198,44 @@ Historical record of generated sections:
 
 ## Current Status
 
-### Completed
+### Completed (Phase 3 - 96% Complete)
 - ✅ Shopify app setup with OAuth authentication
-- ✅ React Router 7 migration from Remix
-- ✅ AI service integration with Google Gemini
-- ✅ Section generation with prompt → Liquid code
+- ✅ React Router 7 migration (complete)
+- ✅ AI service integration with Google Gemini 2.5 Flash
+- ✅ Section generation with prompt → Liquid code (137-line system prompt)
 - ✅ Theme fetching via GraphQL
-- ✅ Theme file saving with themeFilesUpsert
-- ✅ UI with Polaris web components
-- ✅ Database schema with Prisma
-- ✅ Webhook handlers (uninstall, scopes_update)
-- ✅ Error handling and user feedback
+- ✅ Theme file saving with themeFilesUpsert mutation
+- ✅ UI with Polaris web components (`<s-*>` elements)
+- ✅ Database schema with Prisma (8 models: Session, Section, SectionTemplate, ShopSettings, Subscription, UsageRecord, PlanConfiguration, FailedUsageCharge)
+- ✅ Webhook handlers (uninstall, scopes_update, subscriptions_update)
+- ✅ Dual-action save flow (Save Draft + Publish to Theme)
+- ✅ Redirect to edit page after section save with toast notifications
+- ✅ Section editing and regeneration capability
+- ✅ Code preview with syntax highlighting
+- ✅ Feature flag system with adapter pattern (mock/real services)
+- ✅ Comprehensive error handling and user feedback
+- ✅ 9 reusable UI components (Phase 04 refactoring complete)
+- ✅ Billing system with hybrid pricing (base recurring + usage-based)
+- ✅ Multi-tenant architecture with session isolation
+- ✅ Subscription webhook processing with GraphQL fallback
 
 ### Pending
 - ⏳ **Shopify approval for write_themes scope** (blocking production use)
-- ⏳ Production deployment setup
+- ⏳ Production deployment setup (Google Cloud Run, Fly.io, Render)
 - ⏳ Database migration to production-grade DB (PostgreSQL/MySQL)
 - ⏳ Rate limiting implementation
 - ⏳ Analytics tracking
 - ⏳ User testing and feedback collection
 
-### Future Enhancements
-- Section editing capability (modify generated code)
-- Section history and versioning
-- Section templates library
-- Multi-language support for generated sections
+### Future Enhancements (Phase 4+)
+- Section template library with auto-seeding
+- Section history and versioning with rollback
+- Section marketplace and community sharing
 - Advanced customization options (framework preferences, style conventions)
-- Integration with theme editor preview
 - Batch section generation
-- Section marketplace
+- Template dashboard with usage analytics
+- AI model configuration UI
+- Multi-language support for generated sections
 
 ## Risk Assessment
 
@@ -286,6 +295,6 @@ Historical record of generated sections:
 
 ---
 
-**Document Version**: 1.0
-**Last Updated**: 2025-11-24
-**Status**: Initial Documentation
+**Document Version**: 1.1
+**Last Updated**: 2025-12-09
+**Status**: Phase 3 Active - 96% Complete
