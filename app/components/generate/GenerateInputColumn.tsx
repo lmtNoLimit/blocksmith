@@ -61,17 +61,20 @@ export function GenerateInputColumn({
 
           {/* Section name input - optional, auto-generated if empty */}
           {onSectionNameChange && (
-            <s-stack gap="small" direction="block">
-              <s-text-field
-                label="Section Name"
-                value={sectionName || ""}
-                onInput={(e) => onSectionNameChange((e as unknown as { currentTarget: { value: string } }).currentTarget.value)}
-                onBlur={onSectionNameBlur}
-                placeholder="Auto-generated from prompt if empty"
-                disabled={disabled}
-              />
-              <s-text color="subdued">A friendly name to identify this section in your history</s-text>
-            </s-stack>
+            <s-text-field
+              label="Section Name"
+              value={sectionName || ""}
+              onInput={(e) =>
+                onSectionNameChange(
+                  (e as unknown as { currentTarget: { value: string } })
+                    .currentTarget.value,
+                )
+              }
+              onBlur={onSectionNameBlur}
+              placeholder="Auto-generated from prompt if empty"
+              disabled={disabled}
+              details="A friendly name to identify this section in your history"
+            />
           )}
 
           <AdvancedOptions
