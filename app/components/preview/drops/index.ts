@@ -12,3 +12,11 @@ export { CollectionsDrop } from './CollectionsDrop';
 export { ArticleDrop } from './ArticleDrop';
 export { ShopDrop } from './ShopDrop';
 export { BlockDrop } from './BlockDrop';
+// Phase 2: Missing Objects and Drops
+export { ForloopDrop } from './ForloopDrop';
+export { RequestDrop } from './RequestDrop';
+export { RoutesDrop } from './RoutesDrop';
+export { CartDrop, CartItemDrop } from './CartDrop';
+export { CustomerDrop } from './CustomerDrop';
+export { PaginateDrop } from './PaginateDrop';
+export { ThemeDrop, SettingsDrop } from './ThemeDrop';

@@ -3,8 +3,19 @@
  * Builds Liquid template context with Drop classes for Shopify data
  */
 
-import { ProductDrop, CollectionDrop, CollectionsDrop, ArticleDrop, ShopDrop } from '../drops';
-import type { MockProduct, MockCollection, MockArticle, MockShop } from '../mockData/types';
+import {
+  ProductDrop,
+  CollectionDrop,
+  CollectionsDrop,
+  ArticleDrop,
+  ShopDrop,
+  RequestDrop,
+  RoutesDrop,
+  CartDrop,
+  CustomerDrop,
+  ThemeDrop
+} from '../drops';
+import type { MockProduct, MockCollection, MockArticle, MockShop, MockCart, MockCustomer } from '../mockData/types';
 
 /**
  * Default shop data for preview (used when no real shop data is available)
@@ -25,6 +36,8 @@ export interface PreviewContextOptions {
   collection?: MockCollection | null;
   article?: MockArticle | null;
   shop?: MockShop;
+  cart?: MockCart | null;
+  customer?: MockCustomer | null;
   // Settings-based resources (from schema settings with type: product/collection)
   settingsResources?: Record<string, MockProduct | MockCollection>;
 }
@@ -35,6 +48,11 @@ export interface PreviewContext {
   collections?: CollectionsDrop;
   article?: ArticleDrop;
   shop: ShopDrop;
+  request: RequestDrop;
+  routes: RoutesDrop;
+  theme: ThemeDrop;
+  cart?: CartDrop;
+  customer: CustomerDrop;
   settingsResourceDrops?: Record<string, ProductDrop | CollectionDrop>;
   [key: string]: unknown;
 }
@@ -67,17 +85,33 @@ function buildSettingsResourceDrops(
  * Drop classes provide controlled access to object properties in Liquid templates
  */
 export function buildPreviewContext(options: PreviewContextOptions): PreviewContext {
-  const { product, products = [], collection, article, shop, settingsResources = {} } = options;
+  const { product, products = [], collection, article, shop, cart, customer, settingsResources = {} } = options;
 
   // Build settings resource drops
   const settingsResourceDrops = Object.keys(settingsResources).length > 0
     ? buildSettingsResourceDrops(settingsResources)
     : undefined;
 
+  // Determine page type for request context
+  const pageType = product ? 'product' : collection ? 'collection' : article ? 'article' : 'index';
+
   // Build context with Drop classes
   const context: PreviewContext = {
-    shop: shop ? new ShopDrop(shop) : new ShopDrop(defaultShop)
+    shop: shop ? new ShopDrop(shop) : new ShopDrop(defaultShop),
+    request: new RequestDrop({
+      design_mode: true,
+      page_type: pageType,
+      path: '/'
+    }),
+    routes: new RoutesDrop(),
+    theme: new ThemeDrop(),
+    customer: new CustomerDrop(customer ?? null)
   };
+
+  // Add cart if provided
+  if (cart) {
+    context.cart = new CartDrop(cart);
+  }
 
   // Add product if provided
   if (product) {

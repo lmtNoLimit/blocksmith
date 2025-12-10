@@ -187,7 +187,143 @@ import {
 - **Maintainability**: Changes to UI components don't affect route logic
 - **Type Safety**: TypeScript interfaces prevent prop errors
 
-### Phase 1 Critical Filters Implementation (NEW in Phase 6)
+### Phase 2 Missing Objects Implementation (NEW in Phase 7)
+
+Phase 2 expands the preview system with 7 new Shopify Liquid Drop classes for missing objects. These provide comprehensive support for Liquid global variables and context-aware rendering.
+
+#### New Drop Classes
+
+**File Organization**:
+```
+app/components/preview/drops/
+├── ForloopDrop.ts      # Loop iteration context (index, first, last, etc.)
+├── RequestDrop.ts      # HTTP request context (page_type, path, design_mode)
+├── RoutesDrop.ts       # Shop route URLs (cart, account, search, etc.)
+├── CartDrop.ts         # Shopping cart with CartItemDrop
+├── CustomerDrop.ts     # Customer account data (email, name, orders)
+├── PaginateDrop.ts     # Pagination context (current_page, page_size)
+└── ThemeDrop.ts        # Theme settings with SettingsDrop
+```
+
+**Forloop Context** (`ForloopDrop.ts`):
+- `index`: Current iteration (1-based)
+- `index0`: Current iteration (0-based)
+- `rindex`: Reverse index (from end, 1-based)
+- `rindex0`: Reverse index (0-based)
+- `first`: True if first iteration
+- `last`: True if last iteration
+- `length`: Total items in loop
+
+**Request Context** (`RequestDrop.ts`):
+- `design_mode`: Boolean (true in preview)
+- `page_type`: Current page type (product, collection, article, index)
+- `path`: Current URL path
+- `host`: Request host
+- `origin`: Request origin
+
+**Routes Context** (`RoutesDrop.ts`):
+- `root_url`, `cart_url`, `account_url`
+- `account_login_url`, `account_logout_url`, `account_register_url`
+- `account_addresses_url`, `cart_add_url`, `cart_change_url`
+- `cart_clear_url`, `cart_update_url`, `collections_url`
+- `all_products_collection_url`, `search_url`, `predictive_search_url`
+- `product_recommendations_url`
+
+**Cart Context** (`CartDrop.ts` with `CartItemDrop`):
+- `item_count`: Number of items in cart
+- `total_price`: Total cart value
+- `items`: Array of CartItem objects
+- `currency`: Cart currency code
+
+**CartItem Properties**:
+- `id`, `title`, `quantity`, `price`, `line_price`
+- `image`: Image object with src, alt, width, height
+- `url`: Product URL
+
+**Customer Context** (`CustomerDrop.ts`):
+- `id`: Customer ID
+- `email`: Customer email
+- `first_name`, `last_name`: Name components
+- `name`: Full name
+- `orders_count`: Number of orders placed
+- `total_spent`: Lifetime customer value
+
+**Paginate Context** (`PaginateDrop.ts`):
+- `current_page`: Current page number
+- `page_size`: Items per page
+- `total_items`: Total item count
+
+**Theme Context** (`ThemeDrop.ts` with `SettingsDrop`):
+- `name`: Theme name
+- `id`: Theme ID
+- `role`: Theme role (main, unpublished, etc.)
+- `settings`: SettingsDrop with theme configuration access
+
+#### Context Builder Updates
+
+**`buildPreviewContext.ts`** (updated):
+- Integrated new Drop classes (request, routes, cart, customer, theme)
+- Page type detection (product, collection, article, index)
+- Auto-population of request context based on selected resources
+- Cart and customer always available in context
+- Settings-based resource mapping for dynamic schema settings
+
+**PreviewContext Interface** (expanded):
+```typescript
+export interface PreviewContext {
+  product?: ProductDrop;
+  collection?: CollectionDrop;
+  collections?: CollectionsDrop;
+  article?: ArticleDrop;
+  shop: ShopDrop;
+  request: RequestDrop;        // NEW
+  routes: RoutesDrop;          // NEW
+  theme: ThemeDrop;            // NEW
+  cart?: CartDrop;             // NEW
+  customer: CustomerDrop;      // NEW
+  settingsResourceDrops?: Record<string, ProductDrop | CollectionDrop>;
+}
+```
+
+#### Mock Data Types
+
+**`mockData/types.ts`** (new interfaces):
+- `MockRequest`: Request context properties
+- `MockForloop`: Loop iteration data
+- `MockPaginate`: Pagination properties
+- `MockRoutes`: Shop route URLs
+- `MockCart` & `MockCartItem`: Cart structure
+- `MockCustomer`: Customer account data
+- `MockTheme`: Theme metadata
+
+#### Integration Points
+
+All new Drop classes are:
+- Registered in `useLiquidRenderer.ts` during engine initialization
+- Available in Liquid templates via `{{ request.page_type }}`, `{{ cart.total_price }}`, etc.
+- Automatically instantiated by `buildPreviewContext()` with sensible defaults
+- Support chained property access and filters
+
+**Example Liquid Usage**:
+```liquid
+{% if request.page_type == 'product' %}
+  <h1>{{ product.title }}</h1>
+{% endif %}
+
+{% for item in cart.items %}
+  <p>{{ item.title }}: ${{ item.price | money }}</p>
+{% endfor %}
+
+{% if customer.id %}
+  Welcome back, {{ customer.first_name }}!
+  You've placed {{ customer.orders_count }} orders.
+{% endif %}
+
+{{ routes.cart_url }}
+{{ theme.name }}
+```
+
+### Phase 1 Critical Filters Implementation (Phase 6)
 
 Phase 1 introduces 47 Shopify Liquid filters for section preview rendering. Filters are organized into 3 categories: Array, String, Math, and Color manipulation.
 
@@ -1341,11 +1477,12 @@ FLAG_SIMULATE_API_LATENCY=true
 
 ---
 
-**Document Version**: 1.6
+**Document Version**: 1.7
 **Last Updated**: 2025-12-10
-**Codebase Size**: ~19,200 tokens across 90+ files (+1,072 lines from Phase 1 filters)
+**Codebase Size**: ~19,200 tokens across 90+ files (+1,072 lines from Phase 1 filters, +500 lines from Phase 2 drops)
 **Primary Language**: TypeScript (TSX)
 **Recent Changes** (December 2025):
+- **Phase 7 (Phase 2)**: 7 new Shopify Liquid Drop classes (forloop, request, routes, cart, customer, paginate, theme) with integrated context builder
 - **Phase 6**: 47 Shopify Liquid filters (array: 11, string: 16, math: 8, color: 12) with DoS prevention & security hardening
   - `liquidFilters.ts` (285 lines): array, string, math filter implementations
   - `colorFilters.ts` (325 lines): RGB/HSL/hex color space conversions & manipulations

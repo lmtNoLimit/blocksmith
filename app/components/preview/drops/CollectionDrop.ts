@@ -115,6 +115,35 @@ export class CollectionDrop extends ShopifyDrop {
     ];
   }
 
+  // Phase 2: Missing properties
+
+  /** Featured image - alias for image */
+  get featured_image(): ImageDrop | null {
+    return this.image;
+  }
+
+  /** Current vendor filter */
+  get current_vendor(): string { return ''; }
+
+  /** Current type filter */
+  get current_type(): string { return ''; }
+
+  /** Collection filters - placeholder */
+  get filters(): unknown[] { return []; }
+
+  /** Template suffix */
+  get template_suffix(): string { return ''; }
+
+  /** Metafields object - placeholder for custom data */
+  get metafields(): Record<string, unknown> {
+    return {};
+  }
+
+  /** Publication date */
+  get published_at(): string {
+    return new Date().toISOString();
+  }
+
   liquidMethodMissing(key: string): unknown {
     const data = this.collection as unknown as Record<string, unknown>;
     return data[key];

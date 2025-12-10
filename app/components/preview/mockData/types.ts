@@ -116,6 +116,49 @@ export interface MockRequest {
   design_mode: boolean;
   page_type: string;
   path: string;
+  host?: string;
+  origin?: string;
+}
+
+export interface MockForloop {
+  index: number;
+  index0: number;
+  rindex: number;
+  rindex0: number;
+  first: boolean;
+  last: boolean;
+  length: number;
+}
+
+export interface MockPaginate {
+  current_page: number;
+  page_size: number;
+  total_items: number;
+}
+
+export interface MockRoutes {
+  root_url: string;
+  cart_url: string;
+  account_url: string;
+  account_login_url: string;
+  account_logout_url: string;
+  account_register_url: string;
+  account_addresses_url: string;
+  cart_add_url: string;
+  cart_change_url: string;
+  cart_clear_url: string;
+  cart_update_url: string;
+  collections_url: string;
+  all_products_collection_url: string;
+  search_url: string;
+  predictive_search_url: string;
+  product_recommendations_url: string;
+}
+
+export interface MockTheme {
+  id: number;
+  name: string;
+  role: string;
 }
 
 export interface MockDataContext {

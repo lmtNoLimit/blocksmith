@@ -182,6 +182,50 @@ export class ProductDrop extends ShopifyDrop {
     return this.product.description;
   }
 
+  // Phase 2: Missing properties
+
+  /** Metafields object - placeholder for custom data */
+  get metafields(): Record<string, unknown> {
+    return {};
+  }
+
+  /** Media array - includes images */
+  get media(): ImageDrop[] {
+    return this.images;
+  }
+
+  /** Featured media - same as featured image */
+  get featured_media(): ImageDrop | null {
+    return this.featured_image;
+  }
+
+  /** Whether product is a gift card */
+  get gift_card(): boolean { return false; }
+  get 'gift_card?'(): boolean { return false; }
+
+  /** Publication date */
+  get published_at(): string {
+    return new Date().toISOString();
+  }
+
+  /** Creation date */
+  get created_at(): string {
+    return new Date().toISOString();
+  }
+
+  /** Whether product requires a selling plan */
+  get requires_selling_plan(): boolean { return false; }
+
+  /** Selling plan groups */
+  get selling_plan_groups(): unknown[] { return []; }
+
+  /** Whether product has quantity price breaks */
+  get quantity_price_breaks_configured(): boolean { return false; }
+  get 'quantity_price_breaks_configured?'(): boolean { return false; }
+
+  /** Template suffix */
+  get template_suffix(): string { return ''; }
+
   // Dynamic property access
   liquidMethodMissing(key: string): unknown {
     const data = this.product as unknown as Record<string, unknown>;
