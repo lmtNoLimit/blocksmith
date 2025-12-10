@@ -1,10 +1,11 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
-import { Liquid, TopLevelToken, Context, Template } from 'liquidjs';
+import { Liquid } from 'liquidjs';
 import type { PreviewSettings } from '../types';
 import type { BlockInstance } from '../schema/SchemaTypes';
 import { BlockDrop } from '../drops';
 import { arrayFilters, stringFilters, mathFilters } from '../utils/liquidFilters';
 import { colorFilters } from '../utils/colorFilters';
+import { registerShopifyTags } from '../utils/liquidTags';
 
 interface RenderResult {
   html: string;
@@ -184,210 +185,8 @@ export function useLiquidRenderer(): UseLiquidRendererResult {
       engine.registerFilter(name, fn as (...args: unknown[]) => unknown);
     });
 
-    // Register Shopify-specific custom tags for preview support
-    // These tags are not in standard Liquid but required by Shopify sections
-
-    // Form tags: {% form 'type', ...params %} ... {% endform %}
-    engine.registerTag('form', {
-      parse: function (tagToken: { args: string; getText: () => string }, remainTokens: TopLevelToken[]) {
-        this.args = tagToken.args;
-        this.tpl = [];
-
-        // Collect tokens until {% endform %}
-        const stream = this.liquid.parser.parseStream(remainTokens);
-        stream
-          .on('tag:endform', () => stream.stop())
-          .on('template', (tpl: Template | undefined) => {
-            if (tpl) this.tpl.push(tpl);
-          })
-          .on('end', () => {
-            throw new Error(`tag ${tagToken.getText()} not closed`);
-          });
-        stream.start();
-      },
-      render: async function (ctx: Context) {
-        // Evaluate form type parameter (extract first quoted string)
-        let formType = 'generic';
-        if (this.args) {
-          const match = this.args.match(/['"]([^'"]+)['"]/);
-          formType = match ? match[1] : 'generic';
-        }
-
-        // Create form context variable (Shopify provides this inside {% form %} blocks)
-        const formContext = {
-          errors: [],
-          posted_successfully: false,
-          id: `form-${formType}-preview`,
-          // toString returns empty string to prevent [object Object] output
-          toString: () => '',
-          valueOf: () => ''
-        };
-
-        // Push form variable to context
-        ctx.push({ form: formContext });
-
-        // Render inner template content
-        const bodyHtml = await this.liquid.renderer.renderTemplates(this.tpl, ctx);
-
-        // Pop the form context
-        ctx.pop();
-
-        // Return form HTML wrapper
-        return `<form method="post" class="shopify-form shopify-form-${formType}" data-preview="true">\n${bodyHtml}\n</form>`;
-      },
-    });
-
-    engine.registerTag('endform', {
-      parse: function () {
-        // Empty parse - handled by form tag
-      },
-      render: function () {
-        return Promise.resolve('');
-      },
-    });
-
-    // Paginate tags: {% paginate collection.products by 5 %} ... {% endpaginate %}
-    engine.registerTag('paginate', {
-      parse: function (tagToken: { args: string; getText: () => string }, remainTokens: TopLevelToken[]) {
-        this.args = tagToken.args;
-        this.tpl = [];
-
-        const stream = this.liquid.parser.parseStream(remainTokens);
-        stream
-          .on('tag:endpaginate', () => stream.stop())
-          .on('template', (tpl: Template | undefined) => {
-            if (tpl) this.tpl.push(tpl);
-          })
-          .on('end', () => {
-            throw new Error(`tag ${tagToken.getText()} not closed`);
-          });
-        stream.start();
-      },
-      render: async function (ctx: Context) {
-        // Render paginated content (preview shows first page only)
-        const bodyHtml = await this.liquid.renderer.renderTemplates(this.tpl, ctx);
-        return `<!-- Paginated section (preview shows first page) -->\n${bodyHtml}\n<!-- End pagination -->`;
-      },
-    });
-
-    engine.registerTag('endpaginate', {
-      parse: function () {},
-      render: function () {
-        return Promise.resolve('');
-      },
-    });
-
-    // Section tag: {% section 'header' %}
-    engine.registerTag('section', {
-      parse: function (tagToken: { args: string }) {
-        this.args = tagToken.args;
-      },
-      render: async function () {
-        // Extract section name from args
-        let sectionName = 'unknown';
-        if (this.args) {
-          const match = this.args.match(/['"]([^'"]+)['"]/);
-          sectionName = match ? match[1] : 'unknown';
-        }
-        return `<!-- Section: ${sectionName} (not rendered in preview) -->`;
-      },
-    });
-
-    // Render tag: {% render 'snippet-name', var: value %}
-    engine.registerTag('render', {
-      parse: function (tagToken: { args: string }) {
-        this.args = tagToken.args;
-      },
-      render: async function () {
-        // Extract snippet name from args
-        let snippetName = 'unknown';
-        if (this.args) {
-          const match = this.args.match(/['"]([^'"]+)['"]/);
-          snippetName = match ? match[1] : 'unknown';
-        }
-        return `<!-- Render snippet: ${snippetName} (not loaded in preview) -->`;
-      },
-    });
-
-    // Comment tags: {% comment %} ... {% endcomment %}
-    engine.registerTag('comment', {
-      parse: function (tagToken: { getText: () => string }, remainTokens: TopLevelToken[]) {
-        const stream = this.liquid.parser.parseStream(remainTokens);
-        stream
-          .on('tag:endcomment', () => stream.stop())
-          .on('end', () => {
-            throw new Error(`tag ${tagToken.getText()} not closed`);
-          });
-        stream.start();
-      },
-      render: function () {
-        // Comments output nothing
-        return Promise.resolve('');
-      },
-    });
-
-    engine.registerTag('endcomment', {
-      parse: function () {},
-      render: function () {
-        return Promise.resolve('');
-      },
-    });
-
-    // Stylesheet tag: {% stylesheet %} ... {% endstylesheet %}
-    engine.registerTag('stylesheet', {
-      parse: function (tagToken: { getText: () => string }, remainTokens: TopLevelToken[]) {
-        this.tpl = [];
-        const stream = this.liquid.parser.parseStream(remainTokens);
-        stream
-          .on('tag:endstylesheet', () => stream.stop())
-          .on('template', (tpl: Template | undefined) => {
-            if (tpl) this.tpl.push(tpl);
-          })
-          .on('end', () => {
-            throw new Error(`tag ${tagToken.getText()} not closed`);
-          });
-        stream.start();
-      },
-      render: async function (ctx: Context) {
-        const cssContent = await this.liquid.renderer.renderTemplates(this.tpl, ctx);
-        return `<style>${cssContent}</style>`;
-      },
-    });
-
-    engine.registerTag('endstylesheet', {
-      parse: function () {},
-      render: function () {
-        return Promise.resolve('');
-      },
-    });
-
-    // Javascript tag: {% javascript %} ... {% endjavascript %}
-    engine.registerTag('javascript', {
-      parse: function (tagToken: { getText: () => string }, remainTokens: TopLevelToken[]) {
-        this.tpl = [];
-        const stream = this.liquid.parser.parseStream(remainTokens);
-        stream
-          .on('tag:endjavascript', () => stream.stop())
-          .on('template', (tpl: Template | undefined) => {
-            if (tpl) this.tpl.push(tpl);
-          })
-          .on('end', () => {
-            throw new Error(`tag ${tagToken.getText()} not closed`);
-          });
-        stream.start();
-      },
-      render: async function (ctx: Context) {
-        const jsContent = await this.liquid.renderer.renderTemplates(this.tpl, ctx);
-        return `<script>${jsContent}</script>`;
-      },
-    });
-
-    engine.registerTag('endjavascript', {
-      parse: function () {},
-      render: function () {
-        return Promise.resolve('');
-      },
-    });
+    // Register all Shopify-specific tags (form, paginate, section, render, comment, style, etc.)
+    registerShopifyTags(engine);
   }, []);
 
   const render = useCallback(async (
@@ -404,28 +203,8 @@ export function useLiquidRenderer(): UseLiquidRendererResult {
     setError(null);
 
     try {
-      // Strip Shopify-specific tags that LiquidJS doesn't support
-      // Remove {% schema %}...{% endschema %} blocks
-      let processedTemplate = template.replace(/\{%\s*schema\s*%\}[\s\S]*?\{%\s*endschema\s*%\}/gi, '');
-
-      // Extract CSS from {% style %}...{% endstyle %} blocks (Shopify syntax)
-      const shopifyStyleMatch = processedTemplate.match(/\{%\s*style\s*%\}([\s\S]*?)\{%\s*endstyle\s*%\}/gi);
-      const shopifyStyles = shopifyStyleMatch?.map(s =>
-        s.replace(/\{%\s*style\s*%\}/gi, '').replace(/\{%\s*endstyle\s*%\}/gi, '')
-      ).join('\n') || '';
-
-      // Remove {% style %}...{% endstyle %} from template
-      processedTemplate = processedTemplate.replace(/\{%\s*style\s*%\}[\s\S]*?\{%\s*endstyle\s*%\}/gi, '');
-
-      // Also extract CSS from regular <style> tags
-      const styleMatch = processedTemplate.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
-      const htmlStyles = styleMatch?.map(s => s.replace(/<\/?style[^>]*>/gi, '')).join('\n') || '';
-
-      // Combine all CSS
-      const css = [shopifyStyles, htmlStyles].filter(Boolean).join('\n');
-
-      // Remove style tags from template for HTML-only rendering
-      const htmlTemplate = processedTemplate.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+      // Strip {% schema %}...{% endschema %} blocks (not renderable)
+      const processedTemplate = template.replace(/\{%\s*schema\s*%\}[\s\S]*?\{%\s*endschema\s*%\}/gi, '');
 
       // Build section settings by merging primitive values with resource drops
       const settingsResourceDrops = mockData.settingsResourceDrops as Record<string, unknown> | undefined;
@@ -444,11 +223,17 @@ export function useLiquidRenderer(): UseLiquidRendererResult {
         settings: mergedSettings
       };
 
-      // Pre-process the template to render any Liquid in the CSS
-      const renderedCss = css ? await engineRef.current.parseAndRender(css, context) : '';
-      const html = await engineRef.current.parseAndRender(htmlTemplate, context);
+      // Render the full template (including {% style %} tags which output <style data-shopify-style>)
+      const renderedHtml = await engineRef.current.parseAndRender(processedTemplate, context);
 
-      return { html, css: renderedCss };
+      // Extract CSS from all <style> tags (including data-shopify-style from {% style %} tag)
+      const allStyles = renderedHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      const css = allStyles?.map((s: string) => s.replace(/<\/?style[^>]*>/gi, '')).join('\n') || '';
+
+      // Remove all style tags from HTML output
+      const html = renderedHtml.replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '');
+
+      return { html, css };
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'Render failed';
       setError(errorMsg);

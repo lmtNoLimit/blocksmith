@@ -5,8 +5,8 @@
 AI Section Generator is a Shopify embedded app built with React Router 7, Prisma, and Google Gemini AI. The app enables merchants to generate custom Liquid theme sections via natural language prompts and save them directly to their Shopify themes.
 
 **Total Files**: 90+ files (routes: 17, services: 15, components: 60+, types: 4)
-**Total Tokens**: ~19,200 tokens (estimated, +700 tokens from Phase 5 SYSTEM_PROMPT enhancement)
-**Lines of Code**: ~2,650+ lines (excluding migrations, config)
+**Total Tokens**: ~20,700 tokens (estimated, +700 from Phase 5 SYSTEM_PROMPT, +1,500 from Phase 3 Advanced Tags)
+**Lines of Code**: ~3,100+ lines (excluding migrations, config, +455 from liquidTags.ts, +24 test lines)
 **Architecture**: Clean service layer with adapter pattern, singleton pattern, comprehensive billing system, multi-tenant support
 
 ## Directory Structure
@@ -34,13 +34,14 @@ ai-section-generator/
 │   │   │   ├── CodePreview.tsx   # Generated code display
 │   │   │   ├── SectionNameInput.tsx # Filename input
 │   │   │   └── GenerateActions.tsx  # Generate/Save buttons
-│   │   ├── preview/              # Section preview system (NEW in Phase 6)
+│   │   ├── preview/              # Section preview system (Phase 3-6)
 │   │   │   ├── utils/            # Liquid filter utilities
+│   │   │   │   ├── liquidTags.ts     # Shopify tags (form, paginate, style, tablerow, etc. - 455 lines, NEW Phase 3)
 │   │   │   │   ├── liquidFilters.ts  # Array, string, math filters (285 lines)
 │   │   │   │   ├── colorFilters.ts   # Color manipulation filters (325 lines)
-│   │   │   │   └── __tests__/    # Filter test suites
+│   │   │   │   └── __tests__/    # Filter & tag test suites
 │   │   │   ├── hooks/            # Preview rendering hooks
-│   │   │   │   └── useLiquidRenderer.ts # LiquidJS engine wrapper (462 lines)
+│   │   │   │   └── useLiquidRenderer.ts # LiquidJS engine wrapper with tag registration (462 lines)
 │   │   │   └── drops/            # Shopify drop objects
 │   │   ├── ServiceModeIndicator.tsx # Debug mode indicator
 │   │   └── index.ts              # Barrel export file
@@ -322,6 +323,130 @@ All new Drop classes are:
 {{ routes.cart_url }}
 {{ theme.name }}
 ```
+
+### Phase 3 Advanced Tags Implementation (NEW)
+
+Phase 3 introduces 9 Shopify-specific Liquid tags for comprehensive section preview support. Tags enable form handling, pagination, style/script injection, multi-statement blocks, and layout composition stubs.
+
+#### File Organization
+
+**`app/components/preview/utils/liquidTags.ts`** (455 lines):
+- Centralized tag registration module for LiquidJS engine
+- 9 tag implementations with parse/render generators
+- Robust error handling with stream validation
+
+#### Tag Implementations
+
+**Form Tags** (`{% form 'type' %} ... {% endform %}`):
+- Parses form type argument
+- Renders HTML `<form>` wrapper in preview
+- Captures nested template content via stream parsing
+
+**Paginate Tags** (`{% paginate collection by 12 %} ... {% endpaginate %}`):
+- Extracts collection expression and page size
+- Creates paginate context object with current_page/page_size
+- Renders paginated subset of items
+- Integrates with PaginateDrop for pagination context
+
+**Section & Render Tags**:
+- `{% section 'section-name' %}`: Comments-only stub (sections not loaded in preview)
+- `{% render 'snippet' %}`: Comments-only stub (snippets not loaded in preview)
+- Both return HTML comments indicating preview limitation
+
+**Comment Tags** (`{% comment %} ... {% endcomment %}`):
+- Stream-based parser consuming nested tokens
+- No output (properly stripped from rendered HTML)
+
+**Style Tags**:
+- **`{% style %}`**: Wraps CSS in `<style data-shopify-style>` (Shopify-specific data attribute)
+- **`{% stylesheet %}`**: Legacy form wraps CSS in `<style>` (historical support)
+- Both preserve CSS content with proper nesting via renderTemplates
+
+**JavaScript Tags** (`{% javascript %} ... {% endjavascript %}`):
+- Captures JavaScript code in `<script>` tags
+- Renders with proper template context
+- Enables dynamic script injection in preview
+
+**Liquid Tag** (`{% liquid %} ... %}`):
+- Multi-statement block for compact syntax
+- Parses newline-separated statements
+- Converts `echo var` to `{{ var }}` expressions
+- Wraps control flow in `{% %}` for `if`, `for`, `assign`
+- Try-catch error handling for malformed statements
+
+**Include Tag** (`{% include 'snippet', var: value %}`):
+- Comments-only stub (snippets not loaded in preview)
+- Preserves shared scope semantics in comment
+- Extracts snippet name from quoted arguments
+
+**Tablerow Tag** (`{% tablerow item in array cols:3 limit:6 offset:0 %} ... {% endtablerow %}`):
+- Full implementation rendering HTML `<table>` structure
+- Supports options:
+  - **cols**: Columns per row (default: array length)
+  - **limit**: Max items (default: all)
+  - **offset**: Starting position (default: 0)
+- Generates `<tr>` rows with `<td>` cells
+- Creates `tablerowloop` context object:
+  - `index` (1-based), `index0` (0-based)
+  - `rindex` (reverse 1-based), `rindex0` (reverse 0-based)
+  - `first`, `last`, `length`
+  - `col`, `col0`, `col_first`, `col_last`
+  - `row` (current row number)
+- Integrates ForloopDrop for compatibility with forloop variables
+
+**Layout Stubs**:
+- `{% layout 'name' %}`: Template stub (layout not applied in preview)
+- `{% layout none %}`: Disable layout (stub)
+- `{% content_for 'block' %}`: Content block stub
+- `{% sections %}`: Render sections stub
+- All return HTML comments indicating theme-level features not simulated
+
+#### Integration with useLiquidRenderer
+
+Tags registered in hook initialization (lines 20-40):
+```typescript
+import { registerShopifyTags } from './liquidTags';
+
+// During engine setup:
+registerShopifyTags(engine);  // Register all 9 tags
+```
+
+All tags available immediately in Liquid templates during preview rendering.
+
+#### Key Features
+
+1. **LiquidJS Generator Pattern**: Uses `*render(ctx, emitter)` with `yield` for proper async control
+2. **Stream-Based Parsing**: Complex tags like form/paginate use LiquidJS parser streams
+3. **Error Handling**: Missing end tags throw descriptive errors (e.g., "tag {% form %} not closed")
+4. **Context Management**: Proper ctx.push/ctx.pop for variable scoping (tablerow, paginate)
+5. **HTML Safety**: Content escaped/validated before emitter.write
+6. **Shopify Compatibility**: Preserves Shopify-specific attributes (data-shopify-style)
+
+#### Testing
+
+**`app/components/preview/utils/__tests__/liquidTags.test.ts`** (24 tests):
+- Tag registration verification
+- Form tag parsing and rendering
+- Paginate context creation and slicing
+- Style tag HTML output
+- Liquid block statement conversion
+- Tablerow option parsing (cols, limit, offset)
+- Tablerow loop object generation
+- Error handling for malformed tags
+
+Test coverage ensures all tag variations produce correct HTML and context.
+
+#### Preview Limitations
+
+The following tags intentionally render as HTML comments (not fully simulated):
+- `{% section 'section-name' %}`: Theme sections not available in preview context
+- `{% render 'snippet' %}`: Snippet files not loaded in preview
+- `{% include 'snippet' %}`: Shared scope include not available
+- `{% layout 'name' %}`: Theme layout system not simulated
+- `{% content_for 'block' %}`: Theme block system not simulated
+- `{% sections %}`: Sections rendering not available
+
+These stubs prevent errors while accurately indicating feature unavailability in preview.
 
 ### Phase 1 Critical Filters Implementation (Phase 6)
 
@@ -1477,22 +1602,26 @@ FLAG_SIMULATE_API_LATENCY=true
 
 ---
 
-**Document Version**: 1.7
+**Document Version**: 1.8
 **Last Updated**: 2025-12-10
-**Codebase Size**: ~19,200 tokens across 90+ files (+1,072 lines from Phase 1 filters, +500 lines from Phase 2 drops)
+**Codebase Size**: ~20,700 tokens across 90+ files (+455 lines from Phase 3 Advanced Tags, +1,072 lines from Phase 1 filters, +500 lines from Phase 2 drops)
 **Primary Language**: TypeScript (TSX)
 **Recent Changes** (December 2025):
+- **Phase 3 Advanced Tags (NEW)**: 9 Shopify-specific Liquid tags (form, paginate, section, render, comment, style, javascript, liquid, include, tablerow, layout stubs) with 24-test suite
+  - `liquidTags.ts` (455 lines): Tag registration module with LiquidJS generator-based implementations
+  - `useLiquidRenderer.ts` refactored: Integrates liquidTags via registerShopifyTags()
+  - Full tablerow implementation with cols/limit/offset options & tablerowloop context
+  - Style tag outputs `<style data-shopify-style>` for Shopify compatibility
+  - Liquid block supports echo/if/for/assign statements on multiple lines
+  - 24 tests covering all tag variations and error handling
+  - Layout stubs (layout, content_for, sections) prevent errors in preview
 - **Phase 7 (Phase 2)**: 7 new Shopify Liquid Drop classes (forloop, request, routes, cart, customer, paginate, theme) with integrated context builder
 - **Phase 6**: 47 Shopify Liquid filters (array: 11, string: 16, math: 8, color: 12) with DoS prevention & security hardening
   - `liquidFilters.ts` (285 lines): array, string, math filter implementations
   - `colorFilters.ts` (325 lines): RGB/HSL/hex color space conversions & manipulations
-  - `useLiquidRenderer.ts` (462 lines): LiquidJS engine wrapper with filter registration
-  - Comprehensive test coverage for all filter categories
   - Input validation: MAX_ARRAY_SIZE=10K, MAX_STRING_LENGTH=100K
-  - Color filters: parse multiple formats, convert between spaces, mix colors, accessibility-aware
-- **Phase 5**: SYSTEM_PROMPT rewrite (65→157 lines) with comprehensive input type catalog, validation rules, and anti-pattern guide
+- **Phase 5**: SYSTEM_PROMPT rewrite (65→157 lines) with comprehensive input type catalog, validation rules
 - **251209**: Redirect after save feature with toast notifications
-- **251209**: s-select and s-text-field component consolidation
-- **251202**: Billing system fixes - webhook type safety, GraphQL fallback, upgrade flow
+- **251202**: Billing system fixes - webhook type safety, GraphQL fallback
 - **Phase 04**: Component-based architecture (9 reusable UI components)
 - **Phase 03**: Feature flag system, adapter pattern, mock services, dual-action save flow
