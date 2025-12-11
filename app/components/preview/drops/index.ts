@@ -20,3 +20,5 @@ export { CartDrop, CartItemDrop } from './CartDrop';
 export { CustomerDrop } from './CustomerDrop';
 export { PaginateDrop } from './PaginateDrop';
 export { ThemeDrop, SettingsDrop } from './ThemeDrop';
+// Phase 4: Media Drop
+export { MediaDrop } from './MediaDrop';

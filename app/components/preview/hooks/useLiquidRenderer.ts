@@ -5,6 +5,10 @@ import type { BlockInstance } from '../schema/SchemaTypes';
 import { BlockDrop } from '../drops';
 import { arrayFilters, stringFilters, mathFilters } from '../utils/liquidFilters';
 import { colorFilters } from '../utils/colorFilters';
+import { mediaFilters } from '../utils/mediaFilters';
+import { fontFilters } from '../utils/fontFilters';
+import { metafieldFilters } from '../utils/metafieldFilters';
+import { utilityFilters } from '../utils/utilityFilters';
 import { registerShopifyTags } from '../utils/liquidTags';
 
 interface RenderResult {
@@ -182,6 +186,26 @@ export function useLiquidRenderer(): UseLiquidRendererResult {
 
     // Register color filters (replace stubs with real implementations)
     Object.entries(colorFilters).forEach(([name, fn]) => {
+      engine.registerFilter(name, fn as (...args: unknown[]) => unknown);
+    });
+
+    // Register media filters (image_tag, video_tag, media_tag, etc.)
+    Object.entries(mediaFilters).forEach(([name, fn]) => {
+      engine.registerFilter(name, fn as (...args: unknown[]) => unknown);
+    });
+
+    // Register font filters (font_face, font_url, font_modify)
+    Object.entries(fontFilters).forEach(([name, fn]) => {
+      engine.registerFilter(name, fn as (...args: unknown[]) => unknown);
+    });
+
+    // Register metafield filters (metafield_tag, metafield_text)
+    Object.entries(metafieldFilters).forEach(([name, fn]) => {
+      engine.registerFilter(name, fn as (...args: unknown[]) => unknown);
+    });
+
+    // Register utility filters (default, highlight, time_tag, weight_with_unit, etc.)
+    Object.entries(utilityFilters).forEach(([name, fn]) => {
       engine.registerFilter(name, fn as (...args: unknown[]) => unknown);
     });
 
