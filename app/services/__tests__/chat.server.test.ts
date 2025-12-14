@@ -2,6 +2,7 @@
 import type { Mock } from 'jest';
 
 // Type alias for convenience
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
 type MockedFunction<T extends (...args: any[]) => any> = Mock<ReturnType<T>, Parameters<T>>;
 
 // Mock Prisma BEFORE importing ChatService
@@ -177,6 +178,7 @@ old code here
       };
 
       (prisma.message.create as MockedFunction<typeof prisma.message.create>).mockResolvedValue(mockMessage);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (prisma.conversation.update as MockedFunction<typeof prisma.conversation.update>).mockResolvedValue({} as any);
 
       const result = await chatService.addUserMessage('conv-456', 'Make the heading larger');
@@ -216,6 +218,7 @@ old code here
       };
 
       (prisma.message.create as MockedFunction<typeof prisma.message.create>).mockResolvedValue(mockMessage);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (prisma.conversation.update as MockedFunction<typeof prisma.conversation.update>).mockResolvedValue({} as any);
 
       const result = await chatService.addAssistantMessage(
@@ -255,6 +258,7 @@ old code here
       };
 
       (prisma.message.create as MockedFunction<typeof prisma.message.create>).mockResolvedValue(mockMessage);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (prisma.conversation.update as MockedFunction<typeof prisma.conversation.update>).mockResolvedValue({} as any);
 
       await chatService.addAssistantMessage('conv-456', 'Response', undefined, 100);
@@ -329,6 +333,7 @@ old code here
       };
 
       (prisma.message.create as MockedFunction<typeof prisma.message.create>).mockResolvedValue(mockMessage);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (prisma.conversation.update as MockedFunction<typeof prisma.conversation.update>).mockResolvedValue({} as any);
 
       const result = await chatService.addErrorMessage('conv-456', 'API timeout');

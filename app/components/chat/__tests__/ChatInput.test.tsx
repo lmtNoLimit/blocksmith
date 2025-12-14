@@ -2,7 +2,7 @@
  * Tests for ChatInput component
  * Tests text input, keyboard handling, send/stop functionality
  */
-import { render, screen, fireEvent, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { ChatInput } from '../ChatInput';
 
@@ -80,7 +80,6 @@ describe('ChatInput', () => {
       );
 
       const textarea = screen.getByRole('textbox') as HTMLTextAreaElement;
-      const initialHeight = textarea.style.height || 'auto';
 
       await user.type(textarea, 'A'.repeat(100));
 

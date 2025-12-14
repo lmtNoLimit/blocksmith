@@ -325,7 +325,7 @@ describe('useChat', () => {
         Promise.resolve({
           ok: true,
           body: mockBody,
-        } as any)
+        } as Response)
       );
 
       act(() => {

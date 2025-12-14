@@ -2,7 +2,7 @@
  * Tests for CodeBlock component
  * Tests code display, copy functionality, and code block rendering
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { CodeBlock } from '../CodeBlock';
 
@@ -226,7 +226,7 @@ describe('CodeBlock', () => {
     });
 
     it('copy button is interactive', async () => {
-      const user = userEvent.setup();
+      userEvent.setup();
 
       render(<CodeBlock code="test" />);
 

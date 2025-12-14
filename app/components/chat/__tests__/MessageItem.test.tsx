@@ -256,8 +256,7 @@ describe('MessageItem', () => {
       );
 
       // Only one cursor should exist
-      const cursors = container.querySelectorAll('.chat-cursor');
-      expect(cursors).toHaveLength(1);
+      expect(container.querySelectorAll('.chat-cursor')).toHaveLength(1);
     });
 
     it('shows cursor on text before code when streaming', () => {
@@ -271,7 +270,6 @@ describe('MessageItem', () => {
       );
 
       // When there's both text and code, cursor appears on text part
-      const cursors = container.querySelectorAll('.chat-cursor');
       // May or may not have cursor depending on how content is parsed
       // At minimum, the component should render without error
       expect(container.querySelector('.chat-message')).toBeInTheDocument();

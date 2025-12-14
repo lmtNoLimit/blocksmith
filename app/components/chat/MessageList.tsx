@@ -37,7 +37,7 @@ export function MessageList({
           <p className="chat-empty-state__title">Start a conversation</p>
           <p className="chat-empty-state__examples">
             Ask me to modify your section. Try:<br />
-            "Make the heading larger" or "Add a call-to-action button"
+            &quot;Make the heading larger&quot; or &quot;Add a call-to-action button&quot;
           </p>
         </div>
       ) : (

@@ -1,0 +1,35 @@
+npm warn Unknown project config "shamefully-hoist". This will stop working in the next major version of npm.
+
+> test
+> jest --passWithNoTests
+
+PASS app/components/chat/__tests__/ChatInput.test.tsx
+PASS app/components/chat/__tests__/useChat.test.ts
+PASS app/components/chat/__tests__/CodeBlock.test.tsx
+PASS app/components/preview/utils/__tests__/liquidTags.test.ts
+PASS app/components/chat/__tests__/MessageItem.test.tsx
+PASS app/components/preview/utils/__tests__/liquidFilters.test.ts
+PASS app/components/chat/__tests__/useAutoScroll.test.ts
+PASS app/components/preview/utils/__tests__/colorFilters.test.ts
+PASS app/components/preview/utils/__tests__/metafieldFilters.test.ts
+PASS app/components/preview/utils/__tests__/utilityFilters.test.ts
+PASS app/components/preview/drops/__tests__/SectionSettingsDrop.test.ts
+PASS app/services/__tests__/chat.server.test.ts
+PASS app/components/preview/schema/__tests__/parseSchema.test.ts
+PASS app/components/preview/utils/__tests__/fontFilters.test.ts
+PASS app/utils/__tests__/code-extractor.test.ts
+PASS app/utils/__tests__/input-sanitizer.test.ts
+PASS app/components/preview/utils/__tests__/mediaFilters.test.ts
+PASS app/components/preview/drops/__tests__/FontDrop.test.ts
+PASS app/utils/__tests__/context-builder.test.ts
+
+Test Suites: 19 passed, 19 total
+Tests:       457 passed, 457 total
+Snapshots:   0 total
+Time:        2.462 s
+Ran all test suites.
+npm notice
+npm notice New minor version of npm available! 11.3.0 -> 11.7.0
+npm notice Changelog: https://github.com/npm/cli/releases/tag/v11.7.0
+npm notice To update run: npm install -g npm@11.7.0
+npm notice
