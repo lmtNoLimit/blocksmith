@@ -1,0 +1,44 @@
+<svg width="120" height="120" viewBox="0 0 120 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Settings Panel Background -->
+  <rect x="15" y="20" width="90" height="80" rx="6" fill="#F3E8FF" stroke="#C4B5FD" stroke-width="2"/>
+
+  <!-- Settings Header Bar -->
+  <rect x="15" y="20" width="90" height="14" rx="6" fill="#C4B5FD"/>
+  <rect x="15" y="28" width="90" height="6" fill="#C4B5FD"/>
+
+  <!-- Window Buttons -->
+  <circle cx="25" cy="27" r="3" fill="#FF6B6B"/>
+  <circle cx="35" cy="27" r="3" fill="#FFD93D"/>
+  <circle cx="45" cy="27" r="3" fill="#6BCB77"/>
+
+  <!-- Settings Gear Icon (large, centered) -->
+  <circle cx="60" cy="62" r="18" fill="#8B5CF6"/>
+  <circle cx="60" cy="62" r="10" fill="#F3E8FF"/>
+  <circle cx="60" cy="62" r="5" fill="#8B5CF6"/>
+
+  <!-- Gear Teeth -->
+  <rect x="57" y="40" width="6" height="8" rx="2" fill="#8B5CF6"/>
+  <rect x="57" y="76" width="6" height="8" rx="2" fill="#8B5CF6"/>
+  <rect x="38" y="59" width="8" height="6" rx="2" fill="#8B5CF6"/>
+  <rect x="74" y="59" width="8" height="6" rx="2" fill="#8B5CF6"/>
+
+  <!-- Diagonal Gear Teeth -->
+  <rect x="43" y="47" width="6" height="8" rx="2" fill="#8B5CF6" transform="rotate(-45 46 51)"/>
+  <rect x="71" y="69" width="6" height="8" rx="2" fill="#8B5CF6" transform="rotate(-45 74 73)"/>
+  <rect x="43" y="69" width="6" height="8" rx="2" fill="#8B5CF6" transform="rotate(45 46 73)"/>
+  <rect x="71" y="47" width="6" height="8" rx="2" fill="#8B5CF6" transform="rotate(45 74 51)"/>
+
+  <!-- Toggle Switches (right side) -->
+  <rect x="80" y="45" width="18" height="8" rx="4" fill="#22C55E"/>
+  <circle cx="93" cy="49" r="5" fill="white"/>
+
+  <rect x="80" y="58" width="18" height="8" rx="4" fill="#E0E7FF"/>
+  <circle cx="85" cy="62" r="5" fill="white"/>
+
+  <rect x="80" y="71" width="18" height="8" rx="4" fill="#22C55E"/>
+  <circle cx="93" cy="75" r="5" fill="white"/>
+
+  <!-- Checkmark Badge -->
+  <circle cx="95" cy="25" r="12" fill="#22C55E"/>
+  <path d="M89 25l4 4 8-8" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

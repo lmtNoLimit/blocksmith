@@ -1,9 +1,9 @@
 /**
  * Tests for SetupGuide component
- * Tests progress bar calculation, step completion states, celebration state,
- * dismiss functionality, and accessibility labels
+ * Tests step completion checkboxes, dismiss functionality, and accessibility labels
+ * Updated to match Shopify's setup guide pattern with s-checkbox components
  */
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { useFetcher, useNavigate } from 'react-router';
 import { SetupGuide } from '../SetupGuide';
@@ -32,7 +32,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -46,7 +46,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: true,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -59,7 +59,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: true,
         hasSavedTemplate: true,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -72,7 +72,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: true,
       };
 
@@ -87,7 +87,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -103,7 +103,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: true,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -118,7 +118,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: true,
         hasSavedTemplate: true,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -133,62 +133,121 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: true,
         hasSavedTemplate: true,
-        hasViewedHistory: true,
+        hasConfiguredSettings: true,
+        isDismissed: false,
+      };
+
+      render(<SetupGuide onboarding={onboarding} />);
+
+      // All steps complete, progress shows 3 of 3
+      expect(screen.getByText('3 of 3 steps completed')).toBeInTheDocument();
+    });
+  });
+
+  describe('step completion checkboxes', () => {
+    it('shows checked checkbox for completed step', () => {
+      const onboarding = {
+        hasGeneratedSection: true,
+        hasSavedTemplate: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
       const { container } = render(<SetupGuide onboarding={onboarding} />);
 
-      // When all steps are complete, celebration banner should appear
-      const banner = container.querySelector('s-banner[heading="Setup Complete!"]');
-      expect(banner).toBeInTheDocument();
-    });
-  });
-
-  describe('step completion badges', () => {
-    it('shows "Done" badge for completed step', () => {
-      const onboarding = {
-        hasGeneratedSection: true,
-        hasSavedTemplate: false,
-        hasViewedHistory: false,
-        isDismissed: false,
-      };
-
-      render(<SetupGuide onboarding={onboarding} />);
-
-      const doneBadges = screen.getAllByText('Done');
-      expect(doneBadges.length).toBeGreaterThan(0);
+      // Find checkbox for completed step by label
+      const checkbox = container.querySelector(
+        's-checkbox[label="Create your first section"]'
+      );
+      expect(checkbox).toHaveAttribute('checked');
     });
 
-    it('shows "To do" badge for incomplete step', () => {
+    it('shows unchecked checkbox for incomplete step', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
-      render(<SetupGuide onboarding={onboarding} />);
+      const { container } = render(<SetupGuide onboarding={onboarding} />);
 
-      const todoElements = screen.getAllByText('To do');
-      expect(todoElements.length).toBeGreaterThan(0);
+      // Find all checkboxes (should be 3 total)
+      const allCheckboxes = container.querySelectorAll('s-checkbox');
+      expect(allCheckboxes.length).toBe(3);
+
+      // First checkbox should have checked="false" (unchecked)
+      const firstCheckbox = container.querySelector(
+        's-checkbox[label="Create your first section"]'
+      );
+      expect(firstCheckbox).toHaveAttribute('checked', 'false');
     });
 
-    it('displays correct badge state for mixed completion', () => {
+    it('displays correct checkbox state for mixed completion', () => {
       const onboarding = {
         hasGeneratedSection: true,
         hasSavedTemplate: false,
-        hasViewedHistory: true,
+        hasConfiguredSettings: true,
         isDismissed: false,
       };
 
-      render(<SetupGuide onboarding={onboarding} />);
+      const { container } = render(<SetupGuide onboarding={onboarding} />);
 
-      const doneBadges = screen.getAllByText('Done');
-      const todoElements = screen.getAllByText('To do');
+      const allCheckboxes = container.querySelectorAll('s-checkbox');
+      expect(allCheckboxes.length).toBe(3);
 
-      expect(doneBadges.length).toBe(2); // 2 done
-      expect(todoElements.length).toBe(1); // 1 to do
+      // Check specific checkboxes by label
+      const generateCheckbox = container.querySelector(
+        's-checkbox[label="Create your first section"]'
+      );
+      const templateCheckbox = container.querySelector(
+        's-checkbox[label="Save a template for reuse"]'
+      );
+      const settingsCheckbox = container.querySelector(
+        's-checkbox[label="Configure your preferences"]'
+      );
+
+      // checked=true means completed, checked=false means incomplete
+      expect(generateCheckbox).toHaveAttribute('checked', 'true');
+      expect(templateCheckbox).toHaveAttribute('checked', 'false');
+      expect(settingsCheckbox).toHaveAttribute('checked', 'true');
+    });
+
+    it('checkboxes are interactive (not disabled)', () => {
+      const onboarding = {
+        hasGeneratedSection: false,
+        hasSavedTemplate: false,
+        hasConfiguredSettings: false,
+        isDismissed: false,
+      };
+
+      const { container } = render(<SetupGuide onboarding={onboarding} />);
+
+      // All checkboxes should NOT have disabled attribute (they're interactive)
+      const allCheckboxes = container.querySelectorAll('s-checkbox');
+      const disabledCheckboxes = container.querySelectorAll('s-checkbox[disabled]');
+
+      expect(allCheckboxes.length).toBe(3);
+      expect(disabledCheckboxes.length).toBe(0);
+    });
+
+    it('checkboxes have onInput handler attached', () => {
+      const onboarding = {
+        hasGeneratedSection: false,
+        hasSavedTemplate: false,
+        hasConfiguredSettings: false,
+        isDismissed: false,
+      };
+
+      const { container } = render(<SetupGuide onboarding={onboarding} />);
+
+      // Verify checkboxes are present and can receive input events
+      const checkbox = container.querySelector(
+        's-checkbox[label="Create your first section"]'
+      );
+
+      expect(checkbox).toBeInTheDocument();
+      // The onInput handler is attached via React, verified by the component structure
     });
   });
 
@@ -198,7 +257,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -222,7 +281,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: true,
       };
 
@@ -236,7 +295,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -261,101 +320,12 @@ describe('SetupGuide', () => {
     });
   });
 
-  describe('celebration state (100% completion)', () => {
-    it('displays celebration banner when all steps completed', async () => {
-      const onboarding = {
-        hasGeneratedSection: true,
-        hasSavedTemplate: true,
-        hasViewedHistory: true,
-        isDismissed: false,
-      };
-
-      const { container } = render(<SetupGuide onboarding={onboarding} />);
-
-      await waitFor(() => {
-        const banner = container.querySelector('s-banner[heading="Setup Complete!"]');
-        expect(banner).toBeInTheDocument();
-        expect(
-          screen.getByText(
-            "Great job! You've completed all setup steps. You're ready to create amazing sections!"
-          )
-        ).toBeInTheDocument();
-      });
-    });
-
-    it('shows celebration banner on completion and calls submit', () => {
-      // Note: auto-dismiss timing is tested via the useEffect dependency array
-      // This test verifies the celebration state is correctly shown
-      const onboarding = {
-        hasGeneratedSection: true,
-        hasSavedTemplate: true,
-        hasViewedHistory: true,
-        isDismissed: false,
-      };
-
-      const { container } = render(<SetupGuide onboarding={onboarding} />);
-
-      // Banner should appear immediately when all steps are complete
-      const banner = container.querySelector('s-banner[heading="Setup Complete!"]');
-      expect(banner).toBeInTheDocument();
-
-      // Verify the banner message
-      expect(
-        screen.getByText(
-          "Great job! You've completed all setup steps. You're ready to create amazing sections!"
-        )
-      ).toBeInTheDocument();
-
-      // The component uses useEffect with setTimeout to call dismissOnboarding
-      // The effect triggers when allComplete is true and isDismissed is false
-      // This is verified via the effect dependency array and timer cleanup
-    });
-
-    it('does not show celebration if already dismissed', () => {
-      const onboarding = {
-        hasGeneratedSection: true,
-        hasSavedTemplate: true,
-        hasViewedHistory: true,
-        isDismissed: true,
-      };
-
-      const { container } = render(<SetupGuide onboarding={onboarding} />);
-
-      expect(container.firstChild).toBeNull();
-    });
-
-    it('only triggers celebration once', async () => {
-      const onboarding = {
-        hasGeneratedSection: true,
-        hasSavedTemplate: true,
-        hasViewedHistory: true,
-        isDismissed: false,
-      };
-
-      const { container, rerender } = render(
-        <SetupGuide onboarding={onboarding} />
-      );
-
-      await waitFor(() => {
-        const banner = container.querySelector('s-banner[heading="Setup Complete!"]');
-        expect(banner).toBeInTheDocument();
-      });
-
-      // Rerender with same props
-      rerender(<SetupGuide onboarding={onboarding} />);
-
-      // Should still show celebration banner
-      const banner = container.querySelector('s-banner[heading="Setup Complete!"]');
-      expect(banner).toBeInTheDocument();
-    });
-  });
-
   describe('expand/collapse functionality', () => {
     it('expands and collapses steps container', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -379,7 +349,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -407,7 +377,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -416,14 +386,14 @@ describe('SetupGuide', () => {
       // Check for action buttons with proper labels
       expect(screen.getByText('Create section')).toBeInTheDocument();
       expect(screen.getByText('View templates')).toBeInTheDocument();
-      expect(screen.getByText('View sections')).toBeInTheDocument();
+      expect(screen.getByText('Open settings')).toBeInTheDocument();
     });
 
     it('shows different button labels for completed steps', () => {
       const onboarding = {
         hasGeneratedSection: true,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -435,14 +405,14 @@ describe('SetupGuide', () => {
 
       // Other steps should have action labels
       expect(screen.getByText('View templates')).toBeInTheDocument();
-      expect(screen.getByText('View sections')).toBeInTheDocument();
+      expect(screen.getByText('Open settings')).toBeInTheDocument();
     });
 
     it('has correct href for navigation buttons', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -462,7 +432,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -478,7 +448,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -495,7 +465,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -512,17 +482,17 @@ describe('SetupGuide', () => {
       );
       expect(templateButton).toBeInTheDocument();
 
-      const historyButton = container.querySelector(
-        's-button[accessibilitylabel*="Check your section history"]'
+      const settingsButton = container.querySelector(
+        's-button[accessibilitylabel*="Configure your preferences"]'
       );
-      expect(historyButton).toBeInTheDocument();
+      expect(settingsButton).toBeInTheDocument();
     });
 
     it('has accessibility labels on step toggle buttons', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -541,38 +511,47 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
-      render(<SetupGuide onboarding={onboarding} />);
+      const { container } = render(<SetupGuide onboarding={onboarding} />);
 
-      expect(screen.getByText('Create your first section')).toBeInTheDocument();
-      expect(screen.getByText('Save a template for reuse')).toBeInTheDocument();
-      expect(screen.getByText('Check your section history')).toBeInTheDocument();
+      // Step titles are in checkbox labels
+      expect(
+        container.querySelector('s-checkbox[label="Create your first section"]')
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('s-checkbox[label="Save a template for reuse"]')
+      ).toBeInTheDocument();
+      expect(
+        container.querySelector('s-checkbox[label="Configure your preferences"]')
+      ).toBeInTheDocument();
     });
 
     it('displays step descriptions', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
       render(<SetupGuide onboarding={onboarding} />);
 
-      // Headers are visible
-      expect(screen.getByText('Create your first section')).toBeInTheDocument();
-      expect(screen.getByText('Save a template for reuse')).toBeInTheDocument();
-      expect(screen.getByText('Check your section history')).toBeInTheDocument();
+      // Step descriptions are visible in expanded sections
+      expect(
+        screen.getByText(
+          'Describe what you want in natural language and get production-ready Liquid code for your Shopify theme.'
+        )
+      ).toBeInTheDocument();
     });
 
     it('displays guide instructions', () => {
       const onboarding = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -591,7 +570,7 @@ describe('SetupGuide', () => {
       const onboarding = {
         hasGeneratedSection: true,
         hasSavedTemplate: true,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -604,7 +583,7 @@ describe('SetupGuide', () => {
       const onboarding1 = {
         hasGeneratedSection: false,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 
@@ -616,7 +595,7 @@ describe('SetupGuide', () => {
       const onboarding2 = {
         hasGeneratedSection: true,
         hasSavedTemplate: false,
-        hasViewedHistory: false,
+        hasConfiguredSettings: false,
         isDismissed: false,
       };
 

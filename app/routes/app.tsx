@@ -24,6 +24,7 @@ export default function App() {
         <a href="/app/sections">Sections</a>
         <a href="/app/templates">Templates</a>
         <a href="/app/billing">Billing</a>
+        <a href="/app/settings">Settings</a>
       </s-app-nav>
       <Outlet />
     </AppProvider>

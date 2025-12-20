@@ -4,7 +4,7 @@ import { useFetcher, useNavigate } from "react-router";
 interface OnboardingState {
   hasGeneratedSection: boolean;
   hasSavedTemplate: boolean;
-  hasViewedHistory: boolean;
+  hasConfiguredSettings: boolean;
   isDismissed: boolean;
 }
 
@@ -36,15 +36,15 @@ const SETUP_STEPS = [
     imageAlt: "Template saving illustration",
   },
   {
-    id: "history",
-    title: "Check your section history",
+    id: "settings",
+    title: "Configure your preferences",
     description:
-      "View all the sections you've created, mark favorites, and quickly access previous work.",
-    href: "/app/sections",
-    completionKey: "hasViewedHistory" as const,
-    actionLabel: "View sections",
-    image: "/images/onboarding/view-history.svg",
-    imageAlt: "History review illustration",
+      "Customize default generation settings like tone and style to match your brand voice.",
+    href: "/app/settings",
+    completionKey: "hasConfiguredSettings" as const,
+    actionLabel: "Open settings",
+    image: "/images/onboarding/configure-settings.svg",
+    imageAlt: "Settings configuration illustration",
   },
 ];
 
@@ -55,42 +55,25 @@ export function SetupGuide({ onboarding }: SetupGuideProps) {
   const [expandedSteps, setExpandedSteps] = useState<Record<string, boolean>>({
     generate: true,
   });
-  const [showCelebration, setShowCelebration] = useState(false);
 
   // Calculate completion
   const completedCount = SETUP_STEPS.filter(
     (s) => onboarding[s.completionKey]
   ).length;
-  const allComplete = completedCount === SETUP_STEPS.length;
-  const progressPercentage = (completedCount / SETUP_STEPS.length) * 100;
 
-  // Celebration effect: show banner briefly before auto-dismiss
+  // Auto-expand first incomplete step
   useEffect(() => {
-    if (allComplete && !onboarding.isDismissed && !showCelebration) {
-      setShowCelebration(true);
-      const timer = setTimeout(() => {
-        fetcher.submit({ intent: "dismissOnboarding" }, { method: "post" });
-      }, 3000);
-      return () => clearTimeout(timer);
+    const firstIncomplete = SETUP_STEPS.find((s) => !onboarding[s.completionKey]);
+    if (firstIncomplete && !expandedSteps[firstIncomplete.id]) {
+      setExpandedSteps((prev) => ({
+        ...prev,
+        [firstIncomplete.id]: true,
+      }));
     }
-  }, [allComplete, onboarding.isDismissed, showCelebration, fetcher]);
+  }, [onboarding, expandedSteps]);
 
   // Don't show if dismissed
   if (onboarding.isDismissed) return null;
-
-  // Show celebration banner when all complete
-  if (showCelebration) {
-    return (
-      <s-section>
-        <s-banner tone="success" heading="Setup Complete!">
-          <s-paragraph>
-            Great job! You&apos;ve completed all setup steps. You&apos;re ready to create
-            amazing sections!
-          </s-paragraph>
-        </s-banner>
-      </s-section>
-    );
-  }
 
   const handleDismiss = () => {
     fetcher.submit({ intent: "dismissOnboarding" }, { method: "post" });
@@ -101,6 +84,17 @@ export function SetupGuide({ onboarding }: SetupGuideProps) {
       ...prev,
       [stepId]: !prev[stepId],
     }));
+  };
+
+  const handleStepToggle = (stepKey: string, checked: boolean) => {
+    fetcher.submit(
+      {
+        intent: "toggleOnboardingStep",
+        stepKey,
+        completed: String(checked),
+      },
+      { method: "post" }
+    );
   };
 
   return (
@@ -132,19 +126,9 @@ export function SetupGuide({ onboarding }: SetupGuideProps) {
           <s-paragraph>
             Complete these steps to get the most out of AI Section Generator.
           </s-paragraph>
-          <s-stack direction="inline" gap="small-200" alignItems="center">
-            <s-paragraph color="subdued">
-              {completedCount} of {SETUP_STEPS.length} steps completed
-            </s-paragraph>
-          </s-stack>
-          {/* Progress Bar */}
-          <s-box background="subdued" borderRadius="base" overflow="hidden">
-            <s-box
-              background="strong"
-              minBlockSize="4px"
-              inlineSize={`${progressPercentage}%`}
-            />
-          </s-box>
+          <s-paragraph color="subdued">
+            {completedCount} of {SETUP_STEPS.length} steps completed
+          </s-paragraph>
         </s-grid>
 
         {/* Steps Container */}
@@ -161,21 +145,20 @@ export function SetupGuide({ onboarding }: SetupGuideProps) {
             return (
               <Fragment key={step.id}>
                 <s-box>
-                  {/* Step Header */}
+                  {/* Step Header with Checkbox */}
                   <s-grid
                     gridTemplateColumns="1fr auto"
                     gap="base"
                     padding="small"
-                    alignItems="center"
                   >
-                    <s-stack direction="inline" gap="small-200" alignItems="center">
-                      {completed ? (
-                        <s-badge tone="success" icon="check">Done</s-badge>
-                      ) : (
-                        <s-badge tone="caution">To do</s-badge>
-                      )}
-                      <s-text type="strong">{step.title}</s-text>
-                    </s-stack>
+                    <s-checkbox
+                      label={step.title}
+                      checked={completed}
+                      onInput={(e: Event) => {
+                        const target = e.target as HTMLInputElement;
+                        handleStepToggle(step.completionKey, target.checked);
+                      }}
+                    />
                     <s-button
                       accessibilityLabel={`${stepExpanded ? "Collapse" : "Expand"} ${step.title} details`}
                       onClick={() => toggleStep(step.id)}
@@ -200,7 +183,7 @@ export function SetupGuide({ onboarding }: SetupGuideProps) {
                           <s-paragraph>{step.description}</s-paragraph>
                           <s-stack direction="inline" gap="small-200">
                             <s-button
-                              variant={completed ? "secondary" : "primary"}
+                              variant={completed ? "tertiary" : "primary"}
                               accessibilityLabel={`${completed ? "Revisit" : "Start"}: ${step.title}`}
                               onClick={() => navigate(step.href)}
                             >
@@ -208,7 +191,7 @@ export function SetupGuide({ onboarding }: SetupGuideProps) {
                             </s-button>
                           </s-stack>
                         </s-grid>
-                        <s-box minInlineSize="100px" maxInlineSize="100px">
+                        <s-box maxBlockSize="80px" maxInlineSize="80px">
                           <s-image
                             src={step.image}
                             alt={step.imageAlt}

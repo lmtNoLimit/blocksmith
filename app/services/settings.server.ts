@@ -2,6 +2,12 @@ import prisma from "../db.server";
 import type { ShopSettings } from "@prisma/client";
 import type { CTAState } from "../types/dashboard.types";
 
+interface PreferencesInput {
+  defaultTone: string;
+  defaultStyle: string;
+  autoSaveEnabled: boolean;
+}
+
 /**
  * Settings service for managing shop-level settings (onboarding, preferences)
  */
@@ -36,6 +42,33 @@ export const settingsService = {
   },
 
   /**
+   * Mark settings as configured (for onboarding step 3)
+   */
+  async markSettingsConfigured(shop: string): Promise<ShopSettings> {
+    return prisma.shopSettings.upsert({
+      where: { shop },
+      update: { hasConfiguredSettings: true },
+      create: { shop, hasConfiguredSettings: true },
+    });
+  },
+
+  /**
+   * Update onboarding step completion state
+   * Valid keys: hasGeneratedSection, hasSavedTemplate, hasConfiguredSettings
+   */
+  async updateOnboardingStep(
+    shop: string,
+    stepKey: "hasGeneratedSection" | "hasSavedTemplate" | "hasConfiguredSettings",
+    completed: boolean
+  ): Promise<ShopSettings> {
+    return prisma.shopSettings.upsert({
+      where: { shop },
+      update: { [stepKey]: completed },
+      create: { shop, [stepKey]: completed },
+    });
+  },
+
+  /**
    * Dismiss CTA banner
    */
   async dismissCTA(shop: string): Promise<void> {
@@ -59,5 +92,19 @@ export const settingsService = {
       isDismissed: settings?.ctaDismissedAt != null,
       dismissedAt: settings?.ctaDismissedAt ?? undefined,
     };
+  },
+
+  /**
+   * Update shop preferences
+   */
+  async updatePreferences(
+    shop: string,
+    preferences: PreferencesInput
+  ): Promise<ShopSettings> {
+    return prisma.shopSettings.upsert({
+      where: { shop },
+      update: preferences,
+      create: { shop, ...preferences },
+    });
   },
 };

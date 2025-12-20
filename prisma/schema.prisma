@@ -78,13 +78,24 @@ model SectionTemplate {
 
 // Shop-level settings (onboarding, preferences)
 model ShopSettings {
-  id                  String    @id @default(auto()) @map("_id") @db.ObjectId
-  shop                String    @unique
-  hasViewedHistory    Boolean   @default(false)
-  onboardingDismissed Boolean   @default(false)
-  ctaDismissedAt      DateTime? // Track when CTA was dismissed
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  id                    String    @id @default(auto()) @map("_id") @db.ObjectId
+  shop                  String    @unique
+
+  // Onboarding tracking (manual toggle states)
+  hasGeneratedSection   Boolean   @default(false) // Step 1: manually marked complete
+  hasSavedTemplate      Boolean   @default(false) // Step 2: manually marked complete
+  hasConfiguredSettings Boolean   @default(false) // Step 3: Configure Settings tracking
+  hasViewedHistory      Boolean   @default(false) // Deprecated: kept for backward compatibility
+  onboardingDismissed   Boolean   @default(false)
+  ctaDismissedAt        DateTime? // Track when CTA was dismissed
+
+  // User preferences
+  defaultTone           String    @default("professional")
+  defaultStyle          String    @default("minimal")
+  autoSaveEnabled       Boolean   @default(false)
+
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 }
 
 // News/announcements for dashboard display

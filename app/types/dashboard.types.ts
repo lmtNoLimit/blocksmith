@@ -15,7 +15,8 @@ export interface DashboardStats {
 export interface OnboardingState {
   hasGeneratedSection: boolean;
   hasSavedTemplate: boolean;
-  hasViewedHistory: boolean;
+  hasViewedHistory: boolean; // Deprecated: kept for backward compatibility
+  hasConfiguredSettings: boolean;
   isDismissed: boolean;
 }
 

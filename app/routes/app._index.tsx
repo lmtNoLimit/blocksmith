@@ -9,7 +9,7 @@ import { boundary } from "@shopify/shopify-app-react-router/server";
 import prisma from "../db.server";
 import { settingsService } from "../services/settings.server";
 import { newsService } from "../services/news.server";
-import { SetupGuide, FeatureNav, Analytics, CallToAction, News } from "../components/home";
+import { SetupGuide, Analytics, News } from "../components/home";
 
 // Helper to get start of current week (Monday)
 function getStartOfWeek(): Date {
@@ -75,6 +75,10 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
     weeklyChange = 100;
   }
 
+  // Onboarding: combine manual toggle state with derived state (either makes it complete)
+  const hasGeneratedSection = (shopSettings?.hasGeneratedSection ?? false) || historyCount > 0;
+  const hasSavedTemplate = (shopSettings?.hasSavedTemplate ?? false) || templateCount > 0;
+
   return {
     stats: {
       sectionsGenerated: historyCount,
@@ -84,15 +88,20 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       weeklyChange: Math.abs(weeklyChange),
     },
     onboarding: {
-      hasGeneratedSection: historyCount > 0,
-      hasSavedTemplate: templateCount > 0,
-      hasViewedHistory: shopSettings?.hasViewedHistory ?? false,
+      hasGeneratedSection,
+      hasSavedTemplate,
+      hasViewedHistory: shopSettings?.hasViewedHistory ?? false, // Deprecated: kept for backward compatibility
+      hasConfiguredSettings: shopSettings?.hasConfiguredSettings ?? false,
       isDismissed: shopSettings?.onboardingDismissed ?? false,
     },
     cta: ctaState,
     news: newsItems,
   };
 };
+
+// Valid step keys for onboarding toggle
+const VALID_STEP_KEYS = ["hasGeneratedSection", "hasSavedTemplate", "hasConfiguredSettings"] as const;
+type StepKey = typeof VALID_STEP_KEYS[number];
 
 export const action = async ({ request }: ActionFunctionArgs) => {
   const { session } = await authenticate.admin(request);
@@ -107,15 +116,28 @@ export const action = async ({ request }: ActionFunctionArgs) => {
     await settingsService.dismissCTA(session.shop);
   }
 
+  if (intent === "toggleOnboardingStep") {
+    const stepKey = formData.get("stepKey") as string;
+    const completed = formData.get("completed") === "true";
+
+    if (VALID_STEP_KEYS.includes(stepKey as StepKey)) {
+      await settingsService.updateOnboardingStep(
+        session.shop,
+        stepKey as StepKey,
+        completed
+      );
+    }
+  }
+
   return { success: true };
 };
 
 export default function Homepage() {
-  const { stats, onboarding, cta, news } = useLoaderData<typeof loader>();
+  const { stats, onboarding, news } = useLoaderData<typeof loader>();
   const navigate = useNavigate();
 
   return (
-    <s-page heading="AI Section Generator" inlineSize="base">
+    <s-page heading="Dashboard" inlineSize="base">
       <s-button
         slot="primary-action"
         variant="primary"
@@ -126,9 +148,7 @@ export default function Homepage() {
 
       <s-stack gap="large" direction="block">
         <SetupGuide onboarding={onboarding} />
-        <CallToAction cta={cta} />
         <Analytics stats={stats} />
-        <FeatureNav />
         <News items={news} />
       </s-stack>
     </s-page>
