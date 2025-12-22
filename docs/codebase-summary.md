@@ -28,6 +28,7 @@ ai-section-generator/
 │   │   ├── app.generate.tsx      # AI section generator (CORE FEATURE)
 │   │   ├── app.additional.tsx    # Additional demo page
 │   │   ├── app.tsx               # App layout with navigation
+│   │   ├── app.sections._index.tsx # Sections list with filters & pagination (Phase 02)
 │   │   ├── app.sections.new.tsx  # Simplified ChatGPT-style creation (Phase 01)
 │   │   ├── app.sections.$id.tsx  # AI chat editor with auto-generation (Phase 01)
 │   │   ├── api.chat.stream.tsx   # SSE chat streaming endpoint (Phase 01)
@@ -46,6 +47,11 @@ ai-section-generator/
 │   │   │   ├── CodePreview.tsx   # Generated code display
 │   │   │   ├── SectionNameInput.tsx # Filename input
 │   │   │   └── GenerateActions.tsx  # Generate/Save buttons
+│   │   ├── sections/             # Sections list components (Phase 02 - NEW)
+│   │   │   ├── HistoryTable.tsx      # Index table with section rows & actions
+│   │   │   ├── SectionsEmptyState.tsx # Empty state with CTA when no sections
+│   │   │   ├── DeleteConfirmModal.tsx # Delete confirmation dialog
+│   │   │   └── index.ts              # Barrel export
 │   │   ├── chat/                 # Chat components (Phase 01 - NEW)
 │   │   │   ├── hooks/
 │   │   │   │   └── useChat.ts    # Chat state & streaming (includes triggerGeneration)
@@ -1179,6 +1185,79 @@ interface ActionData {
 4. **publish**: Publishes to selected theme
 
 **Components Used**: `UnifiedEditorLayout`, `ChatPanelWrapper`, `CodePreviewPanel`, `EditorSettingsPanel`
+
+#### `/app/routes/app.sections._index.tsx` (Sections List with Filters - Phase 02)
+
+**Purpose**: Unified sections management dashboard with search, filtering, sorting, and bulk actions
+
+**Key Features**:
+- **Polaris IndexFilters + IndexTable**: Industry-standard Shopify admin UI patterns
+- **Search**: Debounced 300ms search across section names and prompts
+- **Status Filter**: ChoiceList for "Saved" (saved) and "Draft" (generated) statuses
+- **Sort Options**: Newest first (default) and Oldest first by creation date
+- **Removable Filter Chips**: Applied filters shown as dismissible badges
+- **Pagination**: "1-20 of 50" style results counter with prev/next buttons
+- **Bulk Selection & Delete**: Select multiple sections, delete with confirmation modal
+- **Empty State**: Helpful message when no sections exist, with CTA to create
+- **URL Parameter Sync**: Bookmarkable views (search, status, sort, page in query params)
+
+**Filter Architecture**:
+```typescript
+// Status filter definition
+const filters = [
+  {
+    key: "status",
+    label: "Status",
+    filter: <ChoiceList choices={[Saved, Draft]} />,
+    shortcut: true,
+  },
+];
+
+// Applied filters computed for chip display
+const appliedFilters = [
+  { key: "status", label: "Status: Saved, Draft", onRemove: () => {} },
+];
+```
+
+**URL Parameter Handling**:
+- `search`: Text query (debounced)
+- `status`: Comma-separated status codes (saved,generated)
+- `sort`: "newest" | "oldest"
+- `page`: Pagination offset (1-based)
+
+**Data Flow**:
+1. **Loader**: Fetches sections via `sectionService.getByShop()` with filters
+2. **Search Handler**: 300ms debounce before URL param update (prevents excessive queries)
+3. **Filter State**: Synced to URL with `setSearchParams()`
+4. **Bulk Delete Action**: Form submission with selected IDs, parallel deletion (max 50)
+5. **Toast Notification**: Shows success/error message via Shopify Toast API
+
+**Components Used**:
+- `HistoryTable.tsx`: Renders section rows with name, status badge, theme, created date
+- `SectionsEmptyState.tsx`: Empty state with create section CTA
+- `DeleteConfirmModal.tsx`: Confirmation dialog for single & bulk delete
+
+### Phase 02 Sections List Components (NEW)
+
+#### `HistoryTable.tsx`
+- Integrated into IndexTable rows
+- Status badges (Saved=success tone, Draft=neutral tone)
+- Theme name truncation (20 chars max)
+- Relative date formatting (Today, Yesterday, Mon, Jan 15)
+- Clickable section name routes to edit page
+
+#### `SectionsEmptyState.tsx`
+- Displays when no sections exist or all filtered out
+- Shows filtered/unfiltered message based on active filters
+- "Create your first section" CTA button
+- "Clear filters" button when filters active
+
+#### `DeleteConfirmModal.tsx`
+- Modal for single section delete confirmation
+- Bulk delete confirmation with count ("Delete 3 sections?")
+- Accessible via web component `<s-modal>` with `commandFor` pattern
+- Destructive action style
+- Spinner during deletion
 
 ### Phase 01 Chat Implementation (NEW)
 
