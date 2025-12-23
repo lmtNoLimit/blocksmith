@@ -480,18 +480,24 @@ export default function SectionsPage() {
   };
 
   // Row markup for IndexTable (using s-* web components inside cells)
+  // Using onNavigation with data-primary-link attribute for proper row navigation
   const rowMarkup = history.items.map((item, index) => (
     <IndexTable.Row
       id={item.id}
       key={item.id}
       selected={selectedResources.includes(item.id)}
-      onClick={() => navigate(`/app/sections/${item.id}`)}
       position={index}
+      onNavigation={() => navigate(`/app/sections/${item.id}`)}
     >
       <IndexTable.Cell>
-        <s-clickable href={`/app/sections/${item.id}`}>
+        <a
+          href={`/app/sections/${item.id}`}
+          data-primary-link
+          onClick={(e) => e.preventDefault()}
+          style={{ textDecoration: "none", color: "inherit" }}
+        >
           {item.name || truncateText(item.prompt, 50)}
-        </s-clickable>
+        </a>
       </IndexTable.Cell>
       <IndexTable.Cell>
         <s-badge tone={getStatusBadgeTone(item.status as SectionStatus)}>
