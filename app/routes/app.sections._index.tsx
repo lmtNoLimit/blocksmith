@@ -11,7 +11,6 @@ import {
 import {
   IndexTable,
   IndexFilters,
-  ChoiceList,
   useIndexResourceState,
   useSetIndexFiltersMode,
 } from "@shopify/polaris";
@@ -24,14 +23,28 @@ import { SectionsEmptyState } from "../components/sections/SectionsEmptyState";
 import { DeleteConfirmModal } from "../components/sections/DeleteConfirmModal";
 
 // View type for tab switching
-type ViewType = "all" | "active" | "draft" | "archived";
+type ViewType = "all" | "draft" | "active";
 
 // Map view tabs to status filters
 const viewStatusMap: Record<ViewType, string | undefined> = {
   all: undefined,
-  active: "saved",
   draft: "generated",
-  archived: undefined, // TODO: implement archived flag in future
+  active: "saved",
+};
+
+// Tab definitions for IndexFilters
+const tabs: IndexFiltersProps["tabs"] = [
+  { id: "all", content: "All" },
+  { id: "draft", content: "Draft" },
+  { id: "active", content: "Active" },
+];
+
+// Map tab index to view type
+const tabIndexToView: ViewType[] = ["all", "draft", "active"];
+const viewToTabIndex: Record<ViewType, number> = {
+  all: 0,
+  draft: 1,
+  active: 2,
 };
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -41,21 +54,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const url = new URL(request.url);
   const page = parseInt(url.searchParams.get("page") || "1", 10);
   const view = (url.searchParams.get("view") || "all") as ViewType;
-  const statusParam = url.searchParams.get("status") || "";
   const search = url.searchParams.get("search") || undefined;
   const sort = url.searchParams.get("sort") || "newest";
 
-  // Parse multi-status from comma-separated param
-  const statusArray = statusParam.split(",").filter(Boolean);
-
-  // Determine final status filter: explicit param > view-derived
-  let status: string | undefined;
-  if (statusArray.length === 1) {
-    status = statusArray[0];
-  } else if (statusArray.length === 0) {
-    status = viewStatusMap[view];
-  }
-  // If multiple statuses selected, we filter client-side (getByShop doesn't support multi-status yet)
+  // Status is derived from the selected tab/view
+  const status = viewStatusMap[view];
 
   const history = await sectionService.getByShop(shop, {
     page,
@@ -65,7 +68,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
     sort: sort as "newest" | "oldest",
   });
 
-  return { history, shop, currentView: view, statusFilter: statusArray };
+  return { history, shop, currentView: view };
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -145,8 +148,16 @@ const headings: [IndexTableHeading, ...IndexTableHeading[]] = [
 
 // Sort options for IndexFilters
 const sortOptions: IndexFiltersProps["sortOptions"] = [
-  { label: "Date created", value: "createdAt desc", directionLabel: "Newest first" },
-  { label: "Date created", value: "createdAt asc", directionLabel: "Oldest first" },
+  {
+    label: "Date created",
+    value: "createdAt desc",
+    directionLabel: "Newest first",
+  },
+  {
+    label: "Date created",
+    value: "createdAt asc",
+    directionLabel: "Oldest first",
+  },
 ];
 
 // Map sort option value to loader format
@@ -177,7 +188,7 @@ function debounce<T extends (...args: Parameters<T>) => void>(
 }
 
 export default function SectionsPage() {
-  const { history } = useLoaderData<typeof loader>();
+  const { history, currentView } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const submit = useSubmit();
   const navigate = useNavigate();
@@ -191,12 +202,12 @@ export default function SectionsPage() {
   // IndexFilters mode state
   const { mode, setMode } = useSetIndexFiltersMode();
 
+  // Tab selection state - derived from URL
+  const selectedTab = viewToTabIndex[currentView] ?? 0;
+
   // Filter state - initialized from URL params
   const [queryValue, setQueryValue] = useState(
     searchParams.get("search") || "",
-  );
-  const [statusFilter, setStatusFilter] = useState<string[]>(
-    searchParams.get("status")?.split(",").filter(Boolean) || [],
   );
   const [sortSelected, setSortSelected] = useState<string[]>([
     sortToOptionValue[searchParams.get("sort") || "newest"] || "createdAt desc",
@@ -322,42 +333,28 @@ export default function SectionsPage() {
     setSearchParams(params);
   }, [searchParams, setSearchParams]);
 
-  // Status filter definition
-  const filters = [
-    {
-      key: "status",
-      label: "Status",
-      filter: (
-        <ChoiceList
-          title="Status"
-          titleHidden
-          choices={[
-            { label: "Saved", value: "saved" },
-            { label: "Draft", value: "generated" },
-          ]}
-          selected={statusFilter}
-          onChange={setStatusFilter}
-          allowMultiple
-        />
-      ),
-      shortcut: true,
+  // Tab change handler
+  const handleTabChange = useCallback(
+    (index: number) => {
+      const view = tabIndexToView[index];
+      isUserAction.current = true;
+      const params = new URLSearchParams(searchParams);
+      if (view === "all") {
+        params.delete("view");
+      } else {
+        params.set("view", view);
+      }
+      params.set("page", "1"); // Reset to page 1
+      setSearchParams(params);
     },
-  ];
+    [searchParams, setSearchParams],
+  );
 
-  // Compute applied filters for display as removable chips
+  // No additional filters since tabs handle status
+  const filters: IndexFiltersProps["filters"] = [];
   const appliedFilters: IndexFiltersProps["appliedFilters"] = [];
-  if (statusFilter.length > 0) {
-    const labels = statusFilter.map((s) =>
-      s === "saved" ? "Saved" : "Draft",
-    );
-    appliedFilters.push({
-      key: "status",
-      label: `Status: ${labels.join(", ")}`,
-      onRemove: () => setStatusFilter([]),
-    });
-  }
 
-  // Sync filter/sort state changes to URL
+  // Sync sort state changes to URL
   useEffect(() => {
     // Skip on initial mount (URL params already set)
     if (!isUserAction.current) {
@@ -366,13 +363,6 @@ export default function SectionsPage() {
     }
 
     const params = new URLSearchParams(searchParams);
-
-    // Sync status filter
-    if (statusFilter.length > 0) {
-      params.set("status", statusFilter.join(","));
-    } else {
-      params.delete("status");
-    }
 
     // Sync sort
     const sortValue = sortValueMap[sortSelected[0]] || "newest";
@@ -390,12 +380,11 @@ export default function SectionsPage() {
     requestAnimationFrame(() => {
       isUserAction.current = true;
     });
-  }, [statusFilter, sortSelected]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sortSelected]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Clear all filters and reset to default
   const handleClearAll = useCallback(() => {
     setQueryValue("");
-    setStatusFilter([]);
     setSortSelected(["createdAt desc"]);
     isUserAction.current = true;
     setSearchParams(new URLSearchParams());
@@ -421,15 +410,12 @@ export default function SectionsPage() {
   ];
 
   // Pagination config
-  const paginationProps =
-    history.totalPages > 1
-      ? {
-          hasNext: currentPage < history.totalPages,
-          hasPrevious: currentPage > 1,
-          onNext: handleNextPage,
-          onPrevious: handlePreviousPage,
-        }
-      : undefined;
+  const paginationProps = {
+    hasNext: currentPage < history.totalPages,
+    hasPrevious: currentPage > 1,
+    onNext: handleNextPage,
+    onPrevious: handlePreviousPage,
+  };
 
   // Row markup for IndexTable (using s-* web components inside cells)
   const rowMarkup = history.items.map((item, index) => (
@@ -466,7 +452,7 @@ export default function SectionsPage() {
 
   // Check if any filters are active
   const hasActiveFilters =
-    queryValue !== "" || statusFilter.length > 0 || sortSelected[0] !== "createdAt desc";
+    queryValue !== "" || sortSelected[0] !== "createdAt desc";
 
   // Empty state component for IndexTable
   const emptyStateMarkup = (
@@ -504,9 +490,9 @@ export default function SectionsPage() {
             onClearAll={handleClearAll}
             mode={mode}
             setMode={setMode}
-            tabs={[]}
-            selected={0}
-            onSelect={() => {}}
+            tabs={tabs}
+            selected={selectedTab}
+            onSelect={handleTabChange}
             canCreateNewView={false}
           />
           <IndexTable
@@ -530,8 +516,8 @@ export default function SectionsPage() {
         {history.total > 0 && (
           <s-stack alignItems="center">
             <s-text>
-              {(history.page - 1) * 20 + 1}-
-              {Math.min(history.page * 20, history.total)} of {history.total}
+              Learn more about{" "}
+              <s-link href="https://shopify.dev/">sections</s-link>
             </s-text>
           </s-stack>
         )}
