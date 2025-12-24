@@ -180,51 +180,51 @@ export function PreviewFrame({ deviceSize, onLoad }: PreviewFrameProps) {
   const scaledHeight = iframeHeight * scale;
 
   return (
-    <div
-      ref={containerRef}
-      style={{
-        backgroundColor: '#f6f6f7',
-        borderRadius: '8px',
-        padding: '16px',
-        // Container height matches the scaled content
-        height: `${scaledHeight + 32}px`,
-        position: 'relative',
-        overflow: 'hidden'
-      }}
+    <s-box
+      background="subdued"
+      borderRadius="base"
+      padding="base"
+      blockSize={`${scaledHeight + 32}px`}
+      overflow="hidden"
     >
-      {/*
-        Wrapper div that renders at full target width.
-        Uses absolute positioning so it's not constrained by parent width.
-        Transform origin at top-left for predictable scaling behavior.
-      */}
       <div
+        ref={containerRef}
         style={{
-          position: 'absolute',
-          top: '16px',
-          left: '50%',
-          width: `${targetWidth}px`,
-          marginLeft: `-${targetWidth / 2}px`, // Center the element
-          transform: `scale(${scale})`,
-          transformOrigin: 'top center'
+          position: 'relative',
+          height: '100%',
+          width: '100%'
         }}
       >
-        <iframe
-          ref={iframeRef}
-          srcDoc={IFRAME_HTML}
-          sandbox="allow-scripts allow-same-origin"
+        {/* Wrapper div for scaling - uses absolute positioning */}
+        <div
           style={{
-            width: '100%',
-            height: `${iframeHeight}px`,
-            border: '1px solid #e1e3e5',
-            borderRadius: '8px',
-            backgroundColor: '#fff',
-            display: 'block'
+            position: 'absolute',
+            top: 0,
+            left: '50%',
+            width: `${targetWidth}px`,
+            marginLeft: `-${targetWidth / 2}px`,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top center'
           }}
-          title="Section Preview"
-          aria-label="Live preview of generated section"
-        />
+        >
+          <iframe
+            ref={iframeRef}
+            srcDoc={IFRAME_HTML}
+            sandbox="allow-scripts allow-same-origin"
+            style={{
+              width: '100%',
+              height: `${iframeHeight}px`,
+              border: '1px solid var(--p-color-border)',
+              borderRadius: 'var(--p-border-radius-200)',
+              backgroundColor: 'var(--p-color-bg-surface)',
+              display: 'block'
+            }}
+            title="Section Preview"
+            aria-label="Live preview of generated section"
+          />
+        </div>
       </div>
-    </div>
+    </s-box>
   );
 }
 

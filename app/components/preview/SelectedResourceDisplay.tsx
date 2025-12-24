@@ -21,19 +21,13 @@ export function SelectedResourceDisplay({
   disabled
 }: SelectedResourceDisplayProps) {
   return (
-    <s-stack gap="small" direction="inline">
+    <s-stack gap="small" direction="inline" alignItems="center">
       {/* Thumbnail */}
       {image && (
-        <img
+        <s-thumbnail
           src={image}
           alt={title}
-          style={{
-            width: '32px',
-            height: '32px',
-            objectFit: 'cover',
-            borderRadius: '4px',
-            border: '1px solid var(--p-color-border-secondary)'
-          }}
+          size="small"
         />
       )}
 
@@ -48,9 +42,8 @@ export function SelectedResourceDisplay({
         onClick={onClear}
         disabled={disabled || undefined}
         accessibilityLabel={`Clear ${title} selection`}
-      >
-        ×
-      </s-button>
+        icon="x"
+      />
     </s-stack>
   );
 }

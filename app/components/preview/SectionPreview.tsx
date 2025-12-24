@@ -116,23 +116,23 @@ export function SectionPreview({
   }, [setIframe, triggerRender]);
 
   return (
-    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+    <s-stack blockSize="100%" gap="none">
       {/* Error banner */}
       {error && (
-        <div style={{ flexShrink: 0, padding: '8px' }}>
+        <s-box padding="small">
           <s-banner tone="warning" dismissible onDismiss={() => setError(null)}>
             Preview error: {error}. The code may use unsupported Liquid features.
           </s-banner>
-        </div>
+        </s-box>
       )}
 
       {/* Preview frame */}
-      <div style={{ flex: 1, minHeight: 0 }}>
+      <s-box blockSize="100%">
         <PreviewFrame
           deviceSize={deviceSize}
           onLoad={handleIframeLoad}
         />
-      </div>
-    </div>
+      </s-box>
+    </s-stack>
   );
 }

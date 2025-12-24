@@ -25,33 +25,6 @@ interface CodePreviewPanelProps {
   onRefreshRef?: MutableRefObject<(() => void) | null>;
 }
 
-// Flex-based layout for proper scrolling
-const styles = {
-  container: {
-    display: 'flex',
-    flexDirection: 'column' as const,
-    height: '100%',
-    minHeight: 0,
-  },
-  header: {
-    flexShrink: 0,
-  },
-  content: {
-    flex: 1,
-    minHeight: 0,
-    display: 'flex',
-    flexDirection: 'column' as const,
-    // Removed overflow:hidden - let innerContent handle scrolling
-    background: 'var(--p-color-bg-surface-secondary)',
-    padding: '16px',
-  },
-  innerContent: {
-    flex: 1,
-    minHeight: 0,
-    overflow: 'auto',
-  },
-} as const;
-
 /**
  * Tabbed panel for code editor and live preview
  * Uses Polaris s-button-group for segmented control
@@ -86,123 +59,120 @@ export function CodePreviewPanel({
   }, [code]);
 
   return (
-    <div style={styles.container}>
+    <s-stack blockSize="100%" gap="none">
       {/* Header with segmented control and device selector */}
-      <div style={styles.header}>
-        <s-box
-          padding="base"
-          borderWidth="none none small none"
-          borderColor="subdued"
-          background="base"
-        >
-          <s-stack direction="inline" justifyContent="space-between" alignItems="center">
-            {/* Left: View mode tabs */}
-            <s-button-group gap="none" accessibilityLabel="View mode">
+      <s-box
+        padding="base"
+        borderWidth="none none small none"
+        borderColor="base"
+        background="base"
+      >
+        <s-stack direction="inline" justifyContent="space-between" alignItems="center">
+          {/* Left: View mode tabs */}
+          <s-button-group gap="none" accessibilityLabel="View mode">
+            <s-button
+              slot="secondary-actions"
+              variant={activeTab === 'preview' ? 'primary' : 'secondary'}
+              onClick={() => setActiveTab('preview')}
+            >
+              Preview
+            </s-button>
+            <s-button
+              slot="secondary-actions"
+              variant={activeTab === 'code' ? 'primary' : 'secondary'}
+              onClick={() => setActiveTab('code')}
+            >
+              Code
+            </s-button>
+          </s-button-group>
+
+          {/* Center: Device selector (only in preview mode) */}
+          {activeTab === 'preview' && (
+            <s-button-group gap="none" accessibilityLabel="Device size">
               <s-button
                 slot="secondary-actions"
-                variant={activeTab === 'preview' ? 'primary' : 'secondary'}
-                onClick={() => setActiveTab('preview')}
+                variant={deviceSize === 'mobile' ? 'primary' : 'tertiary'}
+                onClick={() => onDeviceSizeChange('mobile')}
               >
-                Preview
+                Mobile
               </s-button>
               <s-button
                 slot="secondary-actions"
-                variant={activeTab === 'code' ? 'primary' : 'secondary'}
-                onClick={() => setActiveTab('code')}
+                variant={deviceSize === 'tablet' ? 'primary' : 'tertiary'}
+                onClick={() => onDeviceSizeChange('tablet')}
               >
-                Code
+                Tablet
+              </s-button>
+              <s-button
+                slot="secondary-actions"
+                variant={deviceSize === 'desktop' ? 'primary' : 'tertiary'}
+                onClick={() => onDeviceSizeChange('desktop')}
+              >
+                Desktop
               </s-button>
             </s-button-group>
-
-            {/* Center: Device selector (only in preview mode) */}
-            {activeTab === 'preview' && (
-              <s-button-group gap="none" accessibilityLabel="Device size">
-                <s-button
-                  slot="secondary-actions"
-                  variant={deviceSize === 'mobile' ? 'primary' : 'tertiary'}
-                  onClick={() => onDeviceSizeChange('mobile')}
-                >
-                  Mobile
-                </s-button>
-                <s-button
-                  slot="secondary-actions"
-                  variant={deviceSize === 'tablet' ? 'primary' : 'tertiary'}
-                  onClick={() => onDeviceSizeChange('tablet')}
-                >
-                  Tablet
-                </s-button>
-                <s-button
-                  slot="secondary-actions"
-                  variant={deviceSize === 'desktop' ? 'primary' : 'tertiary'}
-                  onClick={() => onDeviceSizeChange('desktop')}
-                >
-                  Desktop
-                </s-button>
-              </s-button-group>
-            )}
-
-            {/* Right: Actions */}
-            <s-stack direction="inline" gap="small" alignItems="center">
-              {/* Refresh button (only in preview mode) */}
-              {activeTab === 'preview' && onRefresh && (
-                <s-button
-                  variant="tertiary"
-                  onClick={onRefresh}
-                  disabled={isRendering || undefined}
-                  loading={isRendering || undefined}
-                >
-                  Refresh
-                </s-button>
-              )}
-              {/* Version indicator when viewing history */}
-              {isViewingHistory && versionNumber && (
-                <>
-                  <s-badge tone="info">Viewing v{versionNumber}</s-badge>
-                  <s-button variant="tertiary" onClick={onReturnToCurrent}>
-                    Return to current
-                  </s-button>
-                </>
-              )}
-              {/* Copy button (only in code view, not when viewing history) */}
-              {activeTab === 'code' && code && !isViewingHistory && (
-                <s-button onClick={handleCopyCode} variant="secondary">
-                  {copied ? '✓ Copied' : 'Copy All'}
-                </s-button>
-              )}
-            </s-stack>
-          </s-stack>
-        </s-box>
-      </div>
-
-      {/* Content area - dashed border when viewing history */}
-      <div
-        style={{
-          ...styles.content,
-          ...(isViewingHistory && {
-            border: '2px dashed var(--p-color-border-info)',
-            borderRadius: '8px',
-            margin: '8px',
-          }),
-        }}
-      >
-        <div style={styles.innerContent}>
-          {activeTab === 'preview' ? (
-            <PreviewErrorBoundary onRetry={() => setActiveTab('preview')}>
-              <SectionPreview
-                liquidCode={code}
-                deviceSize={deviceSize}
-                settingsValues={settingsValues}
-                blocksState={blocksState}
-                loadedResources={loadedResources}
-                onRenderStateChange={onRenderStateChange}
-                onRefreshRef={onRefreshRef}
-              />
-            </PreviewErrorBoundary>
-          ) : (
-            <CodePreview code={code} fileName={fileName} />
           )}
-        </div>
-      </div>
-    </div>
+
+          {/* Right: Actions */}
+          <s-stack direction="inline" gap="small" alignItems="center">
+            {/* Refresh button (only in preview mode) */}
+            {activeTab === 'preview' && onRefresh && (
+              <s-button
+                variant="tertiary"
+                onClick={onRefresh}
+                disabled={isRendering || undefined}
+                loading={isRendering || undefined}
+                icon="refresh"
+              >
+                Refresh
+              </s-button>
+            )}
+            {/* Version indicator when viewing history */}
+            {isViewingHistory && versionNumber && (
+              <>
+                <s-badge tone="info">Viewing v{versionNumber}</s-badge>
+                <s-button variant="tertiary" onClick={onReturnToCurrent}>
+                  Return to current
+                </s-button>
+              </>
+            )}
+            {/* Copy button (only in code view, not when viewing history) */}
+            {activeTab === 'code' && code && !isViewingHistory && (
+              <s-button onClick={handleCopyCode} variant="secondary" icon={copied ? 'check' : undefined}>
+                {copied ? 'Copied' : 'Copy All'}
+              </s-button>
+            )}
+          </s-stack>
+        </s-stack>
+      </s-box>
+
+      {/* Content area */}
+      <s-box
+        padding="base"
+        background="subdued"
+        blockSize="100%"
+        overflow="hidden"
+        {...(isViewingHistory && {
+          border: 'base base dashed',
+          borderRadius: 'base',
+        })}
+      >
+        {activeTab === 'preview' ? (
+          <PreviewErrorBoundary onRetry={() => setActiveTab('preview')}>
+            <SectionPreview
+              liquidCode={code}
+              deviceSize={deviceSize}
+              settingsValues={settingsValues}
+              blocksState={blocksState}
+              loadedResources={loadedResources}
+              onRenderStateChange={onRenderStateChange}
+              onRefreshRef={onRefreshRef}
+            />
+          </PreviewErrorBoundary>
+        ) : (
+          <CodePreview code={code} fileName={fileName} />
+        )}
+      </s-box>
+    </s-stack>
   );
 }

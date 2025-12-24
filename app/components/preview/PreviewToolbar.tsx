@@ -76,49 +76,44 @@ export function PreviewToolbar({
   return (
     <s-stack gap="base" direction="block">
       {/* Main toolbar row */}
-      <div style={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-        flexWrap: 'wrap',
-        gap: '12px'
-      }}>
+      <s-stack direction="inline" justifyContent="space-between" alignItems="center" gap="base">
         {/* Device size selector */}
-        <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+        <s-button-group gap="none" accessibilityLabel="Device size">
           <s-button
+            slot="secondary-actions"
             variant={deviceSize === 'mobile' ? 'primary' : 'tertiary'}
             onClick={() => onDeviceSizeChange('mobile')}
-            aria-pressed={deviceSize === 'mobile' ? 'true' : 'false'}
-            aria-label="Preview on mobile device"
+            accessibilityLabel="Preview on mobile device"
           >
             Mobile
           </s-button>
           <s-button
+            slot="secondary-actions"
             variant={deviceSize === 'tablet' ? 'primary' : 'tertiary'}
             onClick={() => onDeviceSizeChange('tablet')}
-            aria-pressed={deviceSize === 'tablet' ? 'true' : 'false'}
-            aria-label="Preview on tablet device"
+            accessibilityLabel="Preview on tablet device"
           >
             Tablet
           </s-button>
           <s-button
+            slot="secondary-actions"
             variant={deviceSize === 'desktop' ? 'primary' : 'tertiary'}
             onClick={() => onDeviceSizeChange('desktop')}
-            aria-pressed={deviceSize === 'desktop' ? 'true' : 'false'}
-            aria-label="Preview on desktop device"
+            accessibilityLabel="Preview on desktop device"
           >
             Desktop
           </s-button>
-        </div>
+        </s-button-group>
 
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        <s-stack direction="inline" gap="small" alignItems="center">
           {/* Copy HTML button */}
           {renderedHtml && (
             <s-button
               variant="tertiary"
               onClick={handleCopy}
+              icon={copied ? 'check' : undefined}
             >
-              {copied ? 'Copied!' : 'Copy HTML'}
+              {copied ? 'Copied' : 'Copy HTML'}
             </s-button>
           )}
 
@@ -127,25 +122,22 @@ export function PreviewToolbar({
             variant="tertiary"
             onClick={onRefresh}
             loading={isRendering || undefined}
+            icon="refresh"
           >
             Refresh
           </s-button>
-        </div>
-      </div>
+        </s-stack>
+      </s-stack>
 
       {/* Resource selectors row (shown if section uses resources) */}
       {hasResourceNeeds && (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          gap: '16px',
-          padding: '12px',
-          backgroundColor: '#f8f9fa',
-          borderRadius: '8px',
-          border: '1px solid #e5e7eb',
-          flexWrap: 'wrap'
-        }}>
-          <div style={{ display: 'flex', gap: '12px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <s-box
+          padding="base"
+          background="subdued"
+          borderRadius="base"
+          border="base"
+        >
+          <s-stack direction="inline" gap="base" alignItems="center">
             {/* Only show product picker if schema doesn't have product setting */}
             {resourceNeeds?.needsProduct && onProductsSelect && !hasSchemaProductSetting && (
               <ResourceSelector
@@ -173,26 +165,23 @@ export function PreviewToolbar({
 
             {/* Show hint when pickers are in settings panel */}
             {(hasSchemaProductSetting || hasSchemaCollectionSetting) && (
-              <span style={{ fontSize: '13px', color: '#6d7175', fontStyle: 'italic' }}>
-                Resource pickers available in Settings panel
-              </span>
+              <s-text color="subdued">Resource pickers available in Settings panel</s-text>
             )}
-          </div>
 
-          {/* Loading indicator */}
-          {isLoadingResource && (
-            <span style={{ color: '#6d7175', fontSize: '14px' }}>
-              Loading...
-            </span>
-          )}
+            {/* Loading indicator */}
+            {isLoadingResource && (
+              <s-stack direction="inline" gap="small" alignItems="center">
+                <s-spinner size="base" />
+                <s-text color="subdued">Loading...</s-text>
+              </s-stack>
+            )}
 
-          {/* Hint when no selection */}
-          {selectedProducts.length === 0 && !selectedCollection && !isLoadingResource && (
-            <span style={{ color: '#6d7175', fontSize: '13px', fontStyle: 'italic' }}>
-              Select products or collection for preview
-            </span>
-          )}
-        </div>
+            {/* Hint when no selection */}
+            {selectedProducts.length === 0 && !selectedCollection && !isLoadingResource && (
+              <s-text color="subdued">Select products or collection for preview</s-text>
+            )}
+          </s-stack>
+        </s-box>
       )}
     </s-stack>
   );

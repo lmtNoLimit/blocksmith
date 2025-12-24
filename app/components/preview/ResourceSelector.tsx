@@ -157,30 +157,24 @@ export function ResourceSelector({
 
       {/* Selected resources display (multiple) */}
       {multiple && selectedResources.length > 0 && (
-        <div style={{ display: 'flex', gap: '4px', alignItems: 'center', flexWrap: 'wrap' }}>
+        <s-stack direction="inline" gap="small" alignItems="center">
           {selectedResources.slice(0, 3).map((res) => (
-            <span key={res.id} style={{
-              padding: '2px 8px',
-              backgroundColor: '#e4e5e7',
-              borderRadius: '4px',
-              fontSize: '12px'
-            }}>
+            <s-chip key={res.id} color="subdued">
               {res.title}
-            </span>
+            </s-chip>
           ))}
           {selectedResources.length > 3 && (
-            <span style={{ fontSize: '12px', color: '#6d7175' }}>
-              +{selectedResources.length - 3} more
-            </span>
+            <s-text color="subdued">+{selectedResources.length - 3} more</s-text>
           )}
           <s-button
             variant="tertiary"
             onClick={handleClear}
             disabled={disabled || loading || undefined}
+            icon="x"
           >
             Clear
           </s-button>
-        </div>
+        </s-stack>
       )}
     </s-stack>
   );

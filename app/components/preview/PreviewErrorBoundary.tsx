@@ -36,30 +36,23 @@ export class PreviewErrorBoundary extends Component<Props, State> {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{
-          padding: '32px',
-          backgroundColor: '#f6f6f7',
-          borderRadius: '8px',
-          textAlign: 'center'
-        }}>
-          <h3 style={{ margin: '0 0 12px', fontSize: '16px', fontWeight: 600 }}>
-            Preview Failed
-          </h3>
-          <p style={{ color: '#6d7175', margin: '0 0 16px' }}>
-            Something went wrong rendering the preview.
+        <s-box padding="large-400" background="subdued" borderRadius="base">
+          <s-stack gap="base" alignItems="center">
+            <s-icon type="alert-circle" />
+            <s-heading>Preview Failed</s-heading>
+            <s-text color="subdued">
+              Something went wrong rendering the preview.
+            </s-text>
             {this.state.error?.message && (
-              <>
-                <br />
-                <span style={{ fontFamily: 'monospace', fontSize: '12px' }}>
-                  {this.state.error.message}
-                </span>
-              </>
+              <s-box padding="small" background="base" borderRadius="small">
+                <s-text color="subdued">{this.state.error.message}</s-text>
+              </s-box>
             )}
-          </p>
-          <s-button variant="primary" onClick={this.handleRetry}>
-            Try Again
-          </s-button>
-        </div>
+            <s-button variant="primary" onClick={this.handleRetry}>
+              Try Again
+            </s-button>
+          </s-stack>
+        </s-box>
       );
     }
 

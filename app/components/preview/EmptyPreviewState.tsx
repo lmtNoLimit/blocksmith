@@ -9,26 +9,16 @@ export function EmptyPreviewState({
   message = 'Generate a section to see the preview'
 }: EmptyPreviewStateProps) {
   return (
-    <div style={{
-      padding: '32px',
-      backgroundColor: '#f6f6f7',
-      borderRadius: '8px',
-      minHeight: '300px',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center'
-    }}>
-      <div style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        gap: '12px'
-      }}>
-        <span style={{ fontSize: '48px', opacity: 0.5 }}>👁️</span>
-        <p style={{ color: '#6d7175', margin: 0, textAlign: 'center' }}>
-          {message}
-        </p>
-      </div>
-    </div>
+    <s-box
+      padding="large-400"
+      background="subdued"
+      borderRadius="base"
+      minBlockSize="300px"
+    >
+      <s-stack gap="base" alignItems="center" justifyContent="center" blockSize="100%">
+        <s-icon type="view" />
+        <s-text color="subdued">{message}</s-text>
+      </s-stack>
+    </s-box>
   );
 }
