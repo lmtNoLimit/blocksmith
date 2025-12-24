@@ -19,6 +19,7 @@ import {
   CodePreviewPanel,
   PreviewSettingsPanel,
   PublishModal,
+  PUBLISH_MODAL_ID,
   useEditorState,
 } from '../components/editor';
 import { usePreviewSettings } from '../components/preview';
@@ -398,20 +399,30 @@ export default function UnifiedEditorPage() {
         Sections
       </s-link>
 
-      {/* Primary action - Publish with modal */}
-      <span slot="primary-action">
-        <PublishModal
-          themes={themes as Theme[]}
-          selectedTheme={selectedTheme}
-          onThemeChange={setSelectedTheme}
-          fileName={fileName}
-          onFileNameChange={setFileName}
-          selectedThemeName={selectedThemeName}
-          onPublish={handlePublish}
-          isPublishing={isPublishing}
-          canPublish={canPublish && !isLoading}
-        />
-      </span>
+      {/* Primary action - Publish button triggers modal via commandFor */}
+      <s-button
+        slot="primary-action"
+        variant="primary"
+        commandFor={PUBLISH_MODAL_ID}
+        command="--show"
+        loading={isPublishing || undefined}
+        disabled={isLoading || undefined}
+      >
+        Publish
+      </s-button>
+
+      {/* Publish Modal - triggered by primary action button */}
+      <PublishModal
+        themes={themes as Theme[]}
+        selectedTheme={selectedTheme}
+        onThemeChange={setSelectedTheme}
+        fileName={fileName}
+        onFileNameChange={setFileName}
+        selectedThemeName={selectedThemeName}
+        onPublish={handlePublish}
+        isPublishing={isPublishing}
+        canPublish={canPublish && !isLoading}
+      />
 
       {/* Secondary actions */}
       <s-button

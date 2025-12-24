@@ -15,9 +15,12 @@ interface PublishModalProps {
   canPublish?: boolean;
 }
 
+/** Modal ID for commandFor reference */
+export const PUBLISH_MODAL_ID = 'publish-modal';
+
 /**
  * Modal for publish workflow with theme and filename selection
- * Replaces EditorSettingsPanel for publish-time configuration
+ * Use with: <s-button commandFor="publish-modal" command="--show">Publish</s-button>
  */
 export function PublishModal({
   themes,
@@ -32,7 +35,6 @@ export function PublishModal({
 }: PublishModalProps) {
   /* eslint-disable @typescript-eslint/no-explicit-any */
   const modalRef = useRef<any>(null);
-  const triggerRef = useRef<any>(null);
   /* eslint-enable @typescript-eslint/no-explicit-any */
 
   const [localFileName, setLocalFileName] = useState(fileName);
@@ -43,10 +45,6 @@ export function PublishModal({
     setLocalFileName(fileName);
     setLocalTheme(selectedTheme);
   }, [fileName, selectedTheme]);
-
-  const openModal = useCallback(() => {
-    triggerRef.current?.click();
-  }, []);
 
   const handleCancel = useCallback(() => {
     // Reset to original values
@@ -73,28 +71,7 @@ export function PublishModal({
   const displayThemeName = selectedThemeObj?.name || selectedThemeName || 'Select theme';
 
   return (
-    <>
-      {/* Trigger button exposed for parent to use */}
-      <s-button
-        variant="primary"
-        onClick={openModal}
-        disabled={isPublishing || undefined}
-        loading={isPublishing || undefined}
-      >
-        Publish
-      </s-button>
-
-      {/* Hidden trigger for modal */}
-      <div style={{ display: 'none' }}>
-        <s-button
-          ref={triggerRef}
-          commandFor="publish-modal"
-          command="--show"
-        />
-      </div>
-
-      {/* Publish Modal */}
-      <s-modal ref={modalRef} id="publish-modal" heading="Publish to Theme">
+    <s-modal ref={modalRef} id={PUBLISH_MODAL_ID} heading="Publish to Theme">
         <s-stack gap="large">
           {/* Info text */}
           <s-text>
@@ -148,6 +125,5 @@ export function PublishModal({
           Publish
         </s-button>
       </s-modal>
-    </>
   );
 }
