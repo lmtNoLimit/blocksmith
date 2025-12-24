@@ -17,10 +17,13 @@ import {
   PolarisEditorLayout,
   ChatPanelWrapper,
   CodePreviewPanel,
-  EditorSettingsPanel,
+  PreviewSettingsPanel,
+  PublishModal,
   useEditorState,
 } from '../components/editor';
+import { usePreviewSettings } from '../components/preview';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import type { DeviceSize } from '../components/preview/types';
 
 import type { SaveActionData, Theme, UIMessage } from '../types';
 import { SECTION_STATUS } from '../types/section-status';
@@ -224,6 +227,14 @@ export default function UnifiedEditorPage() {
     conversation: conversation as { id: string; messages: UIMessage[] },
   });
 
+  // Preview settings hook - manages schema-based settings for right panel
+  const previewSettings = usePreviewSettings(previewCode);
+
+  // Device size state for preview panel header
+  const [deviceSize, setDeviceSize] = useState<DeviceSize>('desktop');
+  const [isRendering, setIsRendering] = useState(false);
+  const refreshRef = useRef<(() => void) | null>(null);
+
   // Inline name editing state
   const [editedName, setEditedName] = useState(sectionName);
   // Web component refs - using any because s-* components don't have proper TS types
@@ -303,6 +314,11 @@ export default function UnifiedEditorPage() {
     confirmVersionModalRef.current?.hideOverlay?.();
   }, []);
 
+  // Handle refresh from preview header
+  const handleRefresh = useCallback(() => {
+    refreshRef.current?.();
+  }, []);
+
   // Keyboard shortcuts
   useKeyboardShortcuts({
     shortcuts: [
@@ -319,6 +335,12 @@ export default function UnifiedEditorPage() {
         action: handlePublish,
         description: 'Publish to theme',
         enabled: canPublish,
+      },
+      {
+        key: 'r',
+        ctrl: true,
+        action: handleRefresh,
+        description: 'Refresh preview',
       },
     ],
   });
@@ -376,16 +398,20 @@ export default function UnifiedEditorPage() {
         Sections
       </s-link>
 
-      {/* Primary action - Publish */}
-      <s-button
-        slot="primary-action"
-        variant="primary"
-        onClick={handlePublish}
-        loading={isPublishing || undefined}
-        disabled={!canPublish || isLoading || undefined}
-      >
-        Publish
-      </s-button>
+      {/* Primary action - Publish with modal */}
+      <span slot="primary-action">
+        <PublishModal
+          themes={themes as Theme[]}
+          selectedTheme={selectedTheme}
+          onThemeChange={setSelectedTheme}
+          fileName={fileName}
+          onFileNameChange={setFileName}
+          selectedThemeName={selectedThemeName}
+          onPublish={handlePublish}
+          isPublishing={isPublishing}
+          canPublish={canPublish && !isLoading}
+        />
+      </span>
 
       {/* Secondary actions */}
       <s-button
@@ -520,15 +546,29 @@ export default function UnifiedEditorPage() {
             isViewingHistory={selectedVersionId !== null}
             versionNumber={versions.find((v) => v.id === selectedVersionId)?.versionNumber}
             onReturnToCurrent={() => selectVersion(null)}
+            deviceSize={deviceSize}
+            onDeviceSizeChange={setDeviceSize}
+            onRefresh={handleRefresh}
+            isRendering={isRendering}
+            // Pass preview settings for SectionPreview
+            settingsValues={previewSettings.settingsValues}
+            blocksState={previewSettings.blocksState}
+            loadedResources={previewSettings.loadedResources}
+            onRenderStateChange={setIsRendering}
+            onRefreshRef={refreshRef}
           />
         }
         settingsPanel={
-          <EditorSettingsPanel
-            themes={themes as Theme[]}
-            selectedTheme={selectedTheme}
-            onThemeChange={setSelectedTheme}
-            fileName={fileName}
-            onFileNameChange={setFileName}
+          <PreviewSettingsPanel
+            settings={previewSettings.schemaSettings}
+            values={previewSettings.settingsValues}
+            onChange={previewSettings.setSettingsValues}
+            schema={previewSettings.parsedSchema}
+            blocks={previewSettings.blocksState}
+            onBlockSettingChange={previewSettings.handleBlockSettingChange}
+            resourceSettings={previewSettings.resourceSelections}
+            onResourceSelect={previewSettings.handleResourceSelect}
+            isLoadingResource={previewSettings.isLoadingResource}
             disabled={isLoading}
           />
         }

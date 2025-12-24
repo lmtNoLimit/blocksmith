@@ -1,6 +1,9 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, type MutableRefObject } from 'react';
 import { CodePreview } from '../generate/CodePreview';
 import { SectionPreview, PreviewErrorBoundary } from '../preview';
+import type { DeviceSize } from '../preview/types';
+import type { SettingsState, BlockInstance } from '../preview/schema/SchemaTypes';
+import type { MockProduct, MockCollection } from '../preview/mockData/types';
 
 interface CodePreviewPanelProps {
   code: string;
@@ -8,6 +11,18 @@ interface CodePreviewPanelProps {
   isViewingHistory?: boolean;
   versionNumber?: number;
   onReturnToCurrent?: () => void;
+  // Device selector props
+  deviceSize: DeviceSize;
+  onDeviceSizeChange: (size: DeviceSize) => void;
+  // Preview controls
+  onRefresh?: () => void;
+  isRendering?: boolean;
+  // Preview settings (from usePreviewSettings hook)
+  settingsValues?: SettingsState;
+  blocksState?: BlockInstance[];
+  loadedResources?: Record<string, MockProduct | MockCollection>;
+  onRenderStateChange?: (isRendering: boolean) => void;
+  onRefreshRef?: MutableRefObject<(() => void) | null>;
 }
 
 // Flex-based layout for proper scrolling
@@ -47,6 +62,15 @@ export function CodePreviewPanel({
   isViewingHistory,
   versionNumber,
   onReturnToCurrent,
+  deviceSize,
+  onDeviceSizeChange,
+  onRefresh,
+  isRendering,
+  settingsValues,
+  blocksState,
+  loadedResources,
+  onRenderStateChange,
+  onRefreshRef,
 }: CodePreviewPanelProps) {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [copied, setCopied] = useState(false);
@@ -63,7 +87,7 @@ export function CodePreviewPanel({
 
   return (
     <div style={styles.container}>
-      {/* Header with segmented control */}
+      {/* Header with segmented control and device selector */}
       <div style={styles.header}>
         <s-box
           padding="base"
@@ -72,7 +96,7 @@ export function CodePreviewPanel({
           background="base"
         >
           <s-stack direction="inline" justifyContent="space-between" alignItems="center">
-            {/* Segmented control for Preview/Code */}
+            {/* Left: View mode tabs */}
             <s-button-group gap="none" accessibilityLabel="View mode">
               <s-button
                 slot="secondary-actions"
@@ -90,8 +114,47 @@ export function CodePreviewPanel({
               </s-button>
             </s-button-group>
 
-            {/* Version indicator when viewing history */}
+            {/* Center: Device selector (only in preview mode) */}
+            {activeTab === 'preview' && (
+              <s-button-group gap="none" accessibilityLabel="Device size">
+                <s-button
+                  slot="secondary-actions"
+                  variant={deviceSize === 'mobile' ? 'primary' : 'tertiary'}
+                  onClick={() => onDeviceSizeChange('mobile')}
+                >
+                  Mobile
+                </s-button>
+                <s-button
+                  slot="secondary-actions"
+                  variant={deviceSize === 'tablet' ? 'primary' : 'tertiary'}
+                  onClick={() => onDeviceSizeChange('tablet')}
+                >
+                  Tablet
+                </s-button>
+                <s-button
+                  slot="secondary-actions"
+                  variant={deviceSize === 'desktop' ? 'primary' : 'tertiary'}
+                  onClick={() => onDeviceSizeChange('desktop')}
+                >
+                  Desktop
+                </s-button>
+              </s-button-group>
+            )}
+
+            {/* Right: Actions */}
             <s-stack direction="inline" gap="small" alignItems="center">
+              {/* Refresh button (only in preview mode) */}
+              {activeTab === 'preview' && onRefresh && (
+                <s-button
+                  variant="tertiary"
+                  onClick={onRefresh}
+                  disabled={isRendering || undefined}
+                  loading={isRendering || undefined}
+                >
+                  Refresh
+                </s-button>
+              )}
+              {/* Version indicator when viewing history */}
               {isViewingHistory && versionNumber && (
                 <>
                   <s-badge tone="info">Viewing v{versionNumber}</s-badge>
@@ -125,7 +188,15 @@ export function CodePreviewPanel({
         <div style={styles.innerContent}>
           {activeTab === 'preview' ? (
             <PreviewErrorBoundary onRetry={() => setActiveTab('preview')}>
-              <SectionPreview liquidCode={code} />
+              <SectionPreview
+                liquidCode={code}
+                deviceSize={deviceSize}
+                settingsValues={settingsValues}
+                blocksState={blocksState}
+                loadedResources={loadedResources}
+                onRenderStateChange={onRenderStateChange}
+                onRefreshRef={onRefreshRef}
+              />
             </PreviewErrorBoundary>
           ) : (
             <CodePreview code={code} fileName={fileName} />

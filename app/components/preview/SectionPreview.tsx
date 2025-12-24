@@ -1,68 +1,40 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { PreviewFrame } from './PreviewFrame';
 import { useLiquidRenderer } from './hooks/useLiquidRenderer';
 import { usePreviewMessaging } from './hooks/usePreviewMessaging';
-import { useResourceFetcher } from './hooks/useResourceFetcher';
-import { parseSchema, extractSettings, buildInitialState, buildBlockInstancesFromPreset } from './schema/parseSchema';
-import { SettingsPanel } from './settings/SettingsPanel';
 import { buildPreviewContext } from './utils/buildPreviewContext';
-import type { DeviceSize, PreviewMessage, PreviewSettings } from './types';
-import type { SchemaSetting, SettingsState, SchemaDefinition, BlockInstance } from './schema/SchemaTypes';
+import type { DeviceSize, PreviewMessage } from './types';
+import type { SettingsState, BlockInstance } from './schema/SchemaTypes';
 import type { MockProduct, MockCollection } from './mockData/types';
-import type { SelectedResource } from './ResourceSelector';
 
 export interface SectionPreviewProps {
   liquidCode: string;
-  onSettingsChange?: (settings: PreviewSettings) => void;
+  // External device control (from parent CodePreviewPanel header)
+  deviceSize?: DeviceSize;
+  // External settings for rendering (from usePreviewSettings hook in parent)
+  settingsValues?: SettingsState;
+  blocksState?: BlockInstance[];
+  loadedResources?: Record<string, MockProduct | MockCollection>;
+  // Callback to notify parent of render state changes
+  onRenderStateChange?: (isRendering: boolean) => void;
+  // Callback for manual refresh trigger
+  onRefreshRef?: React.MutableRefObject<(() => void) | null>;
 }
 
 /**
- * Main section preview component
- * Renders Liquid code in sandboxed iframe with settings editor
+ * Section preview component - renders Liquid code in sandboxed iframe
+ * Settings are managed externally via usePreviewSettings hook
  */
 export function SectionPreview({
   liquidCode,
-  onSettingsChange
+  deviceSize = 'desktop',
+  settingsValues = {},
+  blocksState = [],
+  loadedResources = {},
+  onRenderStateChange,
+  onRefreshRef,
 }: SectionPreviewProps) {
-  const [deviceSize, setDeviceSize] = useState<DeviceSize>('desktop');
   const [error, setError] = useState<string | null>(null);
-
-  // Settings-based resources (from schema settings with type: product/collection)
-  const [settingsResourceSelections, setSettingsResourceSelections] = useState<Record<string, SelectedResource | null>>({});
-  const [settingsResources, setSettingsResources] = useState<Record<string, MockProduct | MockCollection>>({});
-  const [isLoadingSettingsResource, setIsLoadingSettingsResource] = useState(false);
-
-  // Resource fetching hook
-  const { fetchProduct, fetchCollection, error: fetchError } = useResourceFetcher();
-
-  // Parse schema from liquid code
-  const parsedSchema = useMemo<SchemaDefinition | null>(
-    () => parseSchema(liquidCode),
-    [liquidCode]
-  );
-
-  const schemaSettings = useMemo<SchemaSetting[]>(
-    () => extractSettings(parsedSchema),
-    [parsedSchema]
-  );
-
-  const [settingsValues, setSettingsValues] = useState<SettingsState>(() =>
-    buildInitialState(schemaSettings)
-  );
-
-  // Block state management
-  const [blocksState, setBlocksState] = useState<BlockInstance[]>([]);
-
-  // Reset settings when schema changes
-  useEffect(() => {
-    setSettingsValues(buildInitialState(schemaSettings));
-  }, [schemaSettings]);
-
-  // Initialize blocks from schema
-  useEffect(() => {
-    const blocks = buildBlockInstancesFromPreset(parsedSchema);
-    setBlocksState(blocks);
-  }, [parsedSchema]);
 
   const { render, isRendering } = useLiquidRenderer();
   const { sendMessage, setIframe } = usePreviewMessaging(
@@ -72,6 +44,11 @@ export function SectionPreview({
       }
     }, [])
   );
+
+  // Notify parent of render state changes
+  useEffect(() => {
+    onRenderStateChange?.(isRendering);
+  }, [isRendering, onRenderStateChange]);
 
   // Debounced render
   const renderTimeoutRef = useRef<NodeJS.Timeout>();
@@ -85,27 +62,22 @@ export function SectionPreview({
     try {
       setError(null);
 
-      // Build context with settings-based resources
-      // Extract collection/product from settingsResources to also provide as global context
-      // This is needed because AI-generated templates use `collection.products` (global), not just section.settings
-      let collectionFromSettings: import('./mockData/types').MockCollection | null = null;
-      let productFromSettings: import('./mockData/types').MockProduct | null = null;
+      // Extract collection/product from loadedResources for global context
+      let collectionFromSettings: MockCollection | null = null;
+      let productFromSettings: MockProduct | null = null;
 
-      for (const [, resource] of Object.entries(settingsResources)) {
-        // Check if it's a collection (has products array)
+      for (const [, resource] of Object.entries(loadedResources)) {
         if ('products' in resource && Array.isArray((resource as { products?: unknown }).products)) {
-          collectionFromSettings = resource as import('./mockData/types').MockCollection;
-        }
-        // Check if it's a product (has variants)
-        else if ('variants' in resource) {
-          productFromSettings = resource as import('./mockData/types').MockProduct;
+          collectionFromSettings = resource as MockCollection;
+        } else if ('variants' in resource) {
+          productFromSettings = resource as MockProduct;
         }
       }
 
       const previewData = buildPreviewContext({
         collection: collectionFromSettings,
         product: productFromSettings,
-        settingsResources
+        settingsResources: loadedResources
       });
 
       const { html, css } = await render(liquidCode, settingsValues, blocksState, previewData as unknown as Record<string, unknown>);
@@ -115,7 +87,14 @@ export function SectionPreview({
       setError(errorMsg);
       sendMessage({ type: 'RENDER_ERROR', error: errorMsg });
     }
-  }, [liquidCode, settingsValues, blocksState, settingsResources, render, sendMessage]);
+  }, [liquidCode, settingsValues, blocksState, loadedResources, render, sendMessage]);
+
+  // Expose refresh function to parent
+  useEffect(() => {
+    if (onRefreshRef) {
+      onRefreshRef.current = triggerRender;
+    }
+  }, [onRefreshRef, triggerRender]);
 
   // Debounce renders on code/settings/resource change
   useEffect(() => {
@@ -133,163 +112,27 @@ export function SectionPreview({
 
   const handleIframeLoad = useCallback((iframe: HTMLIFrameElement) => {
     setIframe(iframe);
-    // Trigger initial render after iframe loads
     setTimeout(triggerRender, 50);
   }, [setIframe, triggerRender]);
 
-  const handleSettingsChange = useCallback((newValues: SettingsState) => {
-    setSettingsValues(newValues);
-    onSettingsChange?.(newValues);
-  }, [onSettingsChange]);
-
-  // Block setting change handler
-  const handleBlockSettingChange = useCallback(
-    (blockIndex: number, settingId: string, value: string | number | boolean) => {
-      setBlocksState(prev => {
-        const updated = [...prev];
-        updated[blockIndex] = {
-          ...updated[blockIndex],
-          settings: {
-            ...updated[blockIndex].settings,
-            [settingId]: value
-          }
-        };
-        return updated;
-      });
-    },
-    []
-  );
-
-  // Settings resource selection handler (for schema-based resource settings)
-  const handleSettingsResourceSelect = useCallback(async (
-    settingId: string,
-    resourceId: string | null,
-    resource: SelectedResource | null
-  ) => {
-    // Update selection UI state
-    setSettingsResourceSelections(prev => ({
-      ...prev,
-      [settingId]: resource
-    }));
-
-    if (!resourceId) {
-      // Clear the resource data
-      setSettingsResources(prev => {
-        const updated = { ...prev };
-        delete updated[settingId];
-        return updated;
-      });
-      return;
-    }
-
-    // Find the setting type to know what kind of resource to fetch
-    const setting = schemaSettings.find(s => s.id === settingId);
-    if (!setting) return;
-
-    setIsLoadingSettingsResource(true);
-    try {
-      let data: MockProduct | MockCollection | null = null;
-
-      if (setting.type === 'product') {
-        data = await fetchProduct(resourceId);
-      } else if (setting.type === 'collection') {
-        data = await fetchCollection(resourceId);
-      }
-
-      if (data) {
-        setSettingsResources(prev => ({
-          ...prev,
-          [settingId]: data
-        }));
-      }
-    } finally {
-      setIsLoadingSettingsResource(false);
-    }
-  }, [schemaSettings, fetchProduct, fetchCollection]);
-
-  // Keyboard shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Ctrl/Cmd + R: Refresh preview (prevent page reload)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'r' && !e.shiftKey) {
-        e.preventDefault();
-        triggerRender();
-      }
-      // Ctrl/Cmd + 1/2/3: Switch device size
-      if ((e.ctrlKey || e.metaKey) && ['1', '2', '3'].includes(e.key)) {
-        e.preventDefault();
-        const sizes: DeviceSize[] = ['mobile', 'tablet', 'desktop'];
-        setDeviceSize(sizes[parseInt(e.key) - 1]);
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [triggerRender]);
-
-  // Combine errors
-  const displayError = error || fetchError;
-
   return (
-    <s-stack gap="large" direction="block">
-      {/* Settings panel with preview controls */}
-      <SettingsPanel
-        settings={schemaSettings}
-        values={settingsValues}
-        onChange={handleSettingsChange}
-        disabled={isRendering}
-        schema={parsedSchema}
-        blocks={blocksState}
-        onBlockSettingChange={handleBlockSettingChange}
-        resourceSettings={settingsResourceSelections}
-        onResourceSelect={handleSettingsResourceSelect}
-        isLoadingResource={isLoadingSettingsResource}
-        // Preview controls (formerly in toolbar)
-        deviceSize={deviceSize}
-        onDeviceSizeChange={setDeviceSize}
-        onRefresh={triggerRender}
-        isRendering={isRendering}
-      />
-
+    <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
       {/* Error banner */}
-      {displayError && (
-        <div style={{
-          padding: '12px 16px',
-          backgroundColor: '#fff5ea',
-          border: '1px solid #ffb84d',
-          borderRadius: '8px',
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <p style={{ margin: 0, fontSize: '14px' }}>
-            Preview error: {displayError}. The code may use unsupported Liquid features.
-          </p>
-          <button
-            onClick={() => setError(null)}
-            style={{
-              background: 'none',
-              border: 'none',
-              cursor: 'pointer',
-              padding: '4px',
-              fontSize: '18px'
-            }}
-          >
-            ×
-          </button>
+      {error && (
+        <div style={{ flexShrink: 0, padding: '8px' }}>
+          <s-banner tone="warning" dismissible onDismiss={() => setError(null)}>
+            Preview error: {error}. The code may use unsupported Liquid features.
+          </s-banner>
         </div>
       )}
 
       {/* Preview frame */}
-      <PreviewFrame
-        deviceSize={deviceSize}
-        onLoad={handleIframeLoad}
-      />
-
-      {/* Keyboard shortcuts hint */}
-      <p style={{ color: '#6d7175', fontSize: '13px', margin: 0 }}>
-        Shortcuts: Ctrl+R refresh, Ctrl+1/2/3 device size
-      </p>
-    </s-stack>
+      <div style={{ flex: 1, minHeight: 0 }}>
+        <PreviewFrame
+          deviceSize={deviceSize}
+          onLoad={handleIframeLoad}
+        />
+      </div>
+    </div>
   );
 }
