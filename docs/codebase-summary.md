@@ -1399,6 +1399,51 @@ export interface ChatMetadata {
 - `MAX_CONTENT_LENGTH = 10000` chars (per chat message)
 - `MAX_CODE_LENGTH = 100000` chars (for Liquid sections)
 
+#### Liquid Wrapper Utility (`app/utils/liquid-wrapper.server.ts` - Phase 02)
+
+**Purpose**: Context injection, settings parsing, CSS isolation for App Proxy rendering
+
+**Type Definitions**:
+- `WrapperOptions`: liquidCode, sectionId?, productHandle?, collectionHandle?, settings?
+- `ProxyParams`: Parsed & validated URL parameters (code, settings, handles, sectionId)
+
+**Main Functions**:
+
+1. `wrapLiquidForProxy(options)`: Wraps Liquid with context injection
+   - Input: Raw Liquid code + optional context (product, collection, settings)
+   - Process: Validates handles → builds Liquid assigns → strips schema blocks → wraps div container
+   - Output: Rendering-ready Liquid with CSS isolation
+   - Assigns:
+     - `{% assign product = all_products['{handle}'] %}` for valid product
+     - `{% assign collection = collections['{handle}'] %}` for valid collection
+     - `{% assign {key} = {value} %}` for string/number/boolean settings
+   - Schema removal: Regex `/{%-?\s*schema\s*-?%}[\s\S]*?{%-?\s*endschema\s*-?%}/gi`
+   - Container: `<div class="blocksmith-preview" id="shopify-section-{sectionId}">` with baseline CSS
+   - Isolation styles: font-family, img max-width auto
+
+2. `parseProxyParams(url)`: Decode & validate query parameters
+   - Code: Base64 → UTF-8 (null on failure)
+   - Settings: Base64 → JSON → object validation (70KB limit, object-only)
+   - Handles: XSS prevention (alphanumeric + hyphens only, max 255 chars)
+   - Section ID: Alphanumeric + underscore + hyphen (max 64 chars, default "preview")
+
+**Security Validations**:
+- `isValidHandle(handle)`: Regex `/^[a-z0-9-]+$/i` + length ≤ 255
+- `escapeLiquidValue(value)`: Quote escaping for string assigns (prevents injection)
+- Settings size limit: 70,000 chars base64 (DoS prevention)
+- Section ID regex: `/^[a-z0-9_-]+$/i` (XSS prevention in HTML id attribute)
+
+**Test Coverage** (`app/utils/__tests__/liquid-wrapper.server.test.ts`):
+- 34 tests across 7 test groups
+- Basic wrapping: container, CSS styles, custom section ID
+- Product context: valid injection, XSS rejection, special char rejection
+- Collection context: valid injection, invalid handle rejection
+- Settings injection: string/number/boolean types, quote escaping, invalid names, complex objects
+- Schema block stripping: basic blocks, whitespace control syntax
+- Handle parsing: valid/invalid handles, empty handles
+- Section ID parsing: valid ID, XSS attempts, special chars, underscore support, size limits
+- Combined parsing: all parameters together
+
 ### Chat Components Directory (`app/components/chat/` - NEW)
 
 **Structure**:
@@ -1480,9 +1525,9 @@ app/components/chat/
 - Updates session scope when merchant grants/revokes permissions
 - Fetches session by ID and updates scope field
 
-#### `/app/routes/api.proxy.render.tsx` (70 lines - Phase 01 App Proxy Setup)
+#### `/app/routes/api.proxy.render.tsx` (70 lines - Phase 02 App Proxy with Liquid Wrapper)
 **Purpose**: Shopify App Proxy handler for native Liquid rendering on storefront
-**Proxy URL**: `https://{shop}.myshopify.com/apps/blocksmith-preview?code={base64-liquid}`
+**Proxy URL**: `https://{shop}.myshopify.com/apps/blocksmith-preview?code={base64-liquid}&settings={base64-json}&product={handle}&collection={handle}&section_id={id}`
 
 **Configuration** (in `shopify.app.toml`):
 ```toml
@@ -1492,31 +1537,43 @@ prefix = "apps"
 subpath = "blocksmith-preview"
 ```
 
-**Features**:
-- HMAC validation via `authenticate.public.appProxy()` (secure, public endpoint)
-- Base64-encoded Liquid code in `code` query parameter
-- Returns `application/liquid` content type for Shopify native rendering
-- Max payload: 100KB (DoS protection)
-- Auto-strips schema blocks (not renderable in Shopify Liquid engine)
+**Phase 02 Enhancements**:
+- Context injection: product/collection data via Shopify all_products/collections
+- Settings parsing: Liquid assigns for section configuration
+- CSS isolation container with blocksmith-preview class
+- XSS prevention: section_id validation & escaping
+- Security: size limits, handle validation, safe string escaping
+
+**Query Parameters**:
+- `code`: Base64-encoded Liquid code (100KB max)
+- `settings`: Base64-encoded JSON object (70KB max) for `{% assign key = value %}`
+- `product`: Product handle (validated, alphanumeric + hyphens only)
+- `collection`: Collection handle (validated, alphanumeric + hyphens only)
+- `section_id`: CSS scope ID (alphanumeric + underscore + hyphen, max 64 chars, default: "preview")
 
 **Request Validation**:
 1. HMAC validation (Shopify-signed requests only)
 2. Session check (app must be installed)
-3. Code parameter presence check
-4. Max size validation (100KB limit)
-5. Base64 decoding validation
+3. Code parameter presence & size check (100KB limit)
+4. Base64 decoding validation for code/settings
+5. Handle validation (alphanumeric + hyphens, max 255 chars)
+6. Section ID validation (prevent XSS via id attribute)
+7. Settings size limit (70KB base64 encoded)
 
 **Response Handling**:
-- Success: Returns decoded Liquid code (no layout wrapper)
+- Success: Wrapped Liquid with context injection + CSS isolation
 - Missing app: Error message "App not installed"
-- Missing code: Error message "No Liquid code provided"
+- Missing code: Error message "No Liquid code provided or invalid encoding"
 - Oversized payload: Error message "Code exceeds maximum allowed size"
-- Invalid encoding: Error message "Invalid code encoding"
+- Invalid encoding: Error message "Render error: {message}"
 
-**Schema Block Stripping** (Regex):
-- Pattern: `/{%-?\s*schema\s*-?%}[\s\S]*?{%-?\s*endschema\s*-?%}/gi`
-- Supports both `{% schema %}` and `{%- schema -%}` syntax
-- Necessary because Shopify Liquid engine cannot render JSON schema blocks
+**Wrapped Output** (Liquid Wrapper):
+- Top: `{% assign product = all_products['handle'] %}` (if productHandle valid)
+- Top: `{% assign collection = collections['handle'] %}` (if collectionHandle valid)
+- Top: `{% assign {key} = {value} %}` for each simple setting (string/number/boolean)
+- Strip: Schema blocks removed (regex: `/{%-?\s*schema\s*-?%}[\s\S]*?{%-?\s*endschema\s*-?%}/gi`)
+- Wrap: `<div class="blocksmith-preview" id="shopify-section-{sectionId}">{code}</div>`
+- Style: Baseline CSS (font-family, img max-width)
 
 ### Business Logic Services
 

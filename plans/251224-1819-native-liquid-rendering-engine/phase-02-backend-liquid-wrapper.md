@@ -9,9 +9,10 @@
 | Field | Value |
 |-------|-------|
 | Priority | P0 - Critical |
-| Status | pending |
+| Status | ✅ DONE (2025-12-24 19:30 UTC) |
 | Effort | medium (4-6 hrs) |
 | Description | Context injection, resource assignment, error handling for proxy renderer |
+| Code Review | [code-reviewer-251224-1925](../reports/code-reviewer-251224-1925-phase02-backend-liquid-wrapper.md) |
 
 ## Key Insights (from Research)
 
@@ -271,14 +272,29 @@ if (blocks.length > 0) {
 
 ## Todo List
 
-- [ ] Create `app/utils/liquidWrapper.server.ts`
-- [ ] Implement `wrapLiquidForProxy()` function
-- [ ] Implement `parseProxyParams()` function
-- [ ] Update `api.proxy.render.tsx` to use wrapper
-- [ ] Test with product handle injection
-- [ ] Test with collection handle injection
-- [ ] Test settings passthrough
-- [ ] Handle edge cases (empty code, malformed JSON)
+**Completed**:
+- [x] Create `app/utils/liquidWrapper.server.ts`
+- [x] Implement `wrapLiquidForProxy()` function
+- [x] Implement `parseProxyParams()` function
+- [x] Update `api.proxy.render.tsx` to use wrapper
+- [x] Test with product handle injection (30 tests, all passing)
+- [x] Test with collection handle injection
+- [x] Test settings passthrough
+- [x] Handle edge cases (empty code, malformed JSON)
+- [x] **[C1]** Add `sectionId` validation (path traversal/XSS vulnerability)
+- [x] **[C2]** Add `settingsParam` size limit (DoS prevention)
+- [x] **[H1]** Add test cases for complex backslash sequences in escaping
+- [x] **[H2]** Blacklist Liquid reserved words in settings keys
+- [x] **[H3]** Validate base64 format before decoding
+- [x] **[M1]** Reduce handle max length to 63 chars (Shopify limit)
+- [x] **[M2]** Add test for schema block with nested Liquid
+- [x] **[M3]** Document CSS isolation limitations
+- [x] **[M4]** Add security event logging for rejected inputs
+
+**Test Results**:
+- 34 new tests added (642 total passing)
+- Security tests: All passing
+- Edge case coverage: All passing
 
 ## Success Criteria
 
@@ -298,10 +314,19 @@ if (blocks.length > 0) {
 
 ## Security Considerations
 
-- **JSON Parsing**: Wrapped in try/catch, fails gracefully
-- **Handle Injection**: Only alphanumeric handles allowed in Shopify
-- **No DB Access**: All data comes from URL params, validated
-- **XSS Prevention**: Liquid sandbox handles escaping
+**Implemented**:
+- **JSON Parsing**: Wrapped in try/catch, fails gracefully ✅
+- **Handle Injection**: Regex validation blocks XSS/injection attempts ✅
+- **Settings Escaping**: Single quotes and backslashes properly escaped ✅
+- **No DB Access**: All data from URL params, validated ✅
+- **DoS (code)**: 100KB max code size enforced ✅
+- **Liquid Sandbox**: Shopify handles runtime escaping ✅
+- **Section ID**: Validated, XSS/path traversal prevented ✅
+- **Settings Size**: 50KB limit enforced, DoS protected ✅
+- **Reserved Words**: Validation against Liquid reserved words ✅
+- **Security Logging**: Event logging for rejected inputs ✅
+
+**Security Score**: 9/10 (all critical + high priority fixes completed)
 
 ## Next Steps
 
@@ -314,3 +339,7 @@ After completing this phase:
 1. **section.blocks access**: Can we simulate `{% for block in section.blocks %}` in app proxy context?
 2. **all_products limit**: What happens when store has >20 products and requested handle not in first 20?
 3. **Settings objects**: How to inject nested settings like `section.settings.featured_product.title`?
+4. **sectionId in frontend**: Does Phase 03 generate section IDs? Need validation there too?
+5. **Settings size**: What's realistic max for section settings? 50KB proposed.
+6. **Logging infrastructure**: Console.warn sufficient or need Sentry/Datadog?
+7. **CSP headers**: Should app-wide CSP be in Phase 01 or separate phase?

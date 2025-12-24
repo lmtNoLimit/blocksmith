@@ -55,8 +55,8 @@ Replace current client-side LiquidJS rendering (~60% accuracy) with Shopify App 
 
 | Phase | Title | Status | Effort | File |
 |-------|-------|--------|--------|------|
-| 01 | App Proxy Setup | pending | small | [phase-01-app-proxy-setup.md](./phase-01-app-proxy-setup.md) |
-| 02 | Backend Liquid Wrapper | pending | medium | [phase-02-backend-liquid-wrapper.md](./phase-02-backend-liquid-wrapper.md) |
+| 01 | App Proxy Setup | ✅ DONE | small | [phase-01-app-proxy-setup.md](./phase-01-app-proxy-setup.md) |
+| 02 | Backend Liquid Wrapper | ✅ DONE | medium | [phase-02-backend-liquid-wrapper.md](./phase-02-backend-liquid-wrapper.md) |
 | 03 | Frontend Integration | pending | medium | [phase-03-frontend-integration.md](./phase-03-frontend-integration.md) |
 | 04 | Settings & Context | pending | medium | [phase-04-settings-context.md](./phase-04-settings-context.md) |
 | 05 | Testing & Fallback | pending | medium | [phase-05-testing-fallback.md](./phase-05-testing-fallback.md) |
