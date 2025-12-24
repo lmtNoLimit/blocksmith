@@ -1048,6 +1048,82 @@ const text = result.response.text();
 └──────────────────────┘
 ```
 
+### App Proxy Liquid Rendering Flow (Phase 01)
+
+**Purpose**: Render generated Liquid sections on the storefront with shop context
+
+```
+┌─────────────────────────┐
+│  Merchant Preview Link  │
+│  /apps/blocksmith-      │
+│  preview?code=BASE64    │
+└────────────┬────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│  Shopify Storefront      │
+│  Routes to proxy URL     │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│  api.proxy.render        │
+│  authenticate.public.    │
+│  appProxy()              │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│  HMAC Signature          │
+│  Validation              │
+│  (Shopify-signed only)   │
+└────────────┬─────────────┘
+             │ Valid
+             ▼
+┌──────────────────────────┐
+│  Verify app installed    │
+│  Check session exists    │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│  Fetch code param        │
+│  Max 100KB (DoS limit)   │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│  Decode Base64 Liquid    │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│  Strip schema blocks     │
+│  Regex: {%-?schema-?%}   │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│  Return liquid()         │
+│  Content-Type:           │
+│  application/liquid      │
+└────────────┬─────────────┘
+             │
+             ▼
+┌──────────────────────────┐
+│  Shopify renders Liquid  │
+│  in storefront context   │
+│  (products, collections) │
+└──────────────────────────┘
+```
+
+**Key Details**:
+- **URL**: `https://{shop}.myshopify.com/apps/blocksmith-preview?code={base64-liquid}`
+- **Config**: Defined in `shopify.app.toml` (`[app_proxy]` block)
+- **Max Payload**: 100KB (prevents DoS attacks via oversized code)
+- **Schema Stripping**: Liquid `schema` blocks cannot be rendered by Shopify Liquid engine, must be removed
+- **Security**: HMAC signature validation ensures only Shopify can access the endpoint
+
 ### Authentication Flow
 
 ```

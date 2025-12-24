@@ -1480,6 +1480,44 @@ app/components/chat/
 - Updates session scope when merchant grants/revokes permissions
 - Fetches session by ID and updates scope field
 
+#### `/app/routes/api.proxy.render.tsx` (70 lines - Phase 01 App Proxy Setup)
+**Purpose**: Shopify App Proxy handler for native Liquid rendering on storefront
+**Proxy URL**: `https://{shop}.myshopify.com/apps/blocksmith-preview?code={base64-liquid}`
+
+**Configuration** (in `shopify.app.toml`):
+```toml
+[app_proxy]
+url = "/api/proxy/render"
+prefix = "apps"
+subpath = "blocksmith-preview"
+```
+
+**Features**:
+- HMAC validation via `authenticate.public.appProxy()` (secure, public endpoint)
+- Base64-encoded Liquid code in `code` query parameter
+- Returns `application/liquid` content type for Shopify native rendering
+- Max payload: 100KB (DoS protection)
+- Auto-strips schema blocks (not renderable in Shopify Liquid engine)
+
+**Request Validation**:
+1. HMAC validation (Shopify-signed requests only)
+2. Session check (app must be installed)
+3. Code parameter presence check
+4. Max size validation (100KB limit)
+5. Base64 decoding validation
+
+**Response Handling**:
+- Success: Returns decoded Liquid code (no layout wrapper)
+- Missing app: Error message "App not installed"
+- Missing code: Error message "No Liquid code provided"
+- Oversized payload: Error message "Code exceeds maximum allowed size"
+- Invalid encoding: Error message "Invalid code encoding"
+
+**Schema Block Stripping** (Regex):
+- Pattern: `/{%-?\s*schema\s*-?%}[\s\S]*?{%-?\s*endschema\s*-?%}/gi`
+- Supports both `{% schema %}` and `{%- schema -%}` syntax
+- Necessary because Shopify Liquid engine cannot render JSON schema blocks
+
 ### Business Logic Services
 
 #### Billing Service (`app/services/billing.server.ts`)
