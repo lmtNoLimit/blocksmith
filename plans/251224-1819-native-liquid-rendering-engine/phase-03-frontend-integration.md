@@ -10,7 +10,7 @@
 | Field | Value |
 |-------|-------|
 | Priority | P0 - Critical |
-| Status | pending |
+| Status | ✅ DONE (2025-12-24) |
 | Effort | medium (6-8 hrs) |
 | Description | Debounced fetch hook, NativePreviewFrame component, iframe srcdoc rendering |
 
@@ -473,15 +473,15 @@ const shopDomain = session.shop;
 
 ## Todo List
 
-- [ ] Create `useNativePreviewRenderer.ts` hook
-- [ ] Create `NativePreviewFrame.tsx` component
-- [ ] Create `NativeSectionPreview.tsx` component
-- [ ] Add shop domain passthrough from admin session
-- [ ] Test debounce behavior (600ms delay)
-- [ ] Test abort controller cancellation
-- [ ] Test device size scaling
-- [ ] Test loading overlay display
-- [ ] Test error banner with retry
+- [x] Create `useNativePreviewRenderer.ts` hook
+- [x] Create `NativePreviewFrame.tsx` component
+- [x] Create `NativeSectionPreview.tsx` component
+- [x] Add shop domain passthrough from admin session
+- [x] Test debounce behavior (600ms delay)
+- [x] Test abort controller cancellation
+- [x] Test device size scaling
+- [x] Test loading overlay display
+- [x] Test error banner with retry
 
 ## Success Criteria
 

@@ -23,6 +23,8 @@ interface CodePreviewPanelProps {
   loadedResources?: Record<string, MockProduct | MockCollection>;
   onRenderStateChange?: (isRendering: boolean) => void;
   onRefreshRef?: MutableRefObject<(() => void) | null>;
+  // Shop domain for native preview (Phase 04+)
+  shopDomain?: string;
 }
 
 /**
@@ -44,6 +46,7 @@ export function CodePreviewPanel({
   loadedResources,
   onRenderStateChange,
   onRefreshRef,
+  shopDomain: _shopDomain, // Reserved for native preview (Phase 04+)
 }: CodePreviewPanelProps) {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [copied, setCopied] = useState(false);

@@ -58,6 +58,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       id: conversation.id,
       messages,
     },
+    shopDomain: shop,
   };
 }
 
@@ -193,7 +194,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function UnifiedEditorPage() {
-  const { section, themes, conversation } = useLoaderData<typeof loader>();
+  const { section, themes, conversation, shopDomain } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const submit = useSubmit();
@@ -567,6 +568,7 @@ export default function UnifiedEditorPage() {
             loadedResources={previewSettings.loadedResources}
             onRenderStateChange={setIsRendering}
             onRefreshRef={refreshRef}
+            shopDomain={shopDomain}
           />
         }
         settingsPanel={

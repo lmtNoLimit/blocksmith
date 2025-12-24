@@ -2532,8 +2532,196 @@ export { FontDrop } from './FontDrop';
 
 ---
 
+## Phase 03: Frontend Integration - Native Liquid Preview (NEW)
+
+**Status**: Complete (Implements App Proxy integration for native Shopify Liquid rendering)
+
+### Overview
+
+Phase 03 Frontend Integration completes the App Proxy bridge by introducing native Liquid rendering components on the frontend. Users now see authentic Shopify Liquid output via server-side rendering, with debounced requests and device scaling support.
+
+### New Components
+
+#### `app/components/preview/hooks/useNativePreviewRenderer.ts` (160 lines)
+
+**Purpose**: React hook for App Proxy server-side Liquid rendering with performance optimization
+
+**Key Features**:
+- **600ms debounce**: Prevents excessive network requests during rapid code edits
+- **AbortController**: Cancels in-flight requests when component unmounts or new request starts
+- **Base64 encoding**: Unicode-safe parameter encoding with `TextEncoder` + `btoa()`
+- **Resource handles**: Extracts product/collection references from mock data
+- **Error handling**: Network errors reported to UI with user-triggered retry option
+
+**Interface**:
+```typescript
+interface UseNativePreviewRendererOptions {
+  liquidCode: string;
+  settings?: SettingsState;      // Form setting values
+  blocks?: BlockInstance[];       // Block instance state
+  resources?: Record<...>;        // Mock products/collections
+  shopDomain: string;             // Target shop domain
+  debounceMs?: number;            // Default 600ms
+}
+
+interface NativePreviewResult {
+  html: string | null;            // Rendered HTML or null
+  isLoading: boolean;             // Fetch in progress
+  error: string | null;           // Error message if failed
+  refetch: () => void;            // Manual retry function
+}
+```
+
+**Flow**:
+1. Watches `liquidCode`, `settings`, `blocks` for changes
+2. Debounces fetch request by 600ms
+3. Cancels previous request via AbortController
+4. Constructs proxy URL with base64-encoded parameters
+5. Returns rendered HTML from App Proxy endpoint
+
+**Encoding Details**:
+- Liquid code → base64 (Unicode-safe via TextEncoder)
+- Settings/blocks → JSON → base64
+- Resource handles appended as plain URL params
+- Section ID hardcoded as `preview`
+
+#### `app/components/preview/NativePreviewFrame.tsx` (150 lines)
+
+**Purpose**: Iframe container for native HTML preview with responsive device scaling
+
+**Key Features**:
+- **Device scaling**: Supports mobile (375px), tablet (768px), desktop (1200px) widths
+- **Dynamic height**: Uses ResizeObserver to measure container width, calculates scale factor
+- **Message protocol**: Listens for `NATIVE_PREVIEW_HEIGHT` messages from iframe
+- **Security**: `sandbox="allow-scripts"` prevents external script execution
+- **srcdoc rendering**: Full HTML document injected via `srcdoc` attribute
+
+**Device Widths**:
+```typescript
+const DEVICE_WIDTHS: Record<DeviceSize, number> = {
+  mobile: 375,
+  tablet: 768,
+  desktop: 1200,
+};
+```
+
+**Scaling Logic**:
+1. Container ResizeObserver tracks available width
+2. Calculate scale: `containerWidth / targetWidth` (if needs scaling)
+3. Apply CSS transform: `scale(${scale})` + `transform-origin: top center`
+4. Iframe height adjusted by scale factor for accurate preview
+
+**Iframe HTML Document**:
+- Meta charset + viewport for mobile responsiveness
+- Default Polaris typography (system font stack)
+- Image max-width for responsive images
+- MutationObserver reports height changes to parent
+
+**Security**:
+- Message validation checks origin (accepts null for srcdoc, or same origin)
+- Sandbox restricts script to safe operations only
+- No external resources loaded (inline CSS only)
+
+#### `app/components/preview/NativeSectionPreview.tsx` (68 lines)
+
+**Purpose**: Public component composing native preview hook + frame with error handling
+
+**Props**:
+```typescript
+interface NativeSectionPreviewProps {
+  liquidCode: string;
+  deviceSize?: DeviceSize;              // Default 'desktop'
+  settingsValues?: SettingsState;       // Form values
+  blocksState?: BlockInstance[];        // Block instances
+  loadedResources?: Record<...>;        // Mock data
+  shopDomain: string;                   // Required for proxy
+  onRenderStateChange?: (isRendering) => void; // Loading callback
+}
+```
+
+**Behavior**:
+1. Calls `useNativePreviewRenderer()` with all parameters
+2. Renders error banner with retry button if fetch fails
+3. Shows loading spinner overlay during render
+4. Displays `NativePreviewFrame` with rendered HTML
+5. Notifies parent via `onRenderStateChange` callback on loading state
+
+**Error Display**:
+- Dismissible banner with error message
+- Retry button triggers manual `refetch()`
+- Non-blocking error (frame still visible)
+
+### Updated Components
+
+#### `app/components/preview/index.ts` (exports added)
+
+Added exports for new native preview components:
+```typescript
+export { NativeSectionPreview } from './NativeSectionPreview';
+export { NativePreviewFrame } from './NativePreviewFrame';
+export { useNativePreviewRenderer } from './hooks/useNativePreviewRenderer';
+```
+
+#### `app/routes/app.sections.$id.tsx` (loader updated)
+
+**Loader changes**:
+- Added `shopDomain: shop` to loader return (line 61)
+- Maps authenticated shop domain from session for proxy requests
+
+**Component changes**:
+- Destructures `shopDomain` from loader data (line 197)
+- Passes `shopDomain={shopDomain}` to `CodePreviewPanel` (line 571)
+- Reserved for Phase 04+ integration into main preview component
+
+#### `app/components/editor/CodePreviewPanel.tsx` (prop added)
+
+**Props updated**:
+- Added optional `shopDomain?: string` prop (line 27)
+- Placeholder: `_shopDomain` for future use (line 49)
+- Currently not integrated into preview rendering (reserved for Phase 04)
+
+### Integration Points
+
+**Data Flow**:
+```
+app.sections.$id.tsx (loader)
+  → Returns: { section, themes, ..., shopDomain }
+  → Component receives via useLoaderData()
+  → Passes shopDomain to CodePreviewPanel
+  ↓
+CodePreviewPanel (receives shopDomain)
+  → (Phase 04): NativeSectionPreview gets shopDomain
+  → useNativePreviewRenderer hooks proxy
+  ↓
+useNativePreviewRenderer
+  → Debounces code changes (600ms)
+  → Builds proxy URL with base64-encoded code
+  → Fetches from https://{shopDomain}/apps/blocksmith-preview
+  ↓
+NativePreviewFrame
+  → Injects rendered HTML into iframe srcdoc
+  → Scales to device width via CSS transform
+  → Reports height via postMessage
+  ↓
+UI renders native Shopify Liquid output
+```
+
+### Performance Optimizations
+
+1. **Request debouncing**: 600ms delay prevents flood of network requests
+2. **Request cancellation**: AbortController stops in-flight requests
+3. **ResizeObserver scaling**: Efficient container width tracking
+4. **MutationObserver height**: Lightweight DOM change detection
+5. **Unicode-safe encoding**: TextEncoder handles international characters
+
+### Next Phase (04)
+
+Phase 04 will integrate native preview into `CodePreviewPanel`, replacing or augmenting the existing mock Liquid renderer. This allows users to see authentic Shopify output immediately.
+
+---
+
 **Document Version**: 2.2
-**Last Updated**: 2025-12-14
+**Last Updated**: 2025-12-24
 **Codebase Size**: ~335,835 tokens across 201 files (measured via repomix)
 **Primary Language**: TypeScript (TSX)
 **Recent Changes** (December 2025):
