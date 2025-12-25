@@ -2,6 +2,7 @@ import {
   generateSettingsAssigns,
   generateBlocksAssigns,
   rewriteSectionSettings,
+  rewriteBlocksIteration,
 } from "../settings-transform.server";
 
 describe("generateSettingsAssigns", () => {
@@ -230,5 +231,228 @@ describe("rewriteSectionSettings", () => {
     const result = rewriteSectionSettings(code);
 
     expect(result).toBe("{{ settings_show_add_to_cart }}");
+  });
+
+  it("should rewrite bracket notation with single quotes", () => {
+    const code = "{{ section.settings['title'] }}";
+    const result = rewriteSectionSettings(code);
+
+    expect(result).toBe("{{ settings_title }}");
+  });
+
+  it("should rewrite bracket notation with double quotes", () => {
+    const code = '{% if section.settings["show"] %}';
+    const result = rewriteSectionSettings(code);
+
+    expect(result).toBe("{% if settings_show %}");
+  });
+
+  it("should preserve filter chains after rewrite", () => {
+    const code = "{{ section.settings.title | upcase | truncate: 20 }}";
+    const result = rewriteSectionSettings(code);
+
+    expect(result).toBe("{{ settings_title | upcase | truncate: 20 }}");
+  });
+});
+
+describe("rewriteBlocksIteration", () => {
+  describe("simple for loops", () => {
+    it("should unroll simple for block loop", () => {
+      const code = `{% for block in section.blocks %}
+  <div>{{ block.settings.title }}</div>
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 3);
+
+      expect(result).toContain("{% if blocks_count > 0 %}");
+      expect(result).toContain("{{ block_0_title }}");
+      expect(result).toContain("{% if blocks_count > 1 %}");
+      expect(result).toContain("{{ block_1_title }}");
+      expect(result).toContain("{% if blocks_count > 2 %}");
+      expect(result).toContain("{{ block_2_title }}");
+    });
+
+    it("should handle whitespace control syntax", () => {
+      const code = `{%- for block in section.blocks -%}
+  <div>{{ block.settings.text }}</div>
+{%- endfor -%}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      expect(result).toContain("{% if blocks_count > 0 %}");
+      expect(result).toContain("{{ block_0_text }}");
+      expect(result).toContain("{% if blocks_count > 1 %}");
+      expect(result).toContain("{{ block_1_text }}");
+    });
+
+    it("should preserve content outside for loops", () => {
+      const code = `<div class="header">Title</div>
+{% for block in section.blocks %}
+  <div>{{ block.settings.content }}</div>
+{% endfor %}
+<div class="footer">Footer</div>`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      expect(result).toContain('<div class="header">Title</div>');
+      expect(result).toContain('<div class="footer">Footer</div>');
+    });
+  });
+
+  describe("block.settings transformation", () => {
+    it("should transform block.settings.property to block_N_property", () => {
+      const code = `{% for block in section.blocks %}
+  {{ block.settings.heading }}
+  {{ block.settings.description }}
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      expect(result).toContain("{{ block_0_heading }}");
+      expect(result).toContain("{{ block_0_description }}");
+      expect(result).toContain("{{ block_1_heading }}");
+      expect(result).toContain("{{ block_1_description }}");
+    });
+
+    it("should transform bracket notation with single quotes", () => {
+      const code = `{% for block in section.blocks %}
+  {{ block.settings['title'] }}
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      expect(result).toContain("{{ block_0_title }}");
+      expect(result).toContain("{{ block_1_title }}");
+    });
+
+    it("should transform bracket notation with double quotes", () => {
+      const code = `{% for block in section.blocks %}
+  {{ block.settings["title"] }}
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      expect(result).toContain("{{ block_0_title }}");
+      expect(result).toContain("{{ block_1_title }}");
+    });
+  });
+
+  describe("block.type and block.id transformation", () => {
+    it("should transform block.type to block_N_type", () => {
+      const code = `{% for block in section.blocks %}
+  {% if block.type == 'heading' %}
+    <h2>{{ block.settings.text }}</h2>
+  {% endif %}
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      expect(result).toContain("{% if block_0_type == 'heading' %}");
+      expect(result).toContain("{% if block_1_type == 'heading' %}");
+    });
+
+    it("should transform block.id to block_N_id", () => {
+      const code = `{% for block in section.blocks %}
+  <div id="{{ block.id }}">{{ block.settings.title }}</div>
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      expect(result).toContain('id="{{ block_0_id }}"');
+      expect(result).toContain('id="{{ block_1_id }}"');
+    });
+  });
+
+  describe("custom block variable names", () => {
+    it("should handle custom variable name like b", () => {
+      const code = `{% for b in section.blocks %}
+  {{ b.settings.title }}
+  {{ b.type }}
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      expect(result).toContain("{{ block_0_title }}");
+      expect(result).toContain("{{ block_0_type }}");
+      expect(result).toContain("{{ block_1_title }}");
+      expect(result).toContain("{{ block_1_type }}");
+    });
+
+    it("should handle custom variable name like item", () => {
+      const code = `{% for item in section.blocks %}
+  {{ item.settings.text }}
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      expect(result).toContain("{{ block_0_text }}");
+      expect(result).toContain("{{ block_1_text }}");
+    });
+  });
+
+  describe("edge cases", () => {
+    it("should return unchanged code if no for block loop", () => {
+      const code = "{{ section.settings.title }}";
+      const result = rewriteBlocksIteration(code);
+
+      expect(result).toBe(code);
+    });
+
+    it("should handle multiple for loops", () => {
+      const code = `{% for block in section.blocks %}
+  {{ block.settings.title }}
+{% endfor %}
+<hr>
+{% for block in section.blocks %}
+  {{ block.settings.description }}
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      // Both loops should be unrolled
+      const occurrences = (result.match(/blocks_count > 0/g) || []).length;
+      expect(occurrences).toBe(2);
+    });
+
+    it("should handle loop with filters", () => {
+      const code = `{% for block in section.blocks %}
+  {{ block.settings.title | upcase }}
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      expect(result).toContain("{{ block_0_title | upcase }}");
+      expect(result).toContain("{{ block_1_title | upcase }}");
+    });
+
+    it("should default to 10 max blocks", () => {
+      const code = `{% for block in section.blocks %}
+  {{ block.settings.x }}
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code);
+
+      expect(result).toContain("{% if blocks_count > 9 %}");
+      expect(result).not.toContain("{% if blocks_count > 10 %}");
+    });
+
+    it("should handle empty loop body", () => {
+      const code = `{% for block in section.blocks %}{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      expect(result).toContain("{% if blocks_count > 0 %}");
+      expect(result).toContain("{% endif %}");
+    });
+
+    it("should skip transformation for nested for loops", () => {
+      const code = `{% for block in section.blocks %}
+  {% for item in collection.products %}
+    {{ block.settings.title }}
+  {% endfor %}
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      // Should return original code unchanged due to nested loop
+      expect(result).toBe(code);
+    });
+
+    it("should skip transformation for nested section.blocks loops", () => {
+      const code = `{% for block in section.blocks %}
+  {% for inner in section.blocks %}
+    {{ block.settings.title }}
+  {% endfor %}
+{% endfor %}`;
+      const result = rewriteBlocksIteration(code, 2);
+
+      // Should return original code unchanged due to nested loop
+      expect(result).toBe(code);
+    });
   });
 });

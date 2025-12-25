@@ -102,6 +102,7 @@ ai-section-generator/
 │   │   ├── code-extractor.ts     # Extract code from AI responses
 │   │   ├── context-builder.ts    # Build conversation context
 │   │   ├── settings-transform.server.ts # Settings & blocks Liquid assigns (Phase 04 NEW)
+│   │   ├── blocks-iteration.server.ts # Block loop unrolling for App Proxy (Phase 03 NEW)
 │   │   ├── liquid-wrapper.server.ts # Context injection & settings parsing (Phase 04 UPDATED)
 │   │   └── __tests__/            # Utility test suites
 │   ├── types/                    # TypeScript type definitions
@@ -1497,10 +1498,34 @@ export interface ChatMetadata {
    - **Use Case**: Migrating existing theme sections to App Proxy rendering
    - **Default**: Disabled (transformSectionSettings=false) in wrapLiquidForProxy
 
-4. `rewriteBlocksIteration(code)`: Placeholder for future block transformation
-   - **Current**: No-op function
-   - **Reason**: Full iteration transformation (block.settings.X → block_{{forloop.index0}}_X) requires sophisticated parsing
-   - **Recommendation**: Use block_N_X pattern directly in templates instead of `{% for block in section.blocks %}`
+4. `rewriteBlocksIteration(code, maxBlocks?)`: Unroll for loops over section.blocks (Phase 03 NEW)
+   - **Purpose**: Transform `{% for block in section.blocks %}` loops into unrolled indexed block access
+   - **Input**: Liquid code containing `{% for block in section.blocks %}...{% endfor %}` patterns
+   - **Output**: Unrolled blocks with conditionals: `{% if blocks_count > N %}...{% endif %}`
+   - **Pattern**: Loop iteration variable replaced with indexed variables
+   - **Examples**:
+     ```liquid
+     // Input:
+     {% for block in section.blocks %}
+       <div>{{ block.settings.title }}</div>
+     {% endfor %}
+
+     // Output:
+     {% if blocks_count > 0 %}
+       <div>{{ block_0_title }}</div>
+     {% endif %}
+     {% if blocks_count > 1 %}
+       <div>{{ block_1_title }}</div>
+     {% endif %}
+     ```
+   - **Transformations Handled**:
+     - `block.settings.property` → `block_N_property`
+     - `block.settings['property']` → `block_N_property` (bracket notation)
+     - `block.type` → `block_N_type`
+     - `block.id` → `block_N_id`
+   - **maxBlocks**: Default 10 (prevents output explosion, prevents O(n) size growth)
+   - **Nested Loop Detection**: Warns and skips transformation if nested for loops detected
+   - **Use Case**: Making theme sections using block iteration compatible with App Proxy flat variable injection
 
 **Security Features**:
 - Key sanitization prevents invalid Liquid variable names
@@ -1514,16 +1539,113 @@ export interface ChatMetadata {
 - Blocks iteration: multiple blocks, metadata injection, count variable
 - Edge cases: empty strings, very long strings, special characters in values
 
+#### Block Iteration Utility (`app/utils/blocks-iteration.server.ts` - Phase 03 NEW)
+
+**Purpose**: Transform Shopify `{% for block in section.blocks %}` loops into unrolled indexed block access for App Proxy compatibility.
+
+**Key Problem Solved**: App Proxy receives flat injected variables (block_0_title, block_1_title, etc.) but theme sections may contain traditional `for block in section.blocks` loops. This utility unrolls those loops into conditional blocks.
+
+**Main Function**:
+
+`rewriteBlocksIteration(code, maxBlocks?)`: Unroll for loop patterns
+- **Input**: Liquid template code string, optional maxBlocks (default: 10)
+- **Output**: Transformed code with unrolled indexed blocks
+- **Algorithm**:
+  1. Match all `{% for block in section.blocks %}...{% endfor %}` patterns
+  2. For each match, detect nested loops (skip if found, warn to console)
+  3. Unroll into N conditional blocks (0 to maxBlocks-1)
+  4. Replace block variable references with indexed versions
+  5. Join unrolled blocks with newlines
+
+**Internal Helpers**:
+
+1. `unrollBlockLoop(blockVar, loopBody, maxBlocks)`:
+   - Generates array of conditional blocks
+   - Pattern: `{% if blocks_count > N %}BODY{% endif %}`
+   - Note: blocks_count is 1-indexed, so `> i` for 0-indexed iteration
+   - Returns joined string of all unrolled blocks
+
+2. `transformBlockReferences(body, blockVar, index)`:
+   - Replaces all block variable references with indexed versions
+   - Handles dot notation: `block.settings.property` → `block_N_property`
+   - Handles bracket notation: `block.settings['property']` → `block_N_property`
+   - Handles special properties: `block.type` → `block_N_type`, `block.id` → `block_N_id`
+   - Uses escaped regex for safety (blockVar already validated by outer regex)
+
+**Transformation Examples**:
+
+```liquid
+// Input
+{% for block in section.blocks %}
+  <div class="block-{{ block.type }}">
+    <h3>{{ block.settings.title }}</h3>
+    <p>{{ block.settings.description }}</p>
+  </div>
+{% endfor %}
+
+// Output (with 3 blocks)
+{% if blocks_count > 0 %}<div class="block-{{ block_0_type }}">
+  <h3>{{ block_0_title }}</h3>
+  <p>{{ block_0_description }}</p>
+</div>{% endif %}
+{% if blocks_count > 1 %}<div class="block-{{ block_1_type }}">
+  <h3>{{ block_1_title }}</h3>
+  <p>{{ block_1_description }}</p>
+</div>{% endif %}
+{% if blocks_count > 2 %}<div class="block-{{ block_2_type }}">
+  <h3>{{ block_2_title }}</h3>
+  <p>{{ block_2_description }}</p>
+</div>{% endif %}
+```
+
+**Configuration**:
+
+- **MAX_UNROLL_BLOCKS**: 10 (module constant, prevents exponential code growth)
+- **FOR_BLOCK_REGEX**: `/\{%-?\s*for\s+(\w+)\s+in\s+section\.blocks\s*-?%\}([\s\S]*?)\{%-?\s*endfor\s*-?%\}/g`
+  - Matches whitespace control operators (`{%- -%}`)
+  - Captures: (1) loop variable name, (2) loop body
+- **NESTED_FOR_REGEX**: `/\{%-?\s*for\s+/` (detects nested loops within body)
+
+**Edge Cases Handled**:
+
+- **Nested Loops**: Detected and skipped (console.warn) to prevent incorrect unrolling
+- **Whitespace Control**: Properly handles `-` operators in `{%- ... -%}`
+- **Block Variable Names**: Validates input via outer regex `\w+` (alphanumeric + underscore)
+- **Property Access**: Supports both dot and bracket notation with quote types
+
+**Integration Points**:
+
+- Re-exported from `settings-transform.server.ts` for backwards compatibility
+- Called by `liquid-wrapper.server.ts` when `transformBlocksIteration=true`
+- Used in app proxy rendering pipeline to make generated sections compatible
+
+**Limitations**:
+
+- Max 10 unrolled blocks (configurable at function call)
+- Skips transformation if nested loops detected (manual intervention required)
+- Does not handle dynamic loop variables other than standard `block`
+- Cannot unroll variable loop counts (e.g., `{% for block in section.blocks limit: dynamic_var %}`)
+
+**Test Coverage** (`app/utils/__tests__/settings-transform.server.test.ts` - 17 new tests for rewriteBlocksIteration):
+- Basic unrolling: simple loops, whitespace control, preserve content outside loops
+- Reference transformations: dot notation, bracket notation (single/double quotes)
+- Block properties: block.type and block.id transformation
+- Custom variable names: handles 'b', 'item' instead of standard 'block'
+- Edge cases: no loop match, multiple loops, filters, default max blocks (10), empty body, nested loops
+
 #### Updated Liquid Wrapper (`app/utils/liquid-wrapper.server.ts` - Phase 04 UPDATED)
 
-**New Integration with Settings Transform**:
-- Import: `generateSettingsAssigns`, `generateBlocksAssigns`, `rewriteSectionSettings` from settings-transform.server
-- Enhanced WrapperOptions: Added optional `blocks?: BlockInstance[]` parameter
-- Updated `wrapLiquidForProxy()`:
+**New Integration with Settings & Block Iteration Transform**:
+- Import: `generateSettingsAssigns`, `generateBlocksAssigns`, `rewriteSectionSettings`, `rewriteBlocksIteration` from settings-transform.server
+- Enhanced WrapperOptions:
+  - Added optional `blocks?: BlockInstance[]` parameter
+  - Added optional `transformBlocksIteration?: boolean` flag (Phase 03)
+- Updated `wrapLiquidForProxy()` transformation pipeline:
   1. Parse settings via `generateSettingsAssigns(settings)`
   2. Parse blocks via `generateBlocksAssigns(blocks)`
   3. Optionally rewrite section.settings.X to settings_X (if transformSectionSettings=true)
-  4. Inject all assigns before user code (assigns.join("\n"))
+  4. Optionally unroll for loops via `rewriteBlocksIteration(code)` (if transformBlocksIteration=true, Phase 03)
+  5. Inject all assigns before user code (assigns.join("\n"))
 
 **Query Parameter** (in `api.proxy.render.tsx`):
 - New: `blocks` parameter accepts base64-encoded JSON array of BlockInstance objects

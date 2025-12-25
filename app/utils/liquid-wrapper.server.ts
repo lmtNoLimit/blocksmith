@@ -9,6 +9,7 @@ import {
   generateSettingsAssigns,
   generateBlocksAssigns,
   rewriteSectionSettings,
+  rewriteBlocksIteration,
 } from './settings-transform.server';
 
 // Types for wrapper configuration
@@ -20,6 +21,7 @@ export interface WrapperOptions {
   settings?: SettingsState;
   blocks?: BlockInstance[];
   transformSectionSettings?: boolean;
+  transformBlocksIteration?: boolean;
 }
 
 // Types for parsed proxy parameters
@@ -68,6 +70,7 @@ export function wrapLiquidForProxy({
   settings = {},
   blocks = [],
   transformSectionSettings = false,
+  transformBlocksIteration = false,
 }: WrapperOptions): string {
   const assigns: string[] = [];
 
@@ -93,6 +96,11 @@ export function wrapLiquidForProxy({
   // Optionally transform section.settings.X to settings_X for compatibility
   if (transformSectionSettings) {
     cleanedCode = rewriteSectionSettings(cleanedCode);
+  }
+
+  // Optionally transform for block in section.blocks loops
+  if (transformBlocksIteration) {
+    cleanedCode = rewriteBlocksIteration(cleanedCode);
   }
 
   // Build wrapped template with CSS isolation container

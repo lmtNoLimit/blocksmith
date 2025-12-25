@@ -129,28 +129,27 @@ export function generateBlocksAssigns(blocks: BlockInstance[]): string[] {
  * Patterns transformed:
  * - {{ section.settings.title }} → {{ settings_title }}
  * - {% if section.settings.show %} → {% if settings_show %}
+ * - {{ section.settings['title'] }} → {{ settings_title }}
+ * - {{ section.settings["title"] }} → {{ settings_title }}
  *
  * @param code - Liquid template code
  * @returns Transformed code
  */
 export function rewriteSectionSettings(code: string): string {
-  // Match section.settings.property_name in output tags and logic tags
-  return code.replace(
+  // Handle dot notation: section.settings.property_name
+  let result = code.replace(
     /section\.settings\.([a-zA-Z_][a-zA-Z0-9_]*)/g,
     'settings_$1'
   );
+
+  // Handle bracket notation: section.settings['property'] or section.settings["property"]
+  result = result.replace(
+    /section\.settings\[['"]([a-zA-Z_][a-zA-Z0-9_]*)['"]\]/g,
+    'settings_$1'
+  );
+
+  return result;
 }
 
-/**
- * Rewrite section.blocks iteration for individual block access
- * Transforms: {% for block in section.blocks %} → {% for i in (0..blocks_count) %}
- *
- * NOTE: This is intentionally a no-op. Full block iteration transformation
- * (block.settings.X → block_{{forloop.index0}}_X) is not feasible with regex.
- * Templates should use the block_N_X pattern directly or document limitations.
- *
- * Kept for future enhancement if more sophisticated parsing is needed.
- */
-export function rewriteBlocksIteration(code: string): string {
-  return code;
-}
+// Re-export block iteration from separate module for backwards compatibility
+export { rewriteBlocksIteration } from './blocks-iteration.server';
