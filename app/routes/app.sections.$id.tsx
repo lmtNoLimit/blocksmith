@@ -556,7 +556,6 @@ export default function UnifiedEditorPage() {
         }
         codePreviewPanel={
           <s-box>
-            <iframe src="https://thanhlm1.myshopify.com"></iframe>
             <CodePreviewPanel
               code={previewCode}
               fileName={fileName}
