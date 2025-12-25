@@ -109,6 +109,7 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
       collectionHandle: collectionHandle ?? undefined,
       settings: settings ?? undefined,
       blocks: blocks ?? undefined,
+      transformSectionSettings: true,
     });
 
     return liquid(wrappedCode, { layout: false });

@@ -275,9 +275,9 @@ AI Section Generator is a **serverless embedded Shopify app** built on React Rou
 - React 18 hooks (useState, useEffect, etc.)
 - Component-based architecture (Phase 04)
 
-#### Phase 01: Resource Context Integration (NEW)
+#### Phase 01: Resource Context Integration (COMPLETE)
 
-**Purpose**: Enable dynamic property chaining from resource picker selections into Liquid templates
+**Purpose**: Enable dynamic property chaining from resource picker selections into Liquid templates with full App Proxy rendering support.
 
 **Architecture**:
 ```
@@ -290,6 +290,12 @@ SectionSettingsDrop (merges primitives + resource Drops)
 useLiquidRenderer instantiates SectionSettingsDrop
     ↓
 Liquid Template: {{ section.settings.featured_product.title }}
+    ↓
+App Proxy Render (api.proxy.render.tsx)
+    ↓
+transformSectionSettings: true → Rewrites section.settings.X → settings_X
+    ↓
+Native Shopify Liquid rendering
 ```
 
 **Key Components**:
@@ -309,7 +315,19 @@ Liquid Template: {{ section.settings.featured_product.title }}
    - Passes as `section.settings` in Liquid context
    - Enables nested property chains in templates
 
-3. **Test Coverage** (`app/components/preview/drops/__tests__/SectionSettingsDrop.test.ts`)
+3. **App Proxy Rendering** (`app/routes/api.proxy.render.tsx`)
+   - Loader authenticates Shopify App Proxy requests (HMAC validation)
+   - Token-based data retrieval for large payloads (code, settings, blocks)
+   - URL parameter fallback for small payloads
+   - **transformSectionSettings: true** (Phase 01 Completion)
+     - Enables automatic syntax transformation
+     - Rewrites `section.settings.X` → `settings_X` for Shopify native rendering
+     - Allows templates to use familiar `section.settings` syntax
+     - Native Liquid rendering without LiquidJS engine
+   - CSS isolation container: `<div class="blocksmith-preview" id="shopify-section-{id}">`
+   - Error handling with graceful fallbacks
+
+4. **Test Coverage** (`app/components/preview/drops/__tests__/SectionSettingsDrop.test.ts`)
    - 13 comprehensive test suites
    - Validates primitive settings, resource drops, precedence, iteration, empty states
    - Tests multiple resource support (multiple products + collections)
@@ -326,7 +344,13 @@ settingsResourceDrops = { featured_product: ProductDrop }
        ↓
 SectionSettingsDrop created with settings + resourceDrops
        ↓
-Template can now use: {{ section.settings.featured_product.title }}
+Template uses: {{ section.settings.featured_product.title }}
+       ↓
+App Proxy route receives via token or URL params
+       ↓
+transformSectionSettings rewrites to: {{ settings_featured_product_title }}
+       ↓
+Shopify native Liquid renders with product context
 ```
 
 **Benefits**:
@@ -335,6 +359,9 @@ Template can now use: {{ section.settings.featured_product.title }}
 - Supports both primitive and resource-type settings
 - Maintains backward compatibility with primitive-only settings
 - Type-safe with comprehensive test coverage
+- Full App Proxy support for native Shopify rendering
+- Automatic syntax transformation for production templates
+- No LiquidJS engine dependency in production rendering
 
 ---
 
@@ -1415,10 +1442,11 @@ const text = result.response.text();
 
 ---
 
-**Document Version**: 1.6
-**Last Updated**: 2025-12-12
-**Architecture Status**: Phase 02 Block Defaults Complete, Phase 01 Resource Context Done
+**Document Version**: 1.7
+**Last Updated**: 2025-12-25
+**Architecture Status**: Phase 01 Complete (App Proxy + transformSectionSettings), Phase 02-04 Complete
 **Recent Changes** (December 2025):
+- **251225**: Phase 01 Completion - Added transformSectionSettings: true to api.proxy.render.tsx for automatic syntax transformation ({{ section.settings.X }} → {{ settings_X }}) in native Shopify Liquid rendering
 - **251212**: Phase 02 Block Defaults - Expanded buildInitialState() to support all 31 Shopify schema types, DRY refactor with shared function in SettingsPanel
 - **251212**: Phase 01 Resource Context Integration - SectionSettingsDrop for property chaining ({{ section.settings.featured_product.title }})
 - **251209**: Redirect after save with toast notifications (Section edit flow complete)
