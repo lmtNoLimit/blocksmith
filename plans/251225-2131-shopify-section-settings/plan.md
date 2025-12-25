@@ -1,7 +1,7 @@
 ---
 title: "Shopify Section Settings Enhancement"
 description: "Enhance 7 input setting components to match Theme Customizer UI using Polaris web components"
-status: pending
+status: done
 priority: P2
 effort: 4h
 branch: main
@@ -33,7 +33,7 @@ Enhance Section Preview settings to match Shopify Theme Customizer look using Po
 |---|-------|--------|--------|------|
 | 1 | UI Audit & Gap Analysis | Done | 1h | [phase-01](./phase-01-ui-audit-gap-analysis.md) |
 | 2 | Radio Component Migration | Done | 1.5h | [phase-02-radio-component-migration.md](./phase-02-radio-component-migration.md) |
-| 3 | Theme Customizer UI Polish | Pending | 1.5h | [phase-03-theme-customizer-ui-polish.md](./phase-03-theme-customizer-ui-polish.md) |
+| 3 | Theme Customizer UI Polish | Done | 1.5h | [phase-03-theme-customizer-ui-polish.md](./phase-03-theme-customizer-ui-polish.md) |
 
 ## Dependencies
 

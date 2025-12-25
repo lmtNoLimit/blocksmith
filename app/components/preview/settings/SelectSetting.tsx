@@ -21,9 +21,21 @@ export function SelectSetting({ setting, value, onChange, disabled }: SelectSett
   const useSegmented = options.length <= 5 && options.length > 1 && !hasGroups;
 
   if (useSegmented) {
+    // Unique class name for hover styles scoped to this setting
+    // Sanitize setting.id to prevent CSS injection
+    const safeId = setting.id.replace(/[^a-zA-Z0-9_-]/g, '');
+    const segmentClass = `segment-${safeId}`;
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
         <span style={{ fontWeight: 500 }}>{setting.label}</span>
+
+        {/* Hover styles for segmented control buttons */}
+        <style>{`
+          .${segmentClass}:not(:disabled):not([data-selected="true"]):hover {
+            background-color: #f6f6f7 !important;
+          }
+        `}</style>
 
         <div style={{
           display: 'flex',
@@ -36,6 +48,8 @@ export function SelectSetting({ setting, value, onChange, disabled }: SelectSett
             <button
               key={opt.value}
               type="button"
+              className={segmentClass}
+              data-selected={value === opt.value}
               onClick={() => !disabled && onChange(opt.value)}
               disabled={disabled}
               style={{
