@@ -27,6 +27,8 @@ export interface GeneratePreviewColumnProps {
   // Common
   onSaveAsTemplate?: () => void;
   isGenerating?: boolean;
+  // Shop domain for native preview
+  shopDomain: string;
 }
 
 /**
@@ -54,6 +56,7 @@ export function GeneratePreviewColumn({
   // Common
   onSaveAsTemplate,
   isGenerating = false,
+  shopDomain,
 }: GeneratePreviewColumnProps) {
   // Determine if we're in "Create" mode (has draft option) or "Edit" mode (single save)
   const isCreateMode = Boolean(onSaveDraft);
@@ -113,7 +116,7 @@ export function GeneratePreviewColumn({
             <CodePreview code={generatedCode} fileName={fileName} />
           ) : (
             <PreviewErrorBoundary onRetry={() => {}}>
-              <SectionPreview liquidCode={generatedCode} />
+              <SectionPreview liquidCode={generatedCode} shopDomain={shopDomain} />
             </PreviewErrorBoundary>
           )}
         </s-stack>

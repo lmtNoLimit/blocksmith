@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import type { Section } from '@prisma/client';
 import type { Theme, UIMessage } from '../../../types';
 import { useVersionState } from './useVersionState';
@@ -39,6 +39,23 @@ export function useEditorState({
     section.fileName?.replace('sections/', '').replace('.liquid', '') || 'ai-section'
   );
 
+  // Live messages state - synced from ChatPanel
+  const [liveMessages, setLiveMessages] = useState<UIMessage[]>(
+    conversation?.messages || []
+  );
+
+  // Sync initial messages from loader
+  useEffect(() => {
+    if (conversation?.messages) {
+      setLiveMessages(conversation.messages);
+    }
+  }, [conversation?.messages]);
+
+  // Callback for ChatPanel to sync messages
+  const handleMessagesChange = useCallback((messages: UIMessage[]) => {
+    setLiveMessages(messages);
+  }, []);
+
   // Track dirty state - use memo to avoid extra render
   const originalCode = section.code;
   const isDirty = useMemo(
@@ -69,7 +86,7 @@ export function useEditorState({
   // Validation
   const canPublish = Boolean(sectionCode && fileName && selectedTheme);
 
-  // Version state for preview/history
+  // Version state for preview/history (uses live messages from ChatPanel)
   const {
     versions,
     selectedVersionId,
@@ -80,7 +97,7 @@ export function useEditorState({
     selectVersion,
     applyVersion,
   } = useVersionState({
-    messages: conversation?.messages || [],
+    messages: liveMessages,
     initialCode: sectionCode,
     onCodeChange: handleCodeUpdate,
   });
@@ -102,6 +119,7 @@ export function useEditorState({
     // Conversation
     conversationId: conversation?.id || null,
     initialMessages: conversation?.messages || [],
+    handleMessagesChange,
 
     // Save
     selectedTheme,

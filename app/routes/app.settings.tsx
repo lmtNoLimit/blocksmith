@@ -13,6 +13,11 @@ import {
 import { useAppBridge } from "@shopify/app-bridge-react";
 import { authenticate } from "../shopify.server";
 import { settingsService } from "../services/settings.server";
+import {
+  validateAndSaveStorefrontPassword,
+  clearStorefrontPasswordAndCache,
+} from "../services/storefront-auth.server";
+import { StorefrontPasswordSettings } from "../components/settings/StorefrontPasswordSettings";
 
 interface AppPreferences {
   defaultTone: string;
@@ -30,6 +35,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
       defaultStyle: settings?.defaultStyle ?? "minimal",
       autoSaveEnabled: settings?.autoSaveEnabled ?? false,
     } as AppPreferences,
+    // Storefront password state (value never exposed, only status)
+    hasStorefrontPassword: !!settings?.storefrontPassword,
+    passwordVerifiedAt: settings?.passwordVerifiedAt?.toISOString() ?? null,
   };
 }
 
@@ -67,11 +75,46 @@ export async function action({ request }: ActionFunctionArgs) {
     return { success: true, message: "Settings saved!" };
   }
 
+  // Storefront password actions
+  if (intent === "saveStorefrontPassword") {
+    const password = formData.get("password") as string;
+
+    if (!password || password.length < 1) {
+      return { success: false, error: "Password is required" };
+    }
+
+    try {
+      const result = await validateAndSaveStorefrontPassword(
+        session.shop,
+        password
+      );
+
+      if (result.success) {
+        return { success: true, message: "Storefront password saved and verified!" };
+      }
+      return { success: false, error: result.error };
+    } catch (error) {
+      console.error("[Settings] Failed to save storefront password:", error);
+      return { success: false, error: "Failed to save password. Check server configuration." };
+    }
+  }
+
+  if (intent === "clearStorefrontPassword") {
+    try {
+      await clearStorefrontPasswordAndCache(session.shop);
+      return { success: true, message: "Storefront password cleared" };
+    } catch (error) {
+      console.error("[Settings] Failed to clear storefront password:", error);
+      return { success: false, error: "Failed to clear password" };
+    }
+  }
+
   return { success: false };
 }
 
 export default function SettingsPage() {
-  const { preferences } = useLoaderData<typeof loader>();
+  const { preferences, hasStorefrontPassword, passwordVerifiedAt } =
+    useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const submit = useSubmit();
   const navigation = useNavigation();
@@ -160,6 +203,12 @@ export default function SettingsPage() {
             onChange={handleAutoSaveChange}
           />
         </s-section>
+
+        {/* Storefront Password for Native Preview */}
+        <StorefrontPasswordSettings
+          hasPassword={hasStorefrontPassword}
+          verifiedAt={passwordVerifiedAt}
+        />
       </s-stack>
     </s-page>
   );

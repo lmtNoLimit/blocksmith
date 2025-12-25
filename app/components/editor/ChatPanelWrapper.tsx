@@ -6,6 +6,8 @@ interface ChatPanelWrapperProps {
   initialMessages: UIMessage[];
   currentCode: string;
   onCodeUpdate: (code: string) => void;
+  /** Callback when messages change (for syncing with parent state) */
+  onMessagesChange?: (messages: UIMessage[]) => void;
   // Version props
   versions?: CodeVersion[];
   selectedVersionId?: string | null;
@@ -31,6 +33,7 @@ export function ChatPanelWrapper({
   initialMessages,
   currentCode,
   onCodeUpdate,
+  onMessagesChange,
   versions,
   selectedVersionId,
   activeVersionId,
@@ -44,6 +47,7 @@ export function ChatPanelWrapper({
         initialMessages={initialMessages}
         currentCode={currentCode}
         onCodeUpdate={onCodeUpdate}
+        onMessagesChange={onMessagesChange}
         versions={versions}
         selectedVersionId={selectedVersionId}
         activeVersionId={activeVersionId}

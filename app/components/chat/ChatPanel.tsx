@@ -16,6 +16,8 @@ export interface ChatPanelProps {
   initialMessages?: UIMessage[];
   currentCode?: string;
   onCodeUpdate?: (code: string) => void;
+  /** Callback when messages change (for syncing with parent state) */
+  onMessagesChange?: (messages: UIMessage[]) => void;
   // Version props
   versions?: CodeVersion[];
   selectedVersionId?: string | null;
@@ -29,6 +31,7 @@ export function ChatPanel({
   initialMessages = [],
   currentCode,
   onCodeUpdate,
+  onMessagesChange,
   versions = [],
   selectedVersionId,
   activeVersionId,
@@ -68,6 +71,11 @@ export function ChatPanel({
       loadMessages(initialMessages);
     }
   }, [initialMessages, loadMessages]);
+
+  // Sync messages back to parent when they change
+  useEffect(() => {
+    onMessagesChange?.(messages);
+  }, [messages, onMessagesChange]);
 
   // Auto-trigger AI generation if last message is user with no assistant response
   useEffect(() => {

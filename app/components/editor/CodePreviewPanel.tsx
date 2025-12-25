@@ -23,8 +23,8 @@ interface CodePreviewPanelProps {
   loadedResources?: Record<string, MockProduct | MockCollection>;
   onRenderStateChange?: (isRendering: boolean) => void;
   onRefreshRef?: MutableRefObject<(() => void) | null>;
-  // Shop domain for native preview (Phase 04+)
-  shopDomain?: string;
+  // Shop domain for native preview
+  shopDomain: string;
 }
 
 /**
@@ -46,7 +46,7 @@ export function CodePreviewPanel({
   loadedResources,
   onRenderStateChange,
   onRefreshRef,
-  shopDomain: _shopDomain, // Reserved for native preview (Phase 04+)
+  shopDomain,
 }: CodePreviewPanelProps) {
   const [activeTab, setActiveTab] = useState<'preview' | 'code'>('preview');
   const [copied, setCopied] = useState(false);
@@ -151,13 +151,11 @@ export function CodePreviewPanel({
 
       {/* Content area */}
       <s-box
-        padding="base"
         background="subdued"
         blockSize="100%"
         overflow="hidden"
         {...(isViewingHistory && {
           border: 'base base dashed',
-          borderRadius: 'base',
         })}
       >
         {activeTab === 'preview' ? (
@@ -170,6 +168,7 @@ export function CodePreviewPanel({
               loadedResources={loadedResources}
               onRenderStateChange={onRenderStateChange}
               onRefreshRef={onRefreshRef}
+              shopDomain={shopDomain}
             />
           </PreviewErrorBoundary>
         ) : (

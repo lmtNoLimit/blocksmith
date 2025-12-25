@@ -223,6 +223,8 @@ export default function UnifiedEditorPage() {
     previewCode,
     selectVersion,
     applyVersion,
+    // Message sync
+    handleMessagesChange,
   } = useEditorState({
     section,
     themes: themes as Theme[],
@@ -536,6 +538,7 @@ export default function UnifiedEditorPage() {
               initialMessages={initialMessages}
               currentCode={sectionCode}
               onCodeUpdate={handleCodeUpdate}
+              onMessagesChange={handleMessagesChange}
               versions={versions}
               selectedVersionId={selectedVersionId}
               activeVersionId={activeVersionId}
@@ -552,24 +555,27 @@ export default function UnifiedEditorPage() {
           )
         }
         codePreviewPanel={
-          <CodePreviewPanel
-            code={previewCode}
-            fileName={fileName}
-            isViewingHistory={selectedVersionId !== null}
-            versionNumber={versions.find((v) => v.id === selectedVersionId)?.versionNumber}
-            onReturnToCurrent={() => selectVersion(null)}
-            deviceSize={deviceSize}
-            onDeviceSizeChange={setDeviceSize}
-            onRefresh={handleRefresh}
-            isRendering={isRendering}
-            // Pass preview settings for SectionPreview
-            settingsValues={previewSettings.settingsValues}
-            blocksState={previewSettings.blocksState}
-            loadedResources={previewSettings.loadedResources}
-            onRenderStateChange={setIsRendering}
-            onRefreshRef={refreshRef}
-            shopDomain={shopDomain}
-          />
+          <s-box>
+            <iframe src="https://thanhlm1.myshopify.com"></iframe>
+            <CodePreviewPanel
+              code={previewCode}
+              fileName={fileName}
+              isViewingHistory={selectedVersionId !== null}
+              versionNumber={versions.find((v) => v.id === selectedVersionId)?.versionNumber}
+              onReturnToCurrent={() => selectVersion(null)}
+              deviceSize={deviceSize}
+              onDeviceSizeChange={setDeviceSize}
+              onRefresh={handleRefresh}
+              isRendering={isRendering}
+              // Pass preview settings for SectionPreview
+              settingsValues={previewSettings.settingsValues}
+              blocksState={previewSettings.blocksState}
+              loadedResources={previewSettings.loadedResources}
+              onRenderStateChange={setIsRendering}
+              onRefreshRef={refreshRef}
+              shopDomain={shopDomain}
+            />
+          </s-box>
         }
         settingsPanel={
           <PreviewSettingsPanel
