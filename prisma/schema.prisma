@@ -92,6 +92,10 @@ model ShopSettings {
   defaultStyle          String    @default("minimal")
   autoSaveEnabled       Boolean   @default(false)
 
+  // Storefront password for native preview (encrypted with AES-256-GCM)
+  storefrontPassword    String?   // Encrypted password for password-protected stores
+  passwordVerifiedAt    DateTime? // Last successful authentication timestamp
+
   createdAt             DateTime  @default(now())
   updatedAt             DateTime  @updatedAt
 }
