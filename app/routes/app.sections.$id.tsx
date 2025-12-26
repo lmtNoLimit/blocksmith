@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useState, useRef } from 'react';
+import { useEffect, useCallback, useState, useRef, useMemo } from 'react';
 import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
 import {
   useActionData,
@@ -7,6 +7,7 @@ import {
   useSubmit,
   data,
 } from 'react-router';
+import { useAppBridge } from '@shopify/app-bridge-react';
 import { authenticate } from '../shopify.server';
 import { themeAdapter } from '../services/adapters/theme-adapter';
 import { sectionService } from '../services/section.server';
@@ -198,6 +199,12 @@ export default function UnifiedEditorPage() {
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const submit = useSubmit();
+  const shopify = useAppBridge();
+
+  // Auto-apply callback - shows toast when AI version auto-applied
+  const handleAutoApply = useMemo(() => {
+    return () => shopify.toast.show('Preview updated');
+  }, [shopify]);
 
   const {
     sectionCode,
@@ -229,6 +236,7 @@ export default function UnifiedEditorPage() {
     section,
     themes: themes as Theme[],
     conversation: conversation as { id: string; messages: UIMessage[] },
+    onAutoApply: handleAutoApply,
   });
 
   // Preview settings hook - manages schema-based settings for right panel

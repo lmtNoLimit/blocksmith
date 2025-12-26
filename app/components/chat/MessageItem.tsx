@@ -6,7 +6,7 @@
 import { memo } from 'react';
 import type { UIMessage } from '../../types';
 import { CodeBlock } from './CodeBlock';
-import { VersionBadge } from './VersionBadge';
+import { VersionCard } from './VersionCard';
 
 export interface MessageItemProps {
   message: UIMessage;
@@ -110,7 +110,7 @@ export const MessageItem = memo(function MessageItem({
   isStreaming = false,
   versionNumber,
   isSelected = false,
-  isLatest = false,
+  isLatest: _isLatest = false,
   isActive = false,
   onVersionSelect,
   onVersionApply,
@@ -138,18 +138,6 @@ export const MessageItem = memo(function MessageItem({
         {isUser ? '👤' : '🤖'}
       </div>
       <div className="chat-message__content">
-        {/* Version badge header */}
-        {showVersionBadge && (
-          <div className="chat-message__version">
-            <VersionBadge
-              versionNumber={versionNumber}
-              isSelected={isSelected}
-              isLatest={isLatest}
-              onClick={onVersionSelect || (() => {})}
-            />
-          </div>
-        )}
-
         {/* Message content parts */}
         {parts.map((part, index) => (
           part.type === 'code' ? (
@@ -168,22 +156,16 @@ export const MessageItem = memo(function MessageItem({
           )
         ))}
 
-        {/* Version actions: Active badge or Use this version button */}
+        {/* Version Card for AI messages with code */}
         {showVersionBadge && (
-          <div className="chat-message__actions">
-            {isActive ? (
-              <s-badge tone="success">Active draft</s-badge>
-            ) : (
-              onVersionApply && (
-                <s-button
-                  variant="tertiary"
-                  onClick={onVersionApply}
-                >
-                  Use this version
-                </s-button>
-              )
-            )}
-          </div>
+          <VersionCard
+            versionNumber={versionNumber}
+            createdAt={message.createdAt}
+            isActive={isActive}
+            isSelected={isSelected}
+            onPreview={onVersionSelect || (() => {})}
+            onRestore={onVersionApply || (() => {})}
+          />
         )}
 
         {/* Error display */}

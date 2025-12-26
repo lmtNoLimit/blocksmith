@@ -5,6 +5,8 @@ interface UseVersionStateOptions {
   messages: UIMessage[];
   initialCode: string;
   onCodeChange: (code: string) => void;
+  isDirty?: boolean;
+  onAutoApply?: () => void;
 }
 
 /**
@@ -15,6 +17,8 @@ export function useVersionState({
   messages,
   initialCode,
   onCodeChange,
+  isDirty = false,
+  onAutoApply,
 }: UseVersionStateOptions) {
   // Derive versions from messages with codeSnapshot
   const versions = useMemo<CodeVersion[]>(() => {
@@ -87,6 +91,26 @@ export function useVersionState({
     }
     prevVersionCountRef.current = versions.length;
   }, [versions.length, selectedVersionId]);
+
+  // Auto-apply latest AI version when not dirty and no version history browsing
+  useEffect(() => {
+    // Skip if no versions, dirty draft, or browsing version history
+    if (versions.length === 0 || isDirty || selectedVersionId) return;
+
+    const latestVer = versions[versions.length - 1];
+    if (!latestVer) return;
+
+    // Auto-apply if: first version OR new version added
+    const isFirstVersion = versions.length === 1 && !activeVersionId;
+    const isNewVersion = versions.length > prevVersionCountRef.current;
+
+    if (isFirstVersion || isNewVersion) {
+      setActiveVersionId(latestVer.id);
+      setSelectedVersionId(null);
+      onCodeChange(latestVer.code);
+      onAutoApply?.();
+    }
+  }, [versions, isDirty, activeVersionId, selectedVersionId, onCodeChange, onAutoApply]);
 
   return {
     versions,

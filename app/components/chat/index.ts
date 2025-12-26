@@ -26,6 +26,9 @@ export { TypingIndicator } from './TypingIndicator';
 export { VersionBadge } from './VersionBadge';
 export type { VersionBadgeProps } from './VersionBadge';
 
+export { VersionCard } from './VersionCard';
+export type { VersionCardProps } from './VersionCard';
+
 export { VersionTimeline } from './VersionTimeline';
 export type { VersionTimelineProps } from './VersionTimeline';
 

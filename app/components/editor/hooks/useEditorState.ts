@@ -12,6 +12,7 @@ interface UseEditorStateOptions {
     id: string;
     messages: UIMessage[];
   } | null;
+  onAutoApply?: () => void;
 }
 
 /**
@@ -22,6 +23,7 @@ export function useEditorState({
   section,
   themes,
   conversation,
+  onAutoApply,
 }: UseEditorStateOptions) {
   // Section state
   const [sectionCode, setSectionCode] = useState(section.code);
@@ -100,6 +102,8 @@ export function useEditorState({
     messages: liveMessages,
     initialCode: sectionCode,
     onCodeChange: handleCodeUpdate,
+    isDirty,
+    onAutoApply,
   });
 
   return {

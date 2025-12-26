@@ -593,6 +593,108 @@ const chatCSS = `
   border-color: var(--chat-brand);
   box-shadow: 0 0 0 1px var(--chat-brand);
 }
+
+/* ========================================
+   Version Card (Bolt.new-style)
+   ======================================== */
+.version-card {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--chat-space-2) var(--chat-space-3);
+  margin-top: var(--chat-space-2);
+  border-radius: var(--chat-radius);
+  background: var(--chat-bg-secondary);
+  border: 1px solid var(--chat-border);
+  transition: all 0.15s ease;
+}
+
+.version-card--active {
+  background: rgba(0, 128, 96, 0.08);
+  border-color: var(--chat-brand);
+}
+
+.version-card--selected {
+  background: var(--chat-bg-secondary);
+  border-color: var(--chat-brand);
+}
+
+.version-card__info {
+  display: flex;
+  align-items: center;
+  gap: var(--chat-space-2);
+  font-size: 12px;
+  color: var(--chat-text-secondary);
+}
+
+.version-card--active .version-card__info {
+  color: var(--chat-brand);
+}
+
+.version-card__number {
+  font-weight: 600;
+  color: var(--chat-text);
+}
+
+.version-card--active .version-card__number {
+  color: var(--chat-brand);
+}
+
+.version-card__separator {
+  opacity: 0.5;
+}
+
+.version-card__time {
+  font-size: 11px;
+}
+
+.version-card__actions {
+  display: flex;
+  gap: 4px;
+}
+
+.version-card__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--chat-radius);
+  background: transparent;
+  color: var(--chat-text-secondary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.version-card__icon:hover:not(:disabled) {
+  background: rgba(0, 0, 0, 0.06);
+  color: var(--chat-text);
+}
+
+.version-card__icon--active {
+  background: rgba(0, 128, 96, 0.12);
+  color: var(--chat-brand);
+}
+
+.version-card__icon--active:hover {
+  background: rgba(0, 128, 96, 0.18);
+}
+
+.version-card__icon:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.version-card__icon:focus-visible {
+  outline: 2px solid var(--chat-brand);
+  outline-offset: 2px;
+}
+
+/* Restore icon on active card - different styling */
+.version-card--active .version-card__icon:last-child {
+  opacity: 0.4;
+}
 `;
 
 export function ChatStyles() {
