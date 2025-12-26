@@ -2,67 +2,63 @@
 
 ## Overview
 
-AI Section Generator (Blocksmith) is a production-ready Shopify embedded app that leverages Google Gemini 2.5 Flash to generate Shopify Liquid theme sections from natural language prompts. The app features a modern React Router 7 SSR architecture with comprehensive AI chat integration, preview rendering, and multi-tenant billing.
+AI Section Generator (Blocksmith) is a production-ready Shopify embedded app that leverages Google Gemini 2.5 Flash to generate Shopify Liquid theme sections from natural language prompts. The app features a modern React Router 7 SSR architecture with comprehensive AI chat integration, live preview rendering with LiquidJS context, multi-tenant billing, and full TypeScript strict mode.
 
-**Total Files**: 251 files
-**Total Tokens**: 231,226 tokens (via repomix 2025-12-20)
-**Code Languages**: TypeScript (strict mode), Prisma, CSS Modules, JSON
-**Architecture**: Service-oriented with adapter pattern, singleton pattern, multi-tenant isolation, comprehensive Liquid preview engine
+**Total Files**: 275 TypeScript/TSX files (254 in core pack)
+**Total Tokens**: 273,261 tokens (via repomix 2025-12-26)
+**Code Languages**: TypeScript (strict mode), Prisma, CSS/TailwindCSS, JSON
+**Architecture**: Service-oriented with adapter pattern, singleton pattern, multi-tenant isolation, comprehensive Liquid preview engine with 18 context drops
 
 ### Quick Stats
-- Routes: 20+ file-based
-- Services: 16+ server modules
-- Components: 100+ files across 11 feature domains
-- Database Models: 10 Prisma models with MongoDB
-- Test Files: 25+ test suites
+- Routes: 20 file-based
+- Services: 25 server modules
+- Components: 95 React components across 8 feature domains
+- Database Models: 11 Prisma models
+- Test Files: 30+ test suites
 
 ## Directory Structure
 
 ```
 ai-section-generator/
-├── app/                          # Application code
-│   ├── routes/                   # React Router file-based routes
-│   │   ├── _index/               # Landing page
-│   │   ├── auth.login/           # Login page
-│   │   ├── app._index.tsx        # Home page (template demo)
-│   │   ├── app.generate.tsx      # AI section generator (CORE FEATURE)
-│   │   ├── app.additional.tsx    # Additional demo page
-│   │   ├── app.tsx               # App layout with navigation
-│   │   ├── app.sections._index.tsx # Sections list with filters & pagination (Phase 02)
-│   │   ├── app.sections.new.tsx  # Simplified ChatGPT-style creation (Phase 01)
-│   │   ├── app.sections.$id.tsx  # AI chat editor with auto-generation (Phase 01)
-│   │   ├── api.chat.stream.tsx   # SSE chat streaming endpoint (Phase 01)
-│   │   ├── auth.$.tsx            # Catch-all auth route
-│   │   └── webhooks.*.tsx        # Webhook handlers
+├── app/                          # Application source (275 files)
+│   ├── routes/                   # 20 React Router file-based routes
+│   │   ├── app._index.tsx        # Home/dashboard page
+│   │   ├── app.sections._index.tsx # Sections list
+│   │   ├── app.sections.new.tsx  # Create new section (ChatGPT-style)
+│   │   ├── app.sections.$id.tsx  # Edit section with AI chat
+│   │   ├── api.chat.stream.ts    # SSE chat streaming endpoint
+│   │   ├── api.preview.render.ts # Liquid preview rendering
+│   │   ├── api.*.ts              # 5+ additional API routes
+│   │   ├── auth.*.tsx            # OAuth flow handlers (3)
+│   │   ├── webhooks.*.tsx        # Shopify webhooks (2)
+│   │   └── app.tsx               # App layout with navigation
 │   ├── styles/                   # Global & route CSS (Phase 01)
 │   │   └── new-section.css       # Centered prompt layout styling
-│   ├── components/               # UI component library (NEW in Phase 04)
-│   │   ├── shared/               # Reusable shared components
-│   │   │   ├── Button.tsx        # Button wrapper
-│   │   │   ├── Card.tsx          # Card container wrapper
-│   │   │   └── Banner.tsx        # Banners (Base, Success, Error)
-│   │   ├── generate/             # Feature-specific components
-│   │   │   ├── PromptInput.tsx   # Prompt input field
-│   │   │   ├── ThemeSelector.tsx # Theme dropdown selector
-│   │   │   ├── CodePreview.tsx   # Generated code display
-│   │   │   ├── SectionNameInput.tsx # Filename input
-│   │   │   └── GenerateActions.tsx  # Generate/Save buttons
-│   │   ├── sections/             # Sections list components (Phase 02 - NEW)
-│   │   │   ├── HistoryTable.tsx      # Index table with section rows & actions
-│   │   │   ├── SectionsEmptyState.tsx # Empty state with CTA when no sections
-│   │   │   ├── DeleteConfirmModal.tsx # Delete confirmation dialog
-│   │   │   └── index.ts              # Barrel export
-│   │   ├── chat/                 # Chat components (Phase 01 - NEW)
-│   │   │   ├── hooks/
-│   │   │   │   └── useChat.ts    # Chat state & streaming (includes triggerGeneration)
-│   │   │   ├── ChatPanel.tsx     # Chat container with auto-trigger logic
-│   │   │   ├── ChatInput.tsx     # Message input field
-│   │   │   ├── MessageList.tsx   # Message history display
-│   │   │   ├── ChatMessage.tsx   # Individual message renderer
-│   │   │   ├── ChatStyles.tsx    # Shared CSS
-│   │   │   ├── LoadingIndicator.tsx # Streaming animation
-│   │   │   └── __tests__/        # Chat component tests
-│   │   ├── preview/              # Section preview system (Phase 3-6)
+│   ├── components/               # 95 React components (8 feature domains)
+│   │   ├── editor/               # Editor panels (7)
+│   │   │   ├── PolarisEditorLayout.tsx
+│   │   │   ├── ChatPanelWrapper.tsx
+│   │   │   ├── CodePreviewPanel.tsx
+│   │   │   ├── PublishModal.tsx
+│   │   │   └── hooks/ (useEditorState, useVersionState)
+│   │   ├── chat/                 # Chat UI (10)
+│   │   │   ├── ChatPanel.tsx
+│   │   │   ├── ChatInput.tsx
+│   │   │   ├── MessageList.tsx
+│   │   │   ├── CodeBlock.tsx
+│   │   │   ├── VersionCard.tsx
+│   │   │   ├── hooks/ (useChat, useAutoScroll)
+│   │   │   └── __tests__/ (5 test files)
+│   │   ├── generate/             # Generation UI (14)
+│   │   │   ├── PromptInput.tsx
+│   │   │   ├── ThemeSelector.tsx
+│   │   │   ├── CodePreview.tsx
+│   │   │   ├── GenerateLayout.tsx
+│   │   │   ├── TemplateSuggestions.tsx
+│   │   │   ├── SaveTemplateModal.tsx
+│   │   │   └── 8+ more components
+│   │   ├── preview/              # Preview system (40+ files)
+│   │   │   ├── drops/            # LiquidJS context drops (18)
 │   │   │   ├── schema/           # Schema parsing & defaults (Phase 02 EXPANDED)
 │   │   │   │   ├── parseSchema.ts     # Schema parser with all 31 Shopify types (293 lines, expanded Phase 02)
 │   │   │   │   │   - buildInitialState() - Covers all 31 Shopify setting types with type-specific defaults
@@ -92,11 +88,15 @@ ai-section-generator/
 │   │   │       ├── __tests__/SectionSettingsDrop.test.ts # 13 resource tests (Phase 01)
 │   │   ├── ServiceModeIndicator.tsx # Debug mode indicator
 │   │   └── index.ts              # Barrel export file
-│   ├── services/                 # Business logic layer
-│   │   ├── ai.server.ts          # Google Gemini integration
+│   ├── services/                 # 25 business logic files
+│   │   ├── ai.server.ts          # Gemini API integration
+│   │   ├── chat.server.ts        # Chat message handling
+│   │   ├── section.server.ts     # Section CRUD operations
 │   │   ├── theme.server.ts       # Shopify theme operations
-│   │   ├── chat.server.ts        # Chat persistence (Phase 01)
-│   │   └── section.server.ts     # Section CRUD operations
+│   │   ├── billing.server.ts     # Hybrid pricing logic
+│   │   ├── subscription.server.ts # Shopify billing
+│   │   ├── usage-tracking.server.ts # Generation tracking
+│   │   └── 18+ utility services
 │   ├── utils/                    # Utility functions
 │   │   ├── input-sanitizer.ts    # XSS & injection prevention (Phase 01)
 │   │   ├── code-extractor.ts     # Extract code from AI responses
@@ -1371,6 +1371,75 @@ export interface ChatPanelProps {
 }
 ```
 
+#### Chat Styles (`app/components/chat/ChatStyles.tsx` - Phase 03 UPDATED)
+
+**Purpose**: CSS-in-JS styling system for chat UI with Polaris-inspired design (727 lines). Uses reference counting to handle multiple ChatStyles component instances.
+
+**Design System** (CSS Custom Properties):
+- Color palette: Primary (#202223), secondary (#6d7175), brand (#008060), critical (#d72c0d)
+- Spacing scale: 4px, 8px, 12px, 16px, 20px intervals
+- Border radius: 8px standard, 16px large
+- Transitions: 0.15s ease on interactive elements
+- Background colors: White primary, #f6f6f7 secondary, role-specific backgrounds
+
+**Major CSS Sections**:
+1. **Panel & Header** (Lines 41-97): Container flex layout with space-between header
+2. **Message List** (Lines 102-111): Flex 1 with auto-scroll, 16px gaps
+3. **Empty State** (Lines 116-151): Centered gradient icon (64x64px) with description
+4. **Messages** (Lines 156-239): User right-aligned, assistant left-aligned with role colors
+5. **Streaming** (Lines 243-312): Cursor blink animation, typing dots with staggered delays
+6. **Code Blocks** (Lines 317-378): Dark theme (#1e1e1e) with syntax highlight colors
+7. **Input Field** (Lines 382-450): Textarea with focus ring, 40x40px send button
+8. **Error Banner** (Lines 454-502): Red background with retry action
+9. **Version Badge** (Lines 506-540): Inline pill with hover state
+10. **Version Card** (Lines 598-698): Card layout with active/selected states for version preview
+
+**Reference Counting System**:
+- Static `styleRefCount` tracks component instances
+- Only injects styles when first instance mounts (refCount === 1)
+- Only removes styles when last instance unmounts (refCount === 0)
+- Prevents duplicate style tags in document head
+
+**Phase 03 Version Card Additions** (Lines 598-698):
+- `.version-card`: Flex container, 8px border-radius, secondary bg, 1px border, 0.15s transitions
+- `.version-card--active`: 8% green background tint, brand border, brand text
+- `.version-card--selected`: Secondary bg, brand border
+- `.version-card__icon`: 28x28px transparent button, hover shows 6% dark tint
+- `.version-card__icon--active`: 12% green background, brand text color
+- `.version-card__icon:focus-visible`: 2px brand outline with 2px offset
+- `.version-card__icon:disabled`: 35% opacity, not-allowed cursor
+- Icon hover on active: 18% green background
+- Restore icon on active card: 40% opacity
+
+#### VersionCard Component (`app/components/chat/VersionCard.tsx` - Phase 03 NEW)
+
+**Purpose**: Display individual section version with preview/restore actions. Memoized for performance.
+
+**Props**:
+```typescript
+export interface VersionCardProps {
+  versionNumber: number;        // Version sequence number (v1, v2, etc)
+  createdAt: Date;              // Creation timestamp
+  isActive: boolean;            // Current active draft
+  isSelected: boolean;          // Currently being previewed
+  onPreview: () => void;        // Eye icon callback
+  onRestore: () => void;        // Return icon callback
+}
+```
+
+**Key Features**:
+- Relative time: "just now", "5 min ago", "2h ago", "3d ago"
+- SVG icons (16x16px): Eye (preview) + Return/Restore arrow
+- Stop event propagation on clicks
+- Accessibility: aria-label, aria-pressed, disabled attribute
+- Restore button disabled when `isActive=true`
+- Memoization: Uses React.memo for performance
+
+**Layout**:
+- Left section: Version number (bold) + bullet + relative time (11px)
+- Right section: Two icon buttons in flexbox gap
+- Base styling via ChatStyles.tsx CSS classes
+
 #### Chat Types (`app/types/chat.types.ts`)
 
 **Message Types**:
@@ -1660,9 +1729,9 @@ export interface ChatMetadata {
 - Pass to wrapper: `wrapLiquidForProxy({ liquidCode: code, settings, blocks, ... })`
 - Validation: Same type checking as settings (array of objects with id/type properties)
 
-### Chat Components Directory (`app/components/chat/` - NEW)
+### Chat Components Directory (`app/components/chat/` - Phase 01-03 NEW)
 
-**Structure**:
+**Structure** (Phase 03 UPDATED with VersionCard):
 ```
 app/components/chat/
 ├── hooks/
@@ -1670,19 +1739,41 @@ app/components/chat/
 ├── ChatPanel.tsx               # Main container
 ├── ChatInput.tsx               # Message input field
 ├── MessageList.tsx             # Message history display
-├── ChatMessage.tsx             # Individual message renderer
-├── ChatStyles.tsx              # Shared CSS
-├── LoadingIndicator.tsx        # Streaming animation
-└── __tests__/                  # Chat component tests (future)
+├── MessageItem.tsx             # Individual message renderer
+├── VersionCard.tsx             # Version card with preview/restore (Phase 03 NEW)
+├── VersionBadge.tsx            # Version badge component (Phase 03)
+├── VersionTimeline.tsx         # Version timeline dropdown (Phase 03)
+├── CodeBlock.tsx               # Code block with syntax highlighting (Phase 01)
+├── ChatStyles.tsx              # Shared CSS (Phase 03 UPDATED - 98 new lines for VersionCard)
+├── TypingIndicator.tsx         # Streaming animation (Phase 01)
+└── __tests__/                  # Chat component tests
 ```
 
-**Message Rendering**:
+**Message Rendering** (Phase 01):
 - User messages: Right-aligned with blue background
 - Assistant messages: Left-aligned with gray background
 - Streaming indicator: Animated dots during generation
 - Code blocks: Syntax highlighting for extracted Liquid
 - Timestamps: Optional message timestamps
 - Error states: Red banner with retry button
+
+**Version Card Styling** (Phase 03 - NEW):
+- `.version-card`: Base card layout with smooth transitions (0.15s ease)
+- `.version-card--active`: Green highlight for current active version
+- `.version-card--selected`: Selected state with brand border
+- `.version-card__icon`: Icon button (28x28px) with hover states
+- `.version-card__icon--active`: Active state styling (brand green background)
+- `.version-card__icon:focus-visible`: Accessibility outline (2px solid)
+- Icon actions: Eye (preview) and Return (restore) icons with SVG rendering
+
+**Design Details** (Phase 03):
+- Card background: Secondary gray with 1px border
+- Active state: 8% green tint + brand border
+- Icon hover: 6% dark tint with smooth transition
+- Icon active: 12% green background, 18% on hover
+- Disabled restore button: 35% opacity
+- Typography: 12px info text, 11px time text with separator bullet
+- Spacing: 2px padding (vertical), 3px (horizontal), 4px gaps
 
 ### Phase 01 Improvements Summary
 

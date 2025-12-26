@@ -2,7 +2,15 @@
 
 ## Overview
 
-AI Section Generator is a **serverless embedded Shopify app** built on React Router 7 with server-side rendering. The architecture follows a **service-oriented design** with clear separation between presentation, business logic, and data layers.
+AI Section Generator (Blocksmith) is a **Shopify embedded app** built with React Router 7 server-side rendering, TypeScript strict mode, and a comprehensive service-oriented architecture. The system generates production-ready Liquid sections using Google Gemini 2.5 Flash AI, with live preview rendering via LiquidJS and full multi-tenant isolation via shop domain verification.
+
+**Key Architecture Traits**:
+- **Service-Oriented**: 25+ server modules with clear separation of concerns
+- **Component-Based**: 95 React components organized by feature domain
+- **Type-Safe**: Full TypeScript strict mode throughout
+- **Multi-Tenant**: Complete shop domain isolation for data and operations
+- **Adapter Pattern**: Mock/real service switching for development and testing
+- **Streaming**: Server-Sent Events (SSE) for real-time chat updates
 
 ## Architecture Diagram
 

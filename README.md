@@ -29,28 +29,29 @@ Blocksmith is a Shopify embedded app that enables merchants to create custom the
 **For developers**, start with these:
 - [Quick Start](#quick-start) - Setup and local development
 - [Project Overview & PDR](docs/project-overview-pdr.md) - Product scope, requirements, roadmap
-- [Codebase Summary](docs/codebase-summary.md) - Structure, components, services (266 files, 259K tokens)
+- [Codebase Summary](docs/codebase-summary.md) - Structure, components, services (275 files, 273K tokens)
 - [Code Standards](docs/code-standards.md) - Development guidelines and patterns
 - [System Architecture](docs/system-architecture.md) - Technical design and data flow
 
 ## Project Status
 
-**Current Version**: 1.0 (Development) - Phase 4 Complete (Settings & Context)
+**Current Version**: 1.0-beta - Phase 4 Complete (Settings & Context)
 
 **Implemented**:
-- ✅ AI section generation with Google Gemini 2.5 Flash
-- ✅ Interactive chat with streaming responses
-- ✅ Live Liquid preview with context rendering
+- ✅ AI section generation (Google Gemini 2.5 Flash)
+- ✅ Interactive chat with streaming via SSE
+- ✅ Live preview with 18 context drops + filters/tags
 - ✅ Theme selection and direct save to Shopify
 - ✅ Dual-action save (Draft + Publish)
-- ✅ Section editing with regeneration
-- ✅ Billing system (recurring + usage-based)
-- ✅ Multi-tenant architecture with shop isolation
-- ✅ TypeScript strict mode, comprehensive testing
+- ✅ Section editing with code versioning
+- ✅ Hybrid billing (recurring + usage-based)
+- ✅ Multi-tenant shop isolation
+- ✅ TypeScript strict mode, 30+ test suites
+- ✅ 95 React components, 25 services, 11 database models
 
 **Pending**: Production deployment, Shopify write_themes scope approval
 
-**Future**: Template library, section versioning, marketplace, batch generation
+**Future**: Template library, versioning, marketplace, batch generation
 
 ## Quick Start
 
