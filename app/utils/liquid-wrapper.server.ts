@@ -93,6 +93,13 @@ export function wrapLiquidForProxy({
   // Strip schema block from user code (not renderable)
   let cleanedCode = liquidCode.replace(SCHEMA_BLOCK_REGEX, "");
 
+  // Replace {{ section.id }} with actual sectionId in CSS
+  // App Proxy doesn't provide section context, so section.id would be empty
+  cleanedCode = cleanedCode.replace(
+    /\{\{\s*section\.id\s*\}\}/g,
+    sectionId
+  );
+
   // Optionally transform section.settings.X to settings_X for compatibility
   if (transformSectionSettings) {
     cleanedCode = rewriteSectionSettings(cleanedCode);
@@ -108,11 +115,7 @@ export function wrapLiquidForProxy({
 
   return `${assignsBlock}<div class="blocksmith-preview" id="shopify-section-${sectionId}">
 ${cleanedCode}
-</div>
-<style>
-.blocksmith-preview { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; }
-.blocksmith-preview img { max-width: 100%; height: auto; }
-</style>`;
+</div>`;
 }
 
 /**

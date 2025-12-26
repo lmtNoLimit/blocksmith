@@ -4,7 +4,7 @@ import type {
   MockArticle,
   MockShop
 } from '../../components/preview/mockData/types';
-import { shopifyDataService } from '../shopify-data.server';
+import { shopifyDataService, type ArticleListItem } from '../shopify-data.server';
 
 /**
  * Adapter interface for Shopify data fetching
@@ -13,6 +13,7 @@ export interface ShopifyDataAdapterInterface {
   getProduct(request: Request, productId: string): Promise<MockProduct | null>;
   getCollection(request: Request, collectionId: string): Promise<MockCollection | null>;
   getArticle(request: Request, articleId: string): Promise<MockArticle | null>;
+  getArticles(request: Request, limit?: number): Promise<ArticleListItem[]>;
   getShop(request: Request): Promise<MockShop | null>;
   clearCache(): void;
 }
@@ -47,6 +48,15 @@ class ShopifyDataAdapter implements ShopifyDataAdapterInterface {
    */
   async getArticle(request: Request, articleId: string): Promise<MockArticle | null> {
     return shopifyDataService.getArticle(request, articleId);
+  }
+
+  /**
+   * Fetch list of articles for dropdown selection
+   * @param request - The current request for authentication
+   * @param limit - Maximum number of articles to fetch (default 50)
+   */
+  async getArticles(request: Request, limit?: number): Promise<ArticleListItem[]> {
+    return shopifyDataService.getArticles(request, limit);
   }
 
   /**

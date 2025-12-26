@@ -70,8 +70,9 @@ const IFRAME_HTML = `
       if (type === 'RENDER') {
         document.getElementById('preview-styles').textContent = css || '';
         // Wrap HTML in shopify-section wrapper to match CSS selectors like #shopify-section-{{ section.id }}
+        // section.id is 'preview' so the selector becomes #shopify-section-preview
         document.getElementById('preview-content').innerHTML =
-          '<div id="shopify-section-preview-section">' + (html || '') + '</div>';
+          '<div id="shopify-section-preview">' + (html || '') + '</div>';
         // Notify parent of new height
         setTimeout(() => {
           window.parent.postMessage(

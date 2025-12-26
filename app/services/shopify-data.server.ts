@@ -203,6 +203,33 @@ const ARTICLE_QUERY = `#graphql
   }
 `;
 
+const ARTICLES_LIST_QUERY = `#graphql
+  query GetArticles($first: Int!) {
+    articles(first: $first) {
+      edges {
+        node {
+          id
+          title
+          handle
+          summary
+          publishedAt
+          image {
+            url
+            altText
+            width
+            height
+          }
+          blog {
+            id
+            title
+            handle
+          }
+        }
+      }
+    }
+  }
+`;
+
 const SHOP_QUERY = `#graphql
   query GetShop {
     shop {
@@ -334,6 +361,46 @@ interface GraphQLShopResponse {
       description?: string;
     };
   };
+}
+
+interface GraphQLArticlesListResponse {
+  data?: {
+    articles?: {
+      edges: Array<{
+        node: {
+          id: string;
+          title: string;
+          handle: string;
+          summary?: string;
+          publishedAt: string;
+          image?: {
+            url: string;
+            altText?: string;
+            width: number;
+            height: number;
+          };
+          blog?: {
+            id: string;
+            title: string;
+            handle: string;
+          };
+        };
+      }>;
+    };
+  };
+  errors?: Array<{ message: string; extensions?: { code?: string } }>;
+}
+
+/** Article list item (lighter than full MockArticle) */
+export interface ArticleListItem {
+  id: string;
+  title: string;
+  handle: string;
+  blogHandle: string;
+  blogTitle: string;
+  excerpt: string;
+  image: string | null;
+  publishedAt: string;
 }
 
 // Transform functions
@@ -561,6 +628,53 @@ export class ShopifyDataService {
     } catch (error) {
       console.error('[ShopifyDataService] Error fetching article:', error);
       return null;
+    }
+  }
+
+  /**
+   * Fetch list of articles for dropdown selection
+   */
+  async getArticles(request: Request, limit: number = 50): Promise<ArticleListItem[]> {
+    const cacheKey = `articles:list:${limit}`;
+    const cached = this.cache.get<ArticleListItem[]>(cacheKey);
+    if (cached) return cached;
+
+    try {
+      const { admin } = await authenticate.admin(request);
+      const response = await admin.graphql(ARTICLES_LIST_QUERY, {
+        variables: { first: limit }
+      });
+
+      const data = await response.json() as GraphQLArticlesListResponse;
+
+      // Check for GraphQL-level errors (e.g., missing scopes)
+      if (data.errors?.length) {
+        const errorMessages = data.errors.map(e => e.message).join(', ');
+        console.error('[ShopifyDataService] GraphQL errors fetching articles:', errorMessages);
+        throw new Error(`GraphQL error: ${errorMessages}`);
+      }
+
+      if (!data.data?.articles?.edges) {
+        console.warn('[ShopifyDataService] No articles data in response');
+        return [];
+      }
+
+      const articles: ArticleListItem[] = data.data.articles.edges.map(({ node }) => ({
+        id: node.id,
+        title: node.title,
+        handle: node.handle,
+        blogHandle: node.blog?.handle || 'news',
+        blogTitle: node.blog?.title || 'News',
+        excerpt: node.summary || '',
+        image: node.image?.url || null,
+        publishedAt: node.publishedAt
+      }));
+
+      this.cache.set(cacheKey, articles, this.CACHE_TTL);
+      return articles;
+    } catch (error) {
+      console.error('[ShopifyDataService] Error fetching articles:', error);
+      throw error; // Re-throw to allow caller to handle
     }
   }
 

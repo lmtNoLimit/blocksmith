@@ -67,6 +67,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 /**
  * GET /app/api/resource?type=product&id=123
+ * GET /app/api/resource?type=articles (list mode)
  * Alternative GET endpoint for resource fetching
  */
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -105,6 +106,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
         }
         data = await shopifyDataAdapter.getArticle(request, resourceId);
         break;
+      case 'articles':
+        // List mode: fetch all articles for dropdown
+        data = await shopifyDataAdapter.getArticles(request, 50);
+        return Response.json({ data });
       case 'shop':
         data = await shopifyDataAdapter.getShop(request);
         break;

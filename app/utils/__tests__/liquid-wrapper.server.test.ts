@@ -136,6 +136,44 @@ describe("wrapLiquidForProxy", () => {
     });
   });
 
+  describe("section.id replacement", () => {
+    it("should replace {{ section.id }} with sectionId in CSS", () => {
+      const code = `{% style %}
+#shopify-section-{{ section.id }} { background: red; }
+{% endstyle %}`;
+
+      const result = wrapLiquidForProxy({ liquidCode: code });
+
+      expect(result).toContain("#shopify-section-preview { background: red; }");
+      expect(result).not.toContain("{{ section.id }}");
+    });
+
+    it("should replace {{ section.id }} with custom sectionId", () => {
+      const code = `{% style %}
+#shopify-section-{{ section.id }} .content { color: blue; }
+{% endstyle %}`;
+
+      const result = wrapLiquidForProxy({
+        liquidCode: code,
+        sectionId: "custom-123",
+      });
+
+      expect(result).toContain("#shopify-section-custom-123 .content { color: blue; }");
+    });
+
+    it("should handle whitespace variations in section.id", () => {
+      const code = `{% style %}
+#shopify-section-{{section.id}} { padding: 10px; }
+#shopify-section-{{ section.id }} { margin: 5px; }
+{% endstyle %}`;
+
+      const result = wrapLiquidForProxy({ liquidCode: code });
+
+      expect(result).toContain("#shopify-section-preview { padding: 10px; }");
+      expect(result).toContain("#shopify-section-preview { margin: 5px; }");
+    });
+  });
+
   describe("schema block stripping", () => {
     it("should remove schema block from code", () => {
       const code = `<div>Content</div>
