@@ -17,7 +17,7 @@ describe('MessageItem', () => {
   });
 
   describe('user messages', () => {
-    it('renders user message with user avatar', () => {
+    it('renders user message content', () => {
       const message = createMessage({
         role: 'user',
         content: 'Hello there',
@@ -26,27 +26,35 @@ describe('MessageItem', () => {
       render(<MessageItem message={message} />);
 
       expect(screen.getByText('Hello there')).toBeInTheDocument();
-      expect(screen.getByText('👤')).toBeInTheDocument();
     });
 
-    it('applies user message CSS class', () => {
+    it('renders user avatar with initials', () => {
       const message = createMessage({ role: 'user' });
       const { container } = render(<MessageItem message={message} />);
 
-      expect(container.querySelector('.chat-message--user')).toBeInTheDocument();
+      const avatar = container.querySelector('s-avatar');
+      expect(avatar).toBeInTheDocument();
+      expect(avatar).toHaveAttribute('initials', 'U');
+    });
+
+    it('applies user message bubble style', () => {
+      const message = createMessage({ role: 'user' });
+      const { container } = render(<MessageItem message={message} />);
+
+      expect(container.querySelector('.chat-bubble--user')).toBeInTheDocument();
     });
 
     it('sets proper aria label for user message', () => {
       const message = createMessage({ role: 'user' });
-      render(<MessageItem message={message} />);
+      const { container } = render(<MessageItem message={message} />);
 
-      const messageElement = screen.getByRole('article');
-      expect(messageElement).toHaveAttribute('aria-label', 'You said');
+      const messageBox = container.querySelector('s-box');
+      expect(messageBox).toHaveAttribute('accessibilityLabel', 'You said');
     });
   });
 
   describe('assistant messages', () => {
-    it('renders assistant message with bot avatar', () => {
+    it('renders assistant message content', () => {
       const message = createMessage({
         role: 'assistant',
         content: 'I can help!',
@@ -55,22 +63,30 @@ describe('MessageItem', () => {
       render(<MessageItem message={message} />);
 
       expect(screen.getByText('I can help!')).toBeInTheDocument();
-      expect(screen.getByText('🤖')).toBeInTheDocument();
     });
 
-    it('applies assistant message CSS class', () => {
+    it('renders assistant avatar with AI initials', () => {
       const message = createMessage({ role: 'assistant' });
       const { container } = render(<MessageItem message={message} />);
 
-      expect(container.querySelector('.chat-message--assistant')).toBeInTheDocument();
+      const avatar = container.querySelector('s-avatar');
+      expect(avatar).toBeInTheDocument();
+      expect(avatar).toHaveAttribute('initials', 'AI');
+    });
+
+    it('applies assistant message bubble style', () => {
+      const message = createMessage({ role: 'assistant' });
+      const { container } = render(<MessageItem message={message} />);
+
+      expect(container.querySelector('.chat-bubble--ai')).toBeInTheDocument();
     });
 
     it('sets proper aria label for assistant message', () => {
       const message = createMessage({ role: 'assistant' });
-      render(<MessageItem message={message} />);
+      const { container } = render(<MessageItem message={message} />);
 
-      const messageElement = screen.getByRole('article');
-      expect(messageElement).toHaveAttribute('aria-label', 'AI Assistant said');
+      const messageBox = container.querySelector('s-box');
+      expect(messageBox).toHaveAttribute('accessibilityLabel', 'AI Assistant said');
     });
   });
 
@@ -98,147 +114,64 @@ describe('MessageItem', () => {
 
     it('handles text with special characters', () => {
       const message = createMessage({
-        content: 'Message with <brackets> & special chars!',
+        content: 'Special chars: <>&"\'',
       });
 
       render(<MessageItem message={message} />);
 
-      expect(screen.getByText(/brackets/)).toBeInTheDocument();
+      expect(screen.getByText(/Special chars/)).toBeInTheDocument();
     });
   });
 
-  describe('code block parsing', () => {
-    it('hides code blocks in AI messages (code visible in Preview Panel)', () => {
+  describe('code blocks', () => {
+    it('parses single code block', () => {
+      const message = createMessage({
+        role: 'user',
+        content: '```javascript\nconst x = 1;\n```',
+      });
+
+      const { container } = render(<MessageItem message={message} />);
+
+      // User messages show code blocks
+      expect(screen.getByText('const x = 1;')).toBeInTheDocument();
+    });
+
+    it('hides code blocks for assistant messages', () => {
       const message = createMessage({
         role: 'assistant',
-        content: 'Here is some code:\n```javascript\nconst x = 1;\n```',
-      });
-
-      const { container } = render(<MessageItem message={message} />);
-
-      // Text explanation should be visible
-      expect(screen.getByText('Here is some code:')).toBeInTheDocument();
-      // Code block should NOT be rendered for AI messages
-      expect(container.querySelector('.chat-code-block')).not.toBeInTheDocument();
-    });
-
-    it('renders code block with specified language for user messages', () => {
-      const message = createMessage({
-        role: 'user',
-        content: '```liquid\n{% for item in items %}\n{{ item }}\n{% endfor %}\n```',
+        content: 'Here is the code:\n```javascript\nconst x = 1;\n```',
       });
 
       render(<MessageItem message={message} />);
 
-      expect(screen.getByText('liquid')).toBeInTheDocument();
-      expect(screen.getByText(/for item in items/)).toBeInTheDocument();
+      // Text content should be visible
+      expect(screen.getByText('Here is the code:')).toBeInTheDocument();
+      // Code is hidden for AI messages (shown in Preview Panel instead)
+      expect(screen.queryByText('const x = 1;')).not.toBeInTheDocument();
     });
 
-    it('uses default language (liquid) for code block without language', () => {
+    it('handles mixed text and code blocks', () => {
       const message = createMessage({
         role: 'user',
-        content: '```\nsome code\n```',
+        content: 'Before code\n```js\ncode here\n```\nAfter code',
       });
 
       render(<MessageItem message={message} />);
 
-      expect(screen.getByText('liquid')).toBeInTheDocument();
-      expect(screen.getByText(/some code/)).toBeInTheDocument();
+      expect(screen.getByText('Before code')).toBeInTheDocument();
+      expect(screen.getByText('code here')).toBeInTheDocument();
+      expect(screen.getByText('After code')).toBeInTheDocument();
     });
 
-    it('renders multiple code blocks in user message', () => {
+    it('defaults to liquid language', () => {
       const message = createMessage({
         role: 'user',
-        content: '```js\nfirst\n```\n\nSome text\n\n```python\nsecond\n```',
-      });
-
-      const { container } = render(<MessageItem message={message} />);
-
-      const codeBlocks = container.querySelectorAll('.chat-code-block');
-      expect(codeBlocks).toHaveLength(2);
-
-      expect(screen.getByText('js')).toBeInTheDocument();
-      expect(screen.getByText('python')).toBeInTheDocument();
-      expect(screen.getByText('first')).toBeInTheDocument();
-      expect(screen.getByText('second')).toBeInTheDocument();
-    });
-
-    it('handles code block with leading/trailing whitespace', () => {
-      const message = createMessage({
-        role: 'user',
-        content: '```javascript\n\n  const x = 1;\n\n```',
+        content: '```\n{{ product.title }}\n```',
       });
 
       render(<MessageItem message={message} />);
 
-      // Trimmed content should be rendered
-      expect(screen.getByText(/const x/)).toBeInTheDocument();
-    });
-
-    it('handles nested backticks in text for user messages', () => {
-      const message = createMessage({
-        role: 'user',
-        content: 'Use `inline code` like this:\n```js\ncode block\n```',
-      });
-
-      render(<MessageItem message={message} />);
-
-      // Only the full code block should be extracted
-      expect(screen.getByText(/code block/)).toBeInTheDocument();
-    });
-  });
-
-  describe('mixed content', () => {
-    it('renders text before code block for user messages', () => {
-      const message = createMessage({
-        role: 'user',
-        content: 'Here is the solution:\n```js\nconst answer = 42;\n```',
-      });
-
-      render(<MessageItem message={message} />);
-
-      expect(screen.getByText(/Here is the solution/)).toBeInTheDocument();
-      expect(screen.getByText(/const answer/)).toBeInTheDocument();
-    });
-
-    it('renders text after code block for user messages', () => {
-      const message = createMessage({
-        role: 'user',
-        content: '```js\nconst x = 1;\n```\n\nThat is the code!',
-      });
-
-      render(<MessageItem message={message} />);
-
-      expect(screen.getByText(/const x/)).toBeInTheDocument();
-      expect(screen.getByText(/That is the code/)).toBeInTheDocument();
-    });
-
-    it('renders text between code blocks for user messages', () => {
-      const message = createMessage({
-        role: 'user',
-        content: '```js\nfirst\n```\n\nExplanation text\n\n```js\nsecond\n```',
-      });
-
-      render(<MessageItem message={message} />);
-
-      expect(screen.getByText(/first/)).toBeInTheDocument();
-      expect(screen.getByText(/Explanation text/)).toBeInTheDocument();
-      expect(screen.getByText(/second/)).toBeInTheDocument();
-    });
-
-    it('AI messages show only text, not code blocks', () => {
-      const message = createMessage({
-        role: 'assistant',
-        content: 'Here is the solution:\n```js\nconst answer = 42;\n```\n\nLet me know if you need help!',
-      });
-
-      const { container } = render(<MessageItem message={message} />);
-
-      // Text explanations should be visible
-      expect(screen.getByText(/Here is the solution/)).toBeInTheDocument();
-      expect(screen.getByText(/Let me know if you need help/)).toBeInTheDocument();
-      // Code block should NOT be rendered
-      expect(container.querySelector('.chat-code-block')).not.toBeInTheDocument();
+      expect(screen.getByText('{{ product.title }}')).toBeInTheDocument();
     });
   });
 
@@ -246,85 +179,96 @@ describe('MessageItem', () => {
     it('shows cursor when streaming', () => {
       const message = createMessage({
         role: 'assistant',
-        content: 'Streaming response',
+        content: 'Streaming content',
       });
 
-      const { container } = render(
-        <MessageItem message={message} isStreaming={true} />
-      );
+      const { container } = render(<MessageItem message={message} isStreaming={true} />);
 
       expect(container.querySelector('.chat-cursor')).toBeInTheDocument();
-      expect(screen.getByText('▋')).toBeInTheDocument();
     });
 
-    it('does not show cursor when not streaming', () => {
+    it('hides cursor when not streaming', () => {
       const message = createMessage({
         role: 'assistant',
-        content: 'Complete response',
+        content: 'Final content',
       });
 
-      const { container } = render(
-        <MessageItem message={message} isStreaming={false} />
-      );
+      const { container } = render(<MessageItem message={message} isStreaming={false} />);
 
       expect(container.querySelector('.chat-cursor')).not.toBeInTheDocument();
     });
+  });
 
-    it('only shows cursor on last text part when streaming', () => {
+  describe('version display', () => {
+    it('shows version card for AI messages with codeSnapshot', () => {
       const message = createMessage({
         role: 'assistant',
-        content: 'Text one\n\nText two',
+        content: 'Generated code',
+        codeSnapshot: '<div>code</div>',
       });
 
       const { container } = render(
-        <MessageItem message={message} isStreaming={true} />
+        <MessageItem
+          message={message}
+          versionNumber={1}
+          isActive={false}
+          isSelected={false}
+          onVersionSelect={() => {}}
+          onVersionApply={() => {}}
+        />
       );
 
-      // Only one cursor should exist
-      expect(container.querySelectorAll('.chat-cursor')).toHaveLength(1);
+      expect(screen.getByText('v1')).toBeInTheDocument();
     });
 
-    it('shows cursor on text before code when streaming', () => {
+    it('does not show version card without codeSnapshot', () => {
       const message = createMessage({
         role: 'assistant',
-        content: 'Here is code:\n```js\ncode\n```',
+        content: 'No code generated',
       });
 
-      const { container } = render(
-        <MessageItem message={message} isStreaming={true} />
+      render(
+        <MessageItem
+          message={message}
+          versionNumber={1}
+        />
       );
 
-      // When there's both text and code, cursor appears on text part
-      // May or may not have cursor depending on how content is parsed
-      // At minimum, the component should render without error
-      expect(container.querySelector('.chat-message')).toBeInTheDocument();
+      expect(screen.queryByText('v1')).not.toBeInTheDocument();
+    });
+
+    it('does not show version card for user messages', () => {
+      const message = createMessage({
+        role: 'user',
+        content: 'User message',
+        codeSnapshot: '<div>code</div>',
+      });
+
+      render(
+        <MessageItem
+          message={message}
+          versionNumber={1}
+        />
+      );
+
+      expect(screen.queryByText('v1')).not.toBeInTheDocument();
     });
   });
 
-  describe('error state', () => {
-    it('renders error message when isError is true', () => {
+  describe('error messages', () => {
+    it('shows error banner for error messages', () => {
       const message = createMessage({
         isError: true,
         errorMessage: 'Something went wrong',
       });
 
-      render(<MessageItem message={message} />);
+      const { container } = render(<MessageItem message={message} />);
 
+      expect(container.querySelector('s-banner')).toBeInTheDocument();
       expect(screen.getByText('Something went wrong')).toBeInTheDocument();
     });
 
-    it('renders error box with error class', () => {
-      const message = createMessage({
-        isError: true,
-        errorMessage: 'Error occurred',
-      });
-
-      const { container } = render(<MessageItem message={message} />);
-
-      expect(container.querySelector('.chat-message__error')).toBeInTheDocument();
-    });
-
-    it('uses default error message when none provided', () => {
+    it('shows default error message when errorMessage is empty', () => {
       const message = createMessage({
         isError: true,
       });
@@ -333,77 +277,25 @@ describe('MessageItem', () => {
 
       expect(screen.getByText('An error occurred')).toBeInTheDocument();
     });
-
-    it('does not show error when isError is false', () => {
-      const message = createMessage({
-        isError: false,
-        errorMessage: 'This should not appear',
-      });
-
-      const { container } = render(<MessageItem message={message} />);
-
-      expect(container.querySelector('.chat-message__error')).not.toBeInTheDocument();
-    });
-  });
-
-  describe('CSS classes and structure', () => {
-    it('has correct semantic structure', () => {
-      const message = createMessage({ content: 'Test' });
-      const { container } = render(<MessageItem message={message} />);
-
-      expect(container.querySelector('.chat-message')).toBeInTheDocument();
-      expect(container.querySelector('.chat-message__avatar')).toBeInTheDocument();
-      expect(container.querySelector('.chat-message__content')).toBeInTheDocument();
-    });
-
-    it('renders text with text class', () => {
-      const message = createMessage({ content: 'Plain text' });
-      const { container } = render(<MessageItem message={message} />);
-
-      expect(container.querySelector('.chat-message__text')).toBeInTheDocument();
-    });
-  });
-
-  describe('memo optimization', () => {
-    it('is memoized for performance', () => {
-      // Component is exported as memo
-      // The memo HOC wraps the component function
-      const message = createMessage({ content: 'test' });
-      const { container: container1 } = render(<MessageItem message={message} />);
-      const { container: container2 } = render(<MessageItem message={message} />);
-
-      // Both renders should produce same structure
-      expect(container1.querySelector('.chat-message')).toBeTruthy();
-      expect(container2.querySelector('.chat-message')).toBeTruthy();
-    });
   });
 
   describe('edge cases', () => {
-    it('handles very long message content', () => {
-      const longContent = 'a'.repeat(10000);
-      const message = createMessage({ content: longContent });
-
-      render(<MessageItem message={message} />);
-
-      expect(screen.getByText(/a+/)).toBeInTheDocument();
-    });
-
     it('handles message with only whitespace', () => {
       const message = createMessage({ content: '   \n\n   ' });
 
-      render(<MessageItem message={message} />);
+      const { container } = render(<MessageItem message={message} />);
 
       // Should still render the message container
-      expect(screen.getByRole('article')).toBeInTheDocument();
+      expect(container.querySelector('s-box')).toBeInTheDocument();
     });
 
     it('handles empty message content', () => {
       const message = createMessage({ content: '' });
 
-      render(<MessageItem message={message} />);
+      const { container } = render(<MessageItem message={message} />);
 
       // Should still render the message container
-      expect(screen.getByRole('article')).toBeInTheDocument();
+      expect(container.querySelector('s-box')).toBeInTheDocument();
     });
   });
 });

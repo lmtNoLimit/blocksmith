@@ -1,15 +1,15 @@
 /**
  * ChatPanel component - Main chat container
- * Uses Polaris components for structure with minimal custom styling for messages
+ * Uses 100% Polaris Web Components for structure
  * Supports version display and selection
  */
-import { useEffect, useCallback, useRef } from 'react';
-import { useChat } from './hooks/useChat';
-import { MessageList } from './MessageList';
-import { ChatInput } from './ChatInput';
-import { ChatStyles } from './ChatStyles';
-import { VersionTimeline } from './VersionTimeline';
-import type { UIMessage, CodeVersion } from '../../types';
+import { useEffect, useCallback, useRef } from "react";
+import { useChat } from "./hooks/useChat";
+import { MessageList } from "./MessageList";
+import { ChatInput } from "./ChatInput";
+import { ChatStyles } from "./ChatStyles";
+import { VersionTimeline } from "./VersionTimeline";
+import type { UIMessage, CodeVersion } from "../../types";
 
 export interface ChatPanelProps {
   conversationId: string;
@@ -25,6 +25,21 @@ export interface ChatPanelProps {
   onVersionSelect?: (versionId: string | null) => void;
   onVersionApply?: (versionId: string) => void;
 }
+
+// Minimal inline styles required for flex layout (not available in s-box)
+const containerStyle = {
+  display: "flex",
+  flexDirection: "column" as const,
+  height: "100%",
+  minHeight: 0,
+};
+
+const contentStyle = {
+  flex: 1,
+  minHeight: 0,
+  display: "flex",
+  flexDirection: "column" as const,
+};
 
 export function ChatPanel({
   conversationId,
@@ -84,10 +99,10 @@ export function ChatPanel({
     if (messages.length === 0) return;
 
     const lastMessage = messages[messages.length - 1];
-    const hasAssistantResponse = messages.some(m => m.role === 'assistant');
+    const hasAssistantResponse = messages.some((m) => m.role === "assistant");
 
     // Trigger generation if last message is from user and no assistant response yet
-    if (lastMessage.role === 'user' && !hasAssistantResponse) {
+    if (lastMessage.role === "user" && !hasAssistantResponse) {
       hasTriggeredAutoGenRef.current = true;
       triggerGeneration(lastMessage.content);
     }
@@ -97,7 +112,7 @@ export function ChatPanel({
     if (messages.length === 0) return;
 
     const confirmed = window.confirm(
-      'Clear conversation history? This cannot be undone.'
+      "Clear conversation history? This cannot be undone.",
     );
 
     if (confirmed) {
@@ -105,68 +120,54 @@ export function ChatPanel({
     }
   }, [messages.length, clearConversation]);
 
-  // Flex layout styles for proper scrolling
-  const containerStyle = {
-    display: "flex",
-    flexDirection: "column" as const,
-    height: "100%",
-    minHeight: 0,
-    background: "var(--p-color-bg-surface)",
-  };
-
-  const headerStyle = {
-    flexShrink: 0,
-  };
-
-  const contentStyle = {
-    flex: 1,
-    minHeight: 0,
-    display: "flex",
-    flexDirection: "column" as const,
-    // Removed overflow:hidden - let MessageList handle its own scrolling
-  };
-
-  const inputStyle = {
-    flexShrink: 0,
-  };
-
   return (
-    <div style={containerStyle}>
-      {/* Keep ChatStyles for message-level styling */}
+    <s-stack
+      direction="block"
+      gap="none"
+      blockSize="100%"
+      minBlockSize="0"
+      background="base"
+    >
+      {/* Minimal CSS for animations only */}
       <ChatStyles />
 
-      {/* Header with Polaris components */}
-      <div style={headerStyle}>
-        <s-box
-          padding="base"
-          borderWidth="none none small none"
-          borderColor="subdued"
+      {/* Header */}
+      <s-box
+        padding="small base"
+        borderWidth="none none small none"
+        borderColor="subdued"
+        background="base"
+      >
+        <s-stack
+          direction="inline"
+          justifyContent="space-between"
+          alignItems="center"
+          gap="base"
         >
-          <s-stack direction="inline" justifyContent="space-between" alignItems="center">
-            <s-stack direction="inline" gap="small" alignItems="center">
-              <s-text type="strong">✨ AI Assistant</s-text>
-              {versions.length > 0 && (
-                <VersionTimeline
-                  versions={versions}
-                  selectedVersionId={selectedVersionId ?? null}
-                  onSelect={onVersionSelect || (() => {})}
-                />
-              )}
-            </s-stack>
-            {messages.length > 0 && (
-              <s-button
-                variant="tertiary"
-                onClick={handleClearConversation}
-                disabled={isStreaming || undefined}
-              >
-                Clear
-              </s-button>
-            )}
-          </s-stack>
-        </s-box>
-      </div>
+          {versions.length > 0 && (
+            <VersionTimeline
+              versions={versions}
+              selectedVersionId={selectedVersionId ?? null}
+              onSelect={onVersionSelect || (() => {})}
+            />
+          )}
+          <s-tooltip id="clear-conversation-tooltip">
+            Clear conversation
+          </s-tooltip>
+          {messages.length > 0 && (
+            <s-button
+              variant="tertiary"
+              icon="refresh"
+              onClick={handleClearConversation}
+              disabled={isStreaming || undefined}
+              accessibilityLabel="Clear conversation"
+              interestFor="clear-conversation-tooltip"
+            />
+          )}
+        </s-stack>
+      </s-box>
 
-      {/* Error banner with Polaris banner */}
+      {/* Error banner */}
       {error && (
         <s-banner tone="critical" onDismiss={clearError}>
           <s-text>{error}</s-text>
@@ -182,28 +183,30 @@ export function ChatPanel({
         </s-banner>
       )}
 
-      {/* Message list - uses custom CSS for message styling */}
-      <div style={contentStyle}>
-        <MessageList
-          messages={messages}
-          isStreaming={isStreaming}
-          streamingContent={streamingContent}
-          versions={versions}
-          selectedVersionId={selectedVersionId}
-          activeVersionId={activeVersionId}
-          onVersionSelect={onVersionSelect}
-          onVersionApply={onVersionApply}
-        />
+      {/* Message list */}
+      <div style={{ flex: 1 }}>
+        <s-stack direction="block" minBlockSize="0" gap="none">
+          <MessageList
+            messages={messages}
+            isStreaming={isStreaming}
+            streamingContent={streamingContent}
+            versions={versions}
+            selectedVersionId={selectedVersionId}
+            activeVersionId={activeVersionId}
+            onVersionSelect={onVersionSelect}
+            onVersionApply={onVersionApply}
+          />
+        </s-stack>
       </div>
 
       {/* Input */}
-      <div style={inputStyle}>
+      <s-stack direction="block" minBlockSize="0" gap="none">
         <ChatInput
           onSend={sendMessage}
           onStop={stopStreaming}
           isStreaming={isStreaming}
         />
-      </div>
-    </div>
+      </s-stack>
+    </s-stack>
   );
 }

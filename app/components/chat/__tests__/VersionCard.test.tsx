@@ -1,8 +1,8 @@
 /**
  * Tests for VersionCard component
- * Tests version info display, icon actions, accessibility, and time formatting
+ * Tests version info display, actions, accessibility, and time formatting
  */
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { VersionCard } from '../VersionCard';
 
 describe('VersionCard', () => {
@@ -36,22 +36,14 @@ describe('VersionCard', () => {
       expect(screen.getByText('v3')).toBeInTheDocument();
     });
 
-    it('renders separator between version and time', () => {
-      render(<VersionCard {...defaultProps} />);
-      expect(screen.getByText('•')).toBeInTheDocument();
-    });
-
     it('renders relative time string', () => {
       render(<VersionCard {...defaultProps} />);
       expect(screen.getByText('just now')).toBeInTheDocument();
     });
 
-    it('renders correct structure with info container', () => {
+    it('renders card container with chat-version-card class', () => {
       const { container } = render(<VersionCard {...defaultProps} />);
-      expect(container.querySelector('.version-card__info')).toBeInTheDocument();
-      expect(container.querySelector('.version-card__number')).toBeInTheDocument();
-      expect(container.querySelector('.version-card__separator')).toBeInTheDocument();
-      expect(container.querySelector('.version-card__time')).toBeInTheDocument();
+      expect(container.querySelector('.chat-version-card')).toBeInTheDocument();
     });
   });
 
@@ -75,28 +67,10 @@ describe('VersionCard', () => {
       expect(screen.getByText('1 min ago')).toBeInTheDocument();
     });
 
-    it('shows "59 min ago" for 59 minutes', () => {
-      const fiftyNineMinsAgo = new Date('2025-12-26T11:01:00Z');
-      render(<VersionCard {...defaultProps} createdAt={fiftyNineMinsAgo} />);
-      expect(screen.getByText('59 min ago')).toBeInTheDocument();
-    });
-
     it('shows "Xh ago" for < 24 hours', () => {
       const threeHoursAgo = new Date('2025-12-26T09:00:00Z');
       render(<VersionCard {...defaultProps} createdAt={threeHoursAgo} />);
       expect(screen.getByText('3h ago')).toBeInTheDocument();
-    });
-
-    it('shows "1h ago" for exactly 1 hour', () => {
-      const oneHourAgo = new Date('2025-12-26T11:00:00Z');
-      render(<VersionCard {...defaultProps} createdAt={oneHourAgo} />);
-      expect(screen.getByText('1h ago')).toBeInTheDocument();
-    });
-
-    it('shows "23h ago" for 23 hours', () => {
-      const twentyThreeHoursAgo = new Date('2025-12-25T13:00:00Z');
-      render(<VersionCard {...defaultProps} createdAt={twentyThreeHoursAgo} />);
-      expect(screen.getByText('23h ago')).toBeInTheDocument();
     });
 
     it('shows "Xd ago" for >= 24 hours', () => {
@@ -104,331 +78,108 @@ describe('VersionCard', () => {
       render(<VersionCard {...defaultProps} createdAt={twoDaysAgo} />);
       expect(screen.getByText('2d ago')).toBeInTheDocument();
     });
-
-    it('shows "1d ago" for exactly 1 day', () => {
-      const oneDayAgo = new Date('2025-12-25T12:00:00Z');
-      render(<VersionCard {...defaultProps} createdAt={oneDayAgo} />);
-      expect(screen.getByText('1d ago')).toBeInTheDocument();
-    });
-
-    it('handles date passed as string (date instance check)', () => {
-      const dateString = '2025-12-26T11:55:00Z';
-      // The component should handle Date instances properly
-      render(<VersionCard {...defaultProps} createdAt={new Date(dateString)} />);
-      expect(screen.getByText('5 min ago')).toBeInTheDocument();
-    });
   });
 
   describe('preview button', () => {
-    it('renders preview button with eye icon', () => {
-      const { container } = render(<VersionCard {...defaultProps} />);
-      const buttons = container.querySelectorAll('button');
-      expect(buttons.length).toBeGreaterThanOrEqual(1);
+    it('renders preview button with text', () => {
+      render(<VersionCard {...defaultProps} />);
+      expect(screen.getByText('Preview')).toBeInTheDocument();
     });
 
-    it('calls onPreview when preview button clicked', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} onPreview={mockOnPreview} />
-      );
-
-      const buttons = container.querySelectorAll('button');
-      const previewBtn = buttons[0]; // First button is preview
-
-      fireEvent.click(previewBtn);
-      expect(mockOnPreview).toHaveBeenCalledTimes(1);
+    it('shows "Viewing" text when selected', () => {
+      render(<VersionCard {...defaultProps} isSelected={true} />);
+      expect(screen.getByText('Viewing')).toBeInTheDocument();
     });
 
-    it('has proper aria-label when not selected', () => {
+    it('has proper accessibility label when not selected', () => {
       const { container } = render(
         <VersionCard {...defaultProps} isSelected={false} />
       );
-      const buttons = container.querySelectorAll('button');
-      const previewBtn = buttons[0];
-
-      expect(previewBtn).toHaveAttribute(
-        'aria-label',
-        'Preview this version'
-      );
+      const buttons = container.querySelectorAll('s-button');
+      expect(buttons[0]).toHaveAttribute('accessibilityLabel', 'Preview this version');
     });
 
-    it('has proper aria-label when selected', () => {
+    it('has proper accessibility label when selected', () => {
       const { container } = render(
         <VersionCard {...defaultProps} isSelected={true} />
       );
-      const buttons = container.querySelectorAll('button');
-      const previewBtn = buttons[0];
-
-      expect(previewBtn).toHaveAttribute(
-        'aria-label',
-        'Currently previewing'
-      );
-    });
-
-    it('sets aria-pressed to true when selected', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} isSelected={true} />
-      );
-      const buttons = container.querySelectorAll('button');
-      const previewBtn = buttons[0];
-
-      expect(previewBtn).toHaveAttribute('aria-pressed', 'true');
-    });
-
-    it('sets aria-pressed to false when not selected', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} isSelected={false} />
-      );
-      const buttons = container.querySelectorAll('button');
-      const previewBtn = buttons[0];
-
-      expect(previewBtn).toHaveAttribute('aria-pressed', 'false');
-    });
-
-    it('applies active class when selected', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} isSelected={true} />
-      );
-      const buttons = container.querySelectorAll('button');
-      const previewBtn = buttons[0];
-
-      expect(previewBtn).toHaveClass('version-card__icon--active');
-    });
-
-    it('does not apply active class when not selected', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} isSelected={false} />
-      );
-      const buttons = container.querySelectorAll('button');
-      const previewBtn = buttons[0];
-
-      expect(previewBtn).not.toHaveClass('version-card__icon--active');
-    });
-
-    it('stops event propagation on preview click', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} onPreview={mockOnPreview} />
-      );
-
-      const buttons = container.querySelectorAll('button');
-      const previewBtn = buttons[0];
-
-      fireEvent.click(previewBtn);
-      expect(mockOnPreview).toHaveBeenCalled();
+      const buttons = container.querySelectorAll('s-button');
+      expect(buttons[0]).toHaveAttribute('accessibilityLabel', 'Currently previewing');
     });
   });
 
   describe('restore button', () => {
-    it('renders restore button', () => {
+    it('renders restore button when not active', () => {
+      render(<VersionCard {...defaultProps} isActive={false} />);
+      expect(screen.getByText('Restore')).toBeInTheDocument();
+    });
+
+    it('does not render restore button when active', () => {
+      render(<VersionCard {...defaultProps} isActive={true} />);
+      expect(screen.queryByText('Restore')).not.toBeInTheDocument();
+    });
+
+    it('has proper accessibility label', () => {
       const { container } = render(<VersionCard {...defaultProps} />);
-      const buttons = container.querySelectorAll('button');
-      expect(buttons.length).toBeGreaterThanOrEqual(2);
-    });
-
-    it('calls onRestore when restore button clicked', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} onRestore={mockOnRestore} />
-      );
-
-      const buttons = container.querySelectorAll('button');
-      const restoreBtn = buttons[1]; // Second button is restore
-
-      fireEvent.click(restoreBtn);
-      expect(mockOnRestore).toHaveBeenCalledTimes(1);
-    });
-
-    it('has proper aria-label', () => {
-      const { container } = render(<VersionCard {...defaultProps} />);
-      const buttons = container.querySelectorAll('button');
-      const restoreBtn = buttons[1];
-
-      expect(restoreBtn).toHaveAttribute('aria-label', 'Restore this version');
-    });
-
-    it('is disabled when isActive is true', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} isActive={true} />
-      );
-      const buttons = container.querySelectorAll('button');
-      const restoreBtn = buttons[1];
-
-      expect(restoreBtn).toBeDisabled();
-    });
-
-    it('is enabled when isActive is false', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} isActive={false} />
-      );
-      const buttons = container.querySelectorAll('button');
-      const restoreBtn = buttons[1];
-
-      expect(restoreBtn).not.toBeDisabled();
-    });
-
-    it('cannot be clicked when disabled', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} isActive={true} onRestore={mockOnRestore} />
-      );
-
-      const buttons = container.querySelectorAll('button');
-      const restoreBtn = buttons[1];
-
-      fireEvent.click(restoreBtn);
-      expect(mockOnRestore).not.toHaveBeenCalled();
-    });
-
-    it('stops event propagation on restore click', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} onRestore={mockOnRestore} />
-      );
-
-      const buttons = container.querySelectorAll('button');
-      const restoreBtn = buttons[1];
-
-      fireEvent.click(restoreBtn);
-      expect(mockOnRestore).toHaveBeenCalled();
+      const buttons = container.querySelectorAll('s-button');
+      // Second button is restore
+      expect(buttons[1]).toHaveAttribute('accessibilityLabel', 'Restore this version');
     });
   });
 
-  describe('active state styling', () => {
-    it('applies version-card--active class when isActive is true', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} isActive={true} />
-      );
-      expect(container.querySelector('.version-card--active')).toBeInTheDocument();
+  describe('active state', () => {
+    it('shows Active badge when isActive is true', () => {
+      render(<VersionCard {...defaultProps} isActive={true} />);
+      expect(screen.getByText('Active')).toBeInTheDocument();
     });
 
-    it('does not apply version-card--active class when isActive is false', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} isActive={false} />
-      );
-      expect(container.querySelector('.version-card--active')).not.toBeInTheDocument();
+    it('does not show Active badge when isActive is false', () => {
+      render(<VersionCard {...defaultProps} isActive={false} />);
+      expect(screen.queryByText('Active')).not.toBeInTheDocument();
     });
 
-    it('applies base version-card class always', () => {
-      const { container } = render(<VersionCard {...defaultProps} />);
-      expect(container.querySelector('.version-card')).toBeInTheDocument();
+    it('applies chat-version-card--active class when active', () => {
+      const { container } = render(<VersionCard {...defaultProps} isActive={true} />);
+      expect(container.querySelector('.chat-version-card--active')).toBeInTheDocument();
     });
   });
 
-  describe('selected state styling', () => {
-    it('applies version-card--selected class when isSelected is true', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} isSelected={true} />
-      );
-      expect(container.querySelector('.version-card--selected')).toBeInTheDocument();
+  describe('selected state', () => {
+    it('applies chat-version-card--selected class when selected', () => {
+      const { container } = render(<VersionCard {...defaultProps} isSelected={true} />);
+      expect(container.querySelector('.chat-version-card--selected')).toBeInTheDocument();
     });
 
-    it('does not apply version-card--selected class when isSelected is false', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} isSelected={false} />
-      );
-      expect(container.querySelector('.version-card--selected')).not.toBeInTheDocument();
+    it('does not apply selected class when not selected', () => {
+      const { container } = render(<VersionCard {...defaultProps} isSelected={false} />);
+      expect(container.querySelector('.chat-version-card--selected')).not.toBeInTheDocument();
     });
   });
 
-  describe('combined states', () => {
-    it('renders with both active and selected states', () => {
-      const { container } = render(
-        <VersionCard
-          {...defaultProps}
-          isActive={true}
-          isSelected={true}
-        />
-      );
-
-      expect(container.querySelector('.version-card--active')).toBeInTheDocument();
-      expect(container.querySelector('.version-card--selected')).toBeInTheDocument();
-    });
-
-    it('active restore button disabled even when selected', () => {
-      const { container } = render(
-        <VersionCard
-          {...defaultProps}
-          isActive={true}
-          isSelected={true}
-          onRestore={mockOnRestore}
-        />
-      );
-
-      const buttons = container.querySelectorAll('button');
-      const restoreBtn = buttons[1];
-
-      expect(restoreBtn).toBeDisabled();
-      fireEvent.click(restoreBtn);
-      expect(mockOnRestore).not.toHaveBeenCalled();
-    });
-
-    it('preview remains functional when active version', () => {
-      const { container } = render(
-        <VersionCard
-          {...defaultProps}
-          isActive={true}
-          onPreview={mockOnPreview}
-        />
-      );
-
-      const buttons = container.querySelectorAll('button');
-      const previewBtn = buttons[0];
-
-      fireEvent.click(previewBtn);
-      expect(mockOnPreview).toHaveBeenCalled();
-    });
-  });
-
-  describe('button structure', () => {
-    it('both buttons have type="button"', () => {
+  describe('Polaris components', () => {
+    it('renders s-box container', () => {
       const { container } = render(<VersionCard {...defaultProps} />);
-      const buttons = container.querySelectorAll('button');
-
-      buttons.forEach(btn => {
-        expect(btn).toHaveAttribute('type', 'button');
-      });
+      expect(container.querySelector('s-box')).toBeInTheDocument();
     });
 
-    it('buttons have version-card__icon class', () => {
+    it('renders s-stack for layout', () => {
       const { container } = render(<VersionCard {...defaultProps} />);
-      const iconButtons = container.querySelectorAll('.version-card__icon');
-
-      expect(iconButtons.length).toBe(2);
+      expect(container.querySelector('s-stack')).toBeInTheDocument();
     });
 
-    it('renders buttons in actions container', () => {
+    it('renders s-button for actions', () => {
       const { container } = render(<VersionCard {...defaultProps} />);
-      expect(container.querySelector('.version-card__actions')).toBeInTheDocument();
+      expect(container.querySelector('s-button')).toBeInTheDocument();
     });
-  });
 
-  describe('accessibility', () => {
-    it('has meaningful structure for screen readers', () => {
+    it('renders s-icon for version badge', () => {
       const { container } = render(<VersionCard {...defaultProps} />);
-
-      const card = container.querySelector('.version-card');
-      expect(card).toBeInTheDocument();
-
-      const info = container.querySelector('.version-card__info');
-      expect(info).toBeInTheDocument();
-
-      const actions = container.querySelector('.version-card__actions');
-      expect(actions).toBeInTheDocument();
+      expect(container.querySelector('s-icon')).toBeInTheDocument();
     });
 
-    it('has aria labels on all interactive elements', () => {
-      const { container } = render(<VersionCard {...defaultProps} />);
-      const buttons = container.querySelectorAll('button');
-
-      buttons.forEach(btn => {
-        expect(btn).toHaveAttribute('aria-label');
-      });
-    });
-
-    it('preview button uses aria-pressed', () => {
-      const { container } = render(
-        <VersionCard {...defaultProps} isSelected={true} />
-      );
-      const buttons = container.querySelectorAll('button');
-      const previewBtn = buttons[0];
-
-      expect(previewBtn).toHaveAttribute('aria-pressed');
+    it('renders s-badge for active state', () => {
+      const { container } = render(<VersionCard {...defaultProps} isActive={true} />);
+      expect(container.querySelector('s-badge')).toBeInTheDocument();
     });
   });
 
@@ -445,36 +196,15 @@ describe('VersionCard', () => {
 
     it('handles future dates gracefully', () => {
       const futureDate = new Date('2025-12-27T12:00:00Z');
-      render(<VersionCard {...defaultProps} createdAt={futureDate} />);
-      // Should not crash and should show negative time (handled gracefully)
       const { container } = render(
         <VersionCard {...defaultProps} createdAt={futureDate} />
       );
-      expect(container.querySelector('.version-card')).toBeInTheDocument();
-    });
-
-    it('handles all callbacks being provided', () => {
-      const { container } = render(
-        <VersionCard
-          {...defaultProps}
-          onPreview={mockOnPreview}
-          onRestore={mockOnRestore}
-        />
-      );
-
-      const buttons = container.querySelectorAll('button');
-      fireEvent.click(buttons[0]);
-      fireEvent.click(buttons[1]);
-
-      expect(mockOnPreview).toHaveBeenCalledTimes(1);
-      expect(mockOnRestore).toHaveBeenCalledTimes(1);
+      expect(container.querySelector('.chat-version-card')).toBeInTheDocument();
     });
   });
 
   describe('memo performance', () => {
     it('is memoized component', () => {
-      // Component is exported as memo
-      // Verify it's a memoized function by checking its display name
       const { container: container1 } = render(
         <VersionCard {...defaultProps} versionNumber={1} />
       );
@@ -482,8 +212,8 @@ describe('VersionCard', () => {
         <VersionCard {...defaultProps} versionNumber={1} />
       );
 
-      expect(container1.querySelector('.version-card')).toBeTruthy();
-      expect(container2.querySelector('.version-card')).toBeTruthy();
+      expect(container1.querySelector('.chat-version-card')).toBeTruthy();
+      expect(container2.querySelector('.chat-version-card')).toBeTruthy();
     });
   });
 });

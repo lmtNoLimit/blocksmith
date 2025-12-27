@@ -1,5 +1,6 @@
 /**
  * CodeBlock component for displaying syntax-highlighted code
+ * Uses Polaris components with minimal custom styling for code display
  * Features: copy button, line numbers, language label
  */
 import { useState, useCallback } from 'react';
@@ -9,6 +10,35 @@ export interface CodeBlockProps {
   language?: string;
   showLineNumbers?: boolean;
 }
+
+// Minimal inline styles for code block (dark theme not in Polaris)
+const codeBlockStyle = {
+  background: '#1e1e1e',
+  borderRadius: 'var(--p-border-radius-200)',
+  overflow: 'hidden',
+  fontSize: '13px',
+};
+
+const codePreStyle = {
+  margin: 0,
+  padding: 'var(--p-space-300)',
+  overflowX: 'auto' as const,
+  color: '#d4d4d4',
+  fontFamily: "'SF Mono', Monaco, Consolas, 'Courier New', monospace",
+};
+
+const lineStyle = {
+  display: 'flex',
+};
+
+const lineNumberStyle = {
+  color: '#5a5a5a',
+  width: '3ch',
+  flexShrink: 0,
+  textAlign: 'right' as const,
+  marginRight: 'var(--p-space-300)',
+  userSelect: 'none' as const,
+};
 
 export function CodeBlock({
   code,
@@ -30,24 +60,34 @@ export function CodeBlock({
   const lines = code.split('\n');
 
   return (
-    <div className="chat-code-block">
-      <div className="chat-code-block__header">
-        <span className="chat-code-block__language">{language}</span>
-        <button
-          onClick={handleCopy}
-          className="chat-code-block__copy"
-          aria-label={copied ? 'Copied!' : 'Copy code'}
-        >
-          {copied ? '✓ Copied' : 'Copy'}
-        </button>
-      </div>
-      <pre className="chat-code-block__pre">
-        <code className="chat-code-block__code">
+    <div style={codeBlockStyle}>
+      {/* Header with language and copy button */}
+      <s-box
+        padding="small"
+        background="strong"
+        borderWidth="none none small none"
+        borderColor="subdued"
+      >
+        <s-stack direction="inline" justifyContent="space-between" alignItems="center">
+          <s-text color="subdued">{language.toUpperCase()}</s-text>
+          <s-button
+            variant="tertiary"
+            onClick={handleCopy}
+            icon={copied ? 'check' : 'clipboard'}
+          >
+            {copied ? 'Copied' : 'Copy'}
+          </s-button>
+        </s-stack>
+      </s-box>
+
+      {/* Code content */}
+      <pre style={codePreStyle}>
+        <code>
           {showLineNumbers ? (
             lines.map((line, i) => (
-              <div key={i} className="chat-code-block__line">
-                <span className="chat-code-block__line-number">{i + 1}</span>
-                <span className="chat-code-block__line-content">{line}</span>
+              <div key={i} style={lineStyle}>
+                <span style={lineNumberStyle}>{i + 1}</span>
+                <span>{line}</span>
               </div>
             ))
           ) : (

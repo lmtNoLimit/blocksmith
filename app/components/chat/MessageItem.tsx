@@ -1,5 +1,6 @@
 /**
  * MessageItem component - Individual chat message display
+ * Uses Polaris components for layout and styling
  * Supports both user and assistant messages with code block parsing
  * Shows version badge for AI messages with codeSnapshot
  */
@@ -121,72 +122,104 @@ export const MessageItem = memo(function MessageItem({
   // Show version badge for AI messages with code
   const showVersionBadge = !isUser && message.codeSnapshot && versionNumber;
 
-  // Build class names
-  const classNames = [
-    'chat-message',
-    `chat-message--${message.role}`,
-    isSelected ? 'chat-message--selected' : '',
-  ].filter(Boolean).join(' ');
-
   return (
-    <div
-      className={classNames}
-      role="article"
-      aria-label={`${isUser ? 'You' : 'AI Assistant'} said`}
-    >
-      <div className="chat-message__avatar">
-        {isUser ? '👤' : '🤖'}
-      </div>
-      <div className="chat-message__content">
-        {/* Message content parts - skip code blocks for AI messages (code visible in Preview Panel) */}
-        {parts.map((part, index) => {
-          // Skip code blocks for AI messages - code is visible in Code Preview Panel
-          if (part.type === 'code' && !isUser) return null;
-
-          if (part.type === 'code') {
-            // User message with code - render normally
-            return (
-              <CodeBlock
-                key={index}
-                code={part.content}
-                language={part.language || 'liquid'}
+    <div className="chat-message-enter">
+      <s-box
+        padding="small"
+        borderRadius="base"
+        accessibilityRole="generic"
+        accessibilityLabel={`${isUser ? 'You' : 'AI Assistant'} said`}
+      >
+        <s-stack
+          direction="inline"
+          gap="small"
+          alignItems="start"
+          justifyContent={isUser ? 'end' : 'start'}
+        >
+          {/* Avatar - show on left for assistant */}
+          {!isUser && (
+            <div className="chat-avatar--ai">
+              <s-avatar
+                initials="AI"
+                size="small"
               />
-            );
-          }
+            </div>
+          )}
 
-          // Text content - show streaming cursor on last text part only
-          const textParts = parts.filter(p => p.type === 'text');
-          const isLastTextPart = part === textParts[textParts.length - 1];
+          {/* Message content */}
+          <s-box maxInlineSize="85%">
+            <s-stack direction="block" gap="small">
+              {/* Message content parts - skip code blocks for AI messages (code visible in Preview Panel) */}
+              {parts.map((part, index) => {
+                // Skip code blocks for AI messages - code is visible in Code Preview Panel
+                if (part.type === 'code' && !isUser) return null;
 
-          return (
-            <p key={index} className="chat-message__text">
-              {part.content}
-              {isStreaming && isLastTextPart && (
-                <span className="chat-cursor" aria-hidden="true">▋</span>
+                if (part.type === 'code') {
+                  // User message with code - render normally
+                  return (
+                    <CodeBlock
+                      key={index}
+                      code={part.content}
+                      language={part.language || 'liquid'}
+                    />
+                  );
+                }
+
+                // Text content - show streaming cursor on last text part only
+                const textParts = parts.filter(p => p.type === 'text');
+                const isLastTextPart = part === textParts[textParts.length - 1];
+
+                return (
+                  <div
+                    key={index}
+                    className={isUser ? 'chat-bubble--user' : 'chat-bubble--ai'}
+                    style={{
+                      padding: '10px 14px',
+                      borderRadius: isUser ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                    }}
+                  >
+                    <s-text>
+                      {part.content}
+                      {isStreaming && isLastTextPart && (
+                        <span className="chat-cursor" aria-hidden="true" />
+                      )}
+                    </s-text>
+                  </div>
+                );
+              })}
+
+              {/* Version Card for AI messages with code */}
+              {showVersionBadge && (
+                <VersionCard
+                  versionNumber={versionNumber}
+                  createdAt={message.createdAt}
+                  isActive={isActive}
+                  isSelected={isSelected}
+                  onPreview={onVersionSelect || (() => {})}
+                  onRestore={onVersionApply || (() => {})}
+                />
               )}
-            </p>
-          );
-        })}
 
-        {/* Version Card for AI messages with code */}
-        {showVersionBadge && (
-          <VersionCard
-            versionNumber={versionNumber}
-            createdAt={message.createdAt}
-            isActive={isActive}
-            isSelected={isSelected}
-            onPreview={onVersionSelect || (() => {})}
-            onRestore={onVersionApply || (() => {})}
-          />
-        )}
+              {/* Error display */}
+              {message.isError && (
+                <s-banner tone="critical" dismissible={false}>
+                  <s-text>{message.errorMessage || 'An error occurred'}</s-text>
+                </s-banner>
+              )}
+            </s-stack>
+          </s-box>
 
-        {/* Error display */}
-        {message.isError && (
-          <div className="chat-message__error">
-            {message.errorMessage || 'An error occurred'}
-          </div>
-        )}
-      </div>
+          {/* Avatar - show on right for user */}
+          {isUser && (
+            <div className="chat-avatar--user">
+              <s-avatar
+                initials="U"
+                size="small"
+              />
+            </div>
+          )}
+        </s-stack>
+      </s-box>
     </div>
   );
 }, (prevProps, nextProps) => {

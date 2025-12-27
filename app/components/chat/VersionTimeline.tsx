@@ -1,14 +1,23 @@
 /**
  * VersionTimeline component - dropdown for quick version navigation
+ * Uses Polaris s-select component
  * Shows all versions with timestamps for easy selection
  */
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import type { CodeVersion } from '../../types';
 
 export interface VersionTimelineProps {
   versions: CodeVersion[];
   selectedVersionId: string | null;
   onSelect: (versionId: string | null) => void;
+}
+
+/**
+ * Format date to short time string
+ */
+function formatTime(date: Date): string {
+  const d = date instanceof Date ? date : new Date(date);
+  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 }
 
 /**
@@ -22,33 +31,47 @@ export const VersionTimeline = memo(function VersionTimeline({
 }: VersionTimelineProps) {
   if (versions.length === 0) return null;
 
-  const handleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const value = e.target.value;
+  const handleChange = useCallback((e: Event) => {
+    const target = e.currentTarget as HTMLSelectElement;
+    const value = target.value;
     onSelect(value || null);
-  };
+  }, [onSelect]);
+
+  // Find the currently selected version for display
+  const selectedVersion = versions.find(v => v.id === selectedVersionId);
+  const displayLabel = selectedVersion
+    ? `v${selectedVersion.versionNumber}`
+    : 'Current';
+
+  // Build options for s-select
+  const options = [
+    { label: 'Current draft', value: '' },
+    ...versions.map((v) => ({
+      label: `v${v.versionNumber} - ${formatTime(v.createdAt)}`,
+      value: v.id,
+    })),
+  ];
 
   return (
-    <div className="version-timeline">
-      <select
+    <s-stack direction="inline" gap="small-100" alignItems="center">
+      <s-select
+        label="Select version"
+        icon="clock"
+        labelAccessibilityVisibility="exclusive"
         value={selectedVersionId || ''}
         onChange={handleChange}
-        aria-label="Select version"
       >
-        <option value="">Current draft</option>
-        {versions.map((v) => (
-          <option key={v.id} value={v.id}>
-            v{v.versionNumber} - {formatTime(v.createdAt)}
-          </option>
+        {options.map((opt) => (
+          <s-option key={opt.value} value={opt.value}>
+            {opt.label}
+          </s-option>
         ))}
-      </select>
-    </div>
+      </s-select>
+      {/* {versions.length > 0 && (
+        <s-badge tone={selectedVersionId ? 'info' : 'success'}>
+          {displayLabel}
+        </s-badge>
+      )} */}
+    </s-stack>
   );
 });
-
-/**
- * Format date to short time string
- */
-function formatTime(date: Date): string {
-  const d = date instanceof Date ? date : new Date(date);
-  return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
