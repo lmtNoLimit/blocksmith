@@ -23,6 +23,7 @@ import {
   PUBLISH_MODAL_ID,
   useEditorState,
 } from '../components/editor';
+import { ImagePickerModal } from '../components/preview/settings/ImagePickerModal';
 import { usePreviewSettings } from '../components/preview';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import type { DeviceSize } from '../components/preview/types';
@@ -434,6 +435,9 @@ export default function UnifiedEditorPage() {
         isPublishing={isPublishing}
         canPublish={canPublish && !isLoading}
       />
+
+      {/* Image Picker Modal - rendered at page level to avoid z-index issues */}
+      <ImagePickerModal />
 
       {/* Secondary actions */}
       <s-button

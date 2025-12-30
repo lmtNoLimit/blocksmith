@@ -7,7 +7,6 @@ import type {
 } from "../preview/schema/SchemaTypes";
 import type { SelectedResource } from "../preview/ResourceSelector";
 import { SettingField } from "../preview/settings/SettingField";
-import { ImagePickerModal } from "../preview/settings/ImagePickerModal";
 import { buildInitialState } from "../preview/schema/parseSchema";
 
 export interface PreviewSettingsPanelProps {
@@ -274,8 +273,6 @@ export function PreviewSettingsPanel({
             </s-stack>
           )}
 
-          {/* Image Picker Modal */}
-          <ImagePickerModal />
         </s-stack>
       </s-box>
     </div>
