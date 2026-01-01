@@ -85,6 +85,23 @@ AI Section Generator is a Shopify embedded app that enables merchants to generat
 - **Dependencies**: Section database model with status, themeId, themeName, fileName fields
 - **Status**: Implemented
 
+#### FR6: Auto-Save Draft on AI Generation (Phase 1)
+- **Priority**: P2 (Medium)
+- **Description**: Automatically persist draft to database when AI generates and applies a version
+- **Acceptance Criteria**:
+  - When AI response is applied automatically (via `useVersionState` auto-apply), trigger background save
+  - Use `useFetcher` to submit `saveDraft` action silently
+  - No user action required (automatic on generation)
+  - No toast notification (silent persistence)
+  - Prevents data loss if user refreshes page after generation
+  - Save includes current code snapshot and section name
+  - Handles concurrent saves gracefully (latest save wins)
+- **Implementation Details**:
+  - `useVersionState` calls `onAutoSave(code)` callback when version auto-applies
+  - `useEditorState` provides `handleAutoSave` that uses `useFetcher().submit()`
+  - Callback integrated in `useVersionState` line 114
+- **Status**: Implemented
+
 ### Non-Functional Requirements
 
 #### NFR1: Performance
@@ -197,6 +214,13 @@ Historical record of generated sections:
 - `createdAt`: Timestamp
 
 ## Current Status
+
+### Completed (Phase 1 - Auto-Save & Draft Persistence)
+- ✅ Auto-save draft on AI version auto-apply
+- ✅ Silent persistence via useFetcher (no user action required)
+- ✅ Prevents data loss on page refresh after AI generation
+- ✅ Integrated with existing version state management
+- ✅ Works transparently with chat/preview flows
 
 ### Completed (Phase 4 - 100% - Settings & Context)
 - ✅ Advanced editor layout with 3-panel design (chat + code + preview)

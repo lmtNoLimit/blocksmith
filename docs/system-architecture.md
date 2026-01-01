@@ -1328,6 +1328,123 @@ const text = result.response.text();
 
 ---
 
+## 5. Auto-Save Data Flow (Phase 1)
+
+### Overview
+
+**Auto-Save** automatically persists draft sections to the database when AI generates and applies a version, without requiring user action.
+
+### Flow Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    ChatPanel (Component)                         │
+│  Receives AI response, adds to message stream                   │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  useVersionState Hook (Editor)                                  │
+│                                                                  │
+│  1. Detect new AI response (message with codeSnapshot)         │
+│  2. Add to versions array                                      │
+│  3. Auto-apply latest version (if not dirty, not browsing)    │
+│  4. Call onCodeChange() → update draft code                   │
+│  5. Call onAutoApply() → (optional) UI feedback               │
+│  6. Call onAutoSave(code) → Silent background save ✨        │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  useEditorState Hook                                            │
+│                                                                  │
+│  handleAutoSave(code):                                          │
+│    - Create FormData with action="saveDraft"                  │
+│    - Include code + sectionName                               │
+│    - Submit via useFetcher (silent, no UI notification)       │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  React Router Action Handler                                    │
+│  (app/routes/app.sections.$id.tsx)                            │
+│                                                                  │
+│  if (action === "saveDraft"):                                 │
+│    - Validate code length (max 100KB)                         │
+│    - Update Section in database                               │
+│    - Return success/error (no redirect)                       │
+└────────────────────────┬────────────────────────────────────────┘
+                         │
+                         ▼
+┌─────────────────────────────────────────────────────────────────┐
+│  Database (Prisma)                                              │
+│                                                                  │
+│  Section.update({                                              │
+│    code: generatedCode,                                        │
+│    name: sectionName,                                          │
+│    updatedAt: now()                                            │
+│  })                                                             │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Key Components
+
+**useVersionState Hook** (`app/components/editor/hooks/useVersionState.ts`):
+- Line 114: `onAutoSave?.(latestVer.code)` - Calls auto-save callback when version auto-applies
+- Triggered only when:
+  - New AI version detected (message with codeSnapshot)
+  - Draft is NOT dirty (not modified by user)
+  - User is NOT browsing version history
+  - Version is first OR newly added
+
+**useEditorState Hook** (`app/components/editor/hooks/useEditorState.ts`):
+- Line 78: `const autoSaveFetcher = useFetcher()` - Create fetcher for silent requests
+- Line 81-87: `handleAutoSave()` callback:
+  - Submits FormData with `action: "saveDraft"`
+  - Includes current code and section name
+  - Uses `method: 'post'` for idempotent saves
+- Line 120: Passed to `useVersionState` as `onAutoSave` prop
+
+**Router Action Handler** (`app/routes/app.sections.$id.tsx`):
+- Handles `action === "saveDraft"` from FormData
+- Validates code length (prevents oversized saves)
+- Updates Section in database with new code
+- Returns success response (no redirect/reload)
+
+### Characteristics
+
+**Silent Persistence**:
+- No toast notification displayed
+- No UI flashing or loading indicators
+- User continues editing without interruption
+
+**Automatic Trigger**:
+- Happens automatically when AI applies version
+- No explicit "Save" button click required
+- User only needs to "Publish to Theme" for theme deployment
+
+**Data Loss Prevention**:
+- Saves current code state to database
+- If user refreshes page after generation, draft is preserved
+- New chat messages still restore from latest saved draft on page reload
+
+**Concurrency**:
+- Multiple rapid generations may queue multiple saves
+- Latest save wins (database row updated with most recent code)
+- No locking or transaction conflicts (row-level atomicity via Prisma)
+
+### Integration Points
+
+| Component | Hook | Purpose |
+|-----------|------|---------|
+| ChatPanel | useEditorState | Triggers on new AI message |
+| Editor Hook | useVersionState | Detects version auto-apply |
+| Version Hook | onAutoSave | Calls handleAutoSave callback |
+| Fetcher | React Router | Silent background submission |
+| Database | Prisma | Persistent storage |
+
+---
+
 ## Technology Stack Summary
 
 ### Frontend
@@ -1360,10 +1477,11 @@ const text = result.response.text();
 
 ---
 
-**Document Version**: 1.8
-**Last Updated**: 2025-12-26
-**Architecture Status**: Native App Proxy Rendering Only, Phase 02-04 Complete
-**Recent Changes** (December 2025):
+**Document Version**: 1.9
+**Last Updated**: 2026-01-01
+**Architecture Status**: Native App Proxy Rendering Only, Phase 01 Auto-Save + Phase 02-04 Complete
+**Recent Changes** (January 2026):
+- **260101**: Phase 01 Auto-Save - Added silent background persistence when AI generates and applies version (useVersionState onAutoSave callback + useEditorState useFetcher auto-save)
 - **251226**: LiquidJS Removal - Removed client-side LiquidJS rendering engine, Drop classes (18 files), useLiquidRenderer hook, and liquidjs dependency. All preview rendering now uses native Shopify Liquid via App Proxy
 - **251225**: Phase 01 Completion - Added transformSectionSettings: true to api.proxy.render.tsx for automatic syntax transformation ({{ section.settings.X }} → {{ settings_X }}) in native Shopify Liquid rendering
 - **251212**: Phase 02 Block Defaults - Expanded buildInitialState() to support all 31 Shopify schema types, DRY refactor with shared function in SettingsPanel

@@ -1,4 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
+import { useFetcher } from 'react-router';
 import type { Section } from '@prisma/client';
 import type { Theme, UIMessage } from '../../../types';
 import { useVersionState } from './useVersionState';
@@ -73,6 +74,18 @@ export function useEditorState({
     }
   }, []);
 
+  // Auto-save fetcher for silent persistence
+  const autoSaveFetcher = useFetcher();
+
+  // Auto-save handler - silently persist when AI version auto-applies
+  const handleAutoSave = useCallback((code: string) => {
+    const formData = new FormData();
+    formData.append('action', 'saveDraft');
+    formData.append('code', code);
+    formData.append('name', sectionName);
+    autoSaveFetcher.submit(formData, { method: 'post' });
+  }, [sectionName, autoSaveFetcher]);
+
   // Revert to original saved code
   const revertToOriginal = useCallback(() => {
     setSectionCode(originalCode);
@@ -104,6 +117,7 @@ export function useEditorState({
     onCodeChange: handleCodeUpdate,
     isDirty,
     onAutoApply,
+    onAutoSave: handleAutoSave,
   });
 
   return {

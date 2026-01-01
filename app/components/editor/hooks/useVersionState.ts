@@ -7,6 +7,7 @@ interface UseVersionStateOptions {
   onCodeChange: (code: string) => void;
   isDirty?: boolean;
   onAutoApply?: () => void;
+  onAutoSave?: (code: string) => void;
 }
 
 /**
@@ -19,6 +20,7 @@ export function useVersionState({
   onCodeChange,
   isDirty = false,
   onAutoApply,
+  onAutoSave,
 }: UseVersionStateOptions) {
   // Derive versions from messages with codeSnapshot
   const versions = useMemo<CodeVersion[]>(() => {
@@ -109,8 +111,9 @@ export function useVersionState({
       setSelectedVersionId(null);
       onCodeChange(latestVer.code);
       onAutoApply?.();
+      onAutoSave?.(latestVer.code);
     }
-  }, [versions, isDirty, activeVersionId, selectedVersionId, onCodeChange, onAutoApply]);
+  }, [versions, isDirty, activeVersionId, selectedVersionId, onCodeChange, onAutoApply, onAutoSave]);
 
   return {
     versions,

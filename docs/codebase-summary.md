@@ -40,7 +40,9 @@ ai-section-generator/
 │   │   │   ├── ChatPanelWrapper.tsx
 │   │   │   ├── CodePreviewPanel.tsx
 │   │   │   ├── PublishModal.tsx
-│   │   │   └── hooks/ (useEditorState, useVersionState)
+│   │   │   └── hooks/
+│   │   │       ├── useEditorState.ts      # Editor state management (Phase 01 Auto-Save)
+│   │   │       └── useVersionState.ts     # Version history + auto-save (Phase 01 Auto-Save)
 │   │   ├── chat/                 # Chat UI (10)
 │   │   │   ├── ChatPanel.tsx
 │   │   │   ├── ChatInput.tsx
@@ -2715,6 +2717,20 @@ Phase 04 will integrate native preview into `CodePreviewPanel`, replacing or aug
   - 500+ lines of new code (components, services, utilities, styles)
 - **Phase 03 Font Picker (251212)**: CSS-ready font stacks in Liquid templates
   - `FontDrop.ts`: New drop class wrapping font identifiers with family/stack properties
+- **Phase 01 Auto-Save (260101 - NEW)**:
+  - `app/components/editor/hooks/useVersionState.ts` (UPDATED):
+    - Added `onAutoSave` callback to hook options
+    - Auto-save triggered when new AI version auto-applies (lines 114)
+    - Calls `onAutoSave(latestVer.code)` with generated code
+  - `app/components/editor/hooks/useEditorState.ts` (UPDATED):
+    - Added `handleAutoSave` callback for silent persistence
+    - Uses `useFetcher()` to submit `saveDraft` action without UI feedback
+    - Silent persistence: No toast notification, just automatic database persistence
+    - Triggered via `useVersionState` when AI generates and applies version
+  - **Feature**: Auto-persist draft to database when AI generates and applies a version
+    - No user action required for persistence
+    - Prevents data loss on page refresh
+    - Works transparently with existing chat/preview flows
   - `fontRegistry.ts`: Registry of 31 web-safe fonts with CSS fallback chains
   - Enables property access: `{{ section.settings.heading_font.family }}`
   - Outputs CSS-ready stacks: `"Georgia, serif"` instead of `"georgia"`
