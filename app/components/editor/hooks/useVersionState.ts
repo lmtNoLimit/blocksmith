@@ -8,6 +8,8 @@ interface UseVersionStateOptions {
   isDirty?: boolean;
   onAutoApply?: () => void;
   onAutoSave?: (code: string) => void;
+  initialVersionId?: string | null;
+  onVersionChange?: (versionId: string | null) => void;
 }
 
 /**
@@ -21,6 +23,8 @@ export function useVersionState({
   isDirty = false,
   onAutoApply,
   onAutoSave,
+  initialVersionId,
+  onVersionChange,
 }: UseVersionStateOptions) {
   // Derive versions from messages with codeSnapshot
   const versions = useMemo<CodeVersion[]>(() => {
@@ -41,8 +45,10 @@ export function useVersionState({
     null
   );
 
-  // Active version (last applied to draft)
-  const [activeVersionId, setActiveVersionId] = useState<string | null>(null);
+  // Active version (last applied to draft) - initialized from URL param
+  const [activeVersionId, setActiveVersionId] = useState<string | null>(
+    initialVersionId ?? null
+  );
 
   // Get code for selected version
   const selectedVersion = useMemo(
@@ -66,9 +72,10 @@ export function useVersionState({
         setActiveVersionId(versionId);
         setSelectedVersionId(null); // Clear selection after apply
         onCodeChange(version.code);
+        onVersionChange?.(versionId); // Update URL
       }
     },
-    [versions, onCodeChange]
+    [versions, onCodeChange, onVersionChange]
   );
 
   // Latest version (most recent AI response)
@@ -85,6 +92,9 @@ export function useVersionState({
   // Track previous version count to detect new AI responses
   const prevVersionCountRef = useRef(versions.length);
 
+  // Track if initial version restore has happened
+  const initialRestoreDoneRef = useRef(false);
+
   // Clear selection when new AI response adds a version
   useEffect(() => {
     if (versions.length > prevVersionCountRef.current && selectedVersionId) {
@@ -93,6 +103,22 @@ export function useVersionState({
     }
     prevVersionCountRef.current = versions.length;
   }, [versions.length, selectedVersionId]);
+
+  // Restore version from URL on mount (only runs once when versions are available)
+  useEffect(() => {
+    // Skip if no initialVersionId, already restored, or versions not loaded
+    if (!initialVersionId || initialRestoreDoneRef.current || versions.length === 0) return;
+
+    const version = versions.find(v => v.id === initialVersionId);
+    if (version) {
+      // Restore this version's code
+      onCodeChange(version.code);
+    } else {
+      // Invalid version ID in URL - clear it
+      onVersionChange?.(null);
+    }
+    initialRestoreDoneRef.current = true;
+  }, [initialVersionId, versions, onCodeChange, onVersionChange]);
 
   // Auto-apply latest AI version when not dirty and no version history browsing
   useEffect(() => {
@@ -112,8 +138,9 @@ export function useVersionState({
       onCodeChange(latestVer.code);
       onAutoApply?.();
       onAutoSave?.(latestVer.code);
+      onVersionChange?.(latestVer.id); // Update URL
     }
-  }, [versions, isDirty, activeVersionId, selectedVersionId, onCodeChange, onAutoApply, onAutoSave]);
+  }, [versions, isDirty, activeVersionId, selectedVersionId, onCodeChange, onAutoApply, onAutoSave, onVersionChange]);
 
   return {
     versions,

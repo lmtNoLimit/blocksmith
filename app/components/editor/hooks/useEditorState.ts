@@ -1,5 +1,5 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
-import { useFetcher } from 'react-router';
+import { useFetcher, useSearchParams } from 'react-router';
 import type { Section } from '@prisma/client';
 import type { Theme, UIMessage } from '../../../types';
 import { useVersionState } from './useVersionState';
@@ -14,6 +14,7 @@ interface UseEditorStateOptions {
     messages: UIMessage[];
   } | null;
   onAutoApply?: () => void;
+  initialVersionId?: string | null;
 }
 
 /**
@@ -25,7 +26,23 @@ export function useEditorState({
   themes,
   conversation,
   onAutoApply,
+  initialVersionId,
 }: UseEditorStateOptions) {
+  // URL search params for version persistence
+  const [, setSearchParams] = useSearchParams();
+
+  // Callback for URL update when version changes
+  const handleVersionChange = useCallback((versionId: string | null) => {
+    setSearchParams(prev => {
+      if (versionId) {
+        prev.set('v', versionId);
+      } else {
+        prev.delete('v');
+      }
+      return prev;
+    }, { replace: true });
+  }, [setSearchParams]);
+
   // Section state
   const [sectionCode, setSectionCode] = useState(section.code);
   const [sectionName, setSectionName] = useState(section.name || 'Untitled Section');
@@ -86,15 +103,6 @@ export function useEditorState({
     autoSaveFetcher.submit(formData, { method: 'post' });
   }, [sectionName, autoSaveFetcher]);
 
-  // Revert to original saved code
-  const revertToOriginal = useCallback(() => {
-    setSectionCode(originalCode);
-    setLastCodeSource('initial');
-  }, [originalCode]);
-
-  // Check if revert is possible
-  const canRevert = sectionCode !== originalCode;
-
   // Get theme name for display
   const selectedThemeName = themes.find(t => t.id === selectedTheme)?.name || 'theme';
 
@@ -118,6 +126,8 @@ export function useEditorState({
     isDirty,
     onAutoApply,
     onAutoSave: handleAutoSave,
+    initialVersionId,
+    onVersionChange: handleVersionChange,
   });
 
   return {
@@ -131,12 +141,10 @@ export function useEditorState({
 
     // Code source tracking
     lastCodeSource,
-    revertToOriginal,
-    canRevert,
 
     // Conversation
     conversationId: conversation?.id || null,
-    initialMessages: conversation?.messages || [],
+    initialMessages: liveMessages,
     handleMessagesChange,
 
     // Save

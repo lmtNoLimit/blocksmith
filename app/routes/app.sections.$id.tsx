@@ -40,6 +40,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     throw data({ message: 'Section ID required' }, { status: 400 });
   }
 
+  // Parse version from URL (validate format to prevent XSS)
+  const url = new URL(request.url);
+  const rawVersionId = url.searchParams.get('v');
+  // Version IDs are UUIDs or cuid-style IDs - only allow alphanumeric, hyphens, underscores
+  const versionId = rawVersionId && /^[a-zA-Z0-9_-]+$/.test(rawVersionId)
+    ? rawVersionId
+    : null;
+
   // Load section
   const section = await sectionService.getById(sectionId, shop);
   if (!section) {
@@ -61,6 +69,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
       messages,
     },
     shopDomain: shop,
+    initialVersionId: versionId,
   };
 }
 
@@ -196,7 +205,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function UnifiedEditorPage() {
-  const { section, themes, conversation, shopDomain } = useLoaderData<typeof loader>();
+  const { section, themes, conversation, shopDomain, initialVersionId } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const submit = useSubmit();
@@ -213,8 +222,6 @@ export default function UnifiedEditorPage() {
     setSectionName,
     handleCodeUpdate,
     lastCodeSource,
-    revertToOriginal,
-    canRevert,
     conversationId,
     initialMessages,
     selectedTheme,
@@ -238,6 +245,7 @@ export default function UnifiedEditorPage() {
     themes: themes as Theme[],
     conversation: conversation as { id: string; messages: UIMessage[] },
     onAutoApply: handleAutoApply,
+    initialVersionId,
   });
 
   // Preview settings hook - manages schema-based settings for right panel
@@ -273,7 +281,6 @@ export default function UnifiedEditorPage() {
   }, []);
 
   const isLoading = navigation.state === 'submitting';
-  const isSavingDraft = isLoading && navigation.formData?.get('action') === 'saveDraft';
   const isPublishing = isLoading && navigation.formData?.get('action') === 'publish';
 
   // Save handlers
@@ -401,6 +408,15 @@ export default function UnifiedEditorPage() {
     }
   }, [actionData]);
 
+  // Detect initial generation state: has user message, no assistant response, no code
+  const isInitialGeneration = useMemo(() => {
+    if (!initialMessages || initialMessages.length === 0) return false;
+    const hasUserMessage = initialMessages.some(m => m.role === 'user');
+    const hasAssistantMessage = initialMessages.some(m => m.role === 'assistant');
+    const hasCode = sectionCode.length > 0;
+    return hasUserMessage && !hasAssistantMessage && !hasCode;
+  }, [initialMessages, sectionCode]);
+
   // Display title with dirty indicator and AI badge
   const displayTitle = `${sectionName}${isDirty ? ' *' : ''}`;
 
@@ -439,27 +455,7 @@ export default function UnifiedEditorPage() {
       {/* Image Picker Modal - rendered at page level to avoid z-index issues */}
       <ImagePickerModal />
 
-      {/* Secondary actions */}
-      <s-button
-        slot="secondary-actions"
-        onClick={handleSaveDraft}
-        loading={isSavingDraft || undefined}
-        disabled={isLoading || undefined}
-      >
-        Save Draft
-      </s-button>
-
-      {canRevert && (
-        <s-button
-          slot="secondary-actions"
-          onClick={revertToOriginal}
-          disabled={isLoading || undefined}
-        >
-          Revert
-        </s-button>
-      )}
-
-      {/* More actions menu */}
+      {/* Secondary actions - More actions menu only */}
       <s-button slot="secondary-actions" commandFor="editor-more-actions">
         More actions
       </s-button>
@@ -556,6 +552,7 @@ export default function UnifiedEditorPage() {
               activeVersionId={activeVersionId}
               onVersionSelect={selectVersion}
               onVersionApply={handleVersionApply}
+              isInitialGeneration={isInitialGeneration}
             />
           ) : (
             <s-box padding="base">

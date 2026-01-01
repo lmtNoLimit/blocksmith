@@ -19,6 +19,8 @@ interface ChatPanelWrapperProps {
   activeVersionId?: string | null;
   onVersionSelect?: (versionId: string | null) => void;
   onVersionApply?: (versionId: string) => void;
+  /** Show loading indicator during initial AI generation */
+  isInitialGeneration?: boolean;
 }
 
 export function ChatPanelWrapper({
@@ -32,9 +34,21 @@ export function ChatPanelWrapper({
   activeVersionId,
   onVersionSelect,
   onVersionApply,
+  isInitialGeneration = false,
 }: ChatPanelWrapperProps) {
   return (
     <div className="chat-panel-wrapper">
+      {/* Loading indicator during initial AI generation */}
+      {isInitialGeneration && (
+        <div role="status" aria-live="polite">
+          <s-box padding="base" background="subdued">
+            <s-stack gap="small" alignItems="center">
+              <s-spinner size="base" accessibilityLabel="Loading" />
+              <s-text color="subdued">Generating your section...</s-text>
+            </s-stack>
+          </s-box>
+        </div>
+      )}
       <ChatPanel
         conversationId={conversationId}
         initialMessages={initialMessages}
