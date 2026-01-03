@@ -145,9 +145,9 @@ CATEGORY_GUIDES = {
     "content": {
         "title": "Content Creation",
         "workflow": [
-            ("Quick copy", "`/content:fast` \"requirements\""),
-            ("Quality copy", "`/content:good` \"requirements\""),
-            ("Optimize", "`/content:cro`"),
+            ("Quick copy", "`/write:fast` \"requirements\""),
+            ("Quality copy", "`/write:good` \"requirements\""),
+            ("Optimize", "`/write:cro`"),
         ],
         "tip": "Know your audience before writing",
     },

@@ -1,11 +1,11 @@
 {
-  "version": "2.1.0",
-  "name": "claudekit-engineer",
-  "description": "A comprehensive boilerplate template for building professional software projects with CLI Coding Agents (Claude Code and Open Code).",
-  "buildDate": "2025-12-25T02:43:59.453Z",
+  "version": "1.0.0",
+  "name": "claudekit-marketing",
+  "description": "Claude Code toolkit for sales and marketing automation - content creation, campaign management, SEO optimization, and lead generation.",
+  "buildDate": "2025-12-31T17:00:48.139Z",
   "repository": {
     "type": "git",
-    "url": "https://github.com/claudekit/claudekit-engineer.git"
+    "url": "https://github.com/claudekit/claudekit-marketing.git"
   },
   "download": {
     "lastDownloadedAt": null,
