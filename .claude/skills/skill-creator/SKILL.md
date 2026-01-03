@@ -57,6 +57,7 @@ Every skill consists of a required SKILL.md file and optional bundled resources:
   - Sacrifice grammar for the sake of concision when writing these files.
   - Can reference other markdown files or scripts as well.
 - **Referenced scripts**:
+  - OS compatibility: Windows, Linux, macOS.
   - Prefer nodejs or python scripts instead of bash script, because bash scripts are not well-supported on Windows.
   - If you're going to write python scripts, make sure you have `requirements.txt`
   - Make sure scripts respect `.env` file follow this order: `process.env` > `.claude/skills/${SKILL}/.env` > `.claude/skills/.env` > `.claude/.env` 
@@ -67,7 +68,9 @@ Every skill consists of a required SKILL.md file and optional bundled resources:
 - Always keep in mind that `SKILL.md` and reference files should be token consumption efficient, so that **progressive disclosure** can be leveraged at best.
 - `SKILL.md` should be **less than 100 lines**
 - Referenced markdown files should be also **less than 100 lines**, remember that you can always split them into multiple files (**progressive disclosure** principle).
-- Referenced scripts: no limit on length, just make sure it works, no compile issues, no runtime issues, no dependencies issues, no environment issues, no platform issues.
+- Referenced scripts: 
+  - No limit on length, just make sure it works, no compile issues, no runtime issues, no dependencies issues, no environment issues, no platform issues.
+  - OS compatibility: Windows, Linux, macOS.
 
 **Why?**
 Better **context engineering**: leverage **progressive disclosure** technique of Agent Skills, when agent skills are activated, Claude Code will consider to load only relevant files into the context, instead of reading all long `SKILL.md` as before.

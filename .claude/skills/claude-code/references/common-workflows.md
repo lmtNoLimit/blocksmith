@@ -77,11 +77,11 @@ claude "analyze the changes in PR #42"
 /design:screenshot analyze this design and suggest improvements
 ```
 
-**Content creation:**
+**Text content creation:**
 ```bash
-/content:good write product description for new feature
-/content:fast create blog post about our API
-/content:cro optimize landing page copy for conversions
+/write:good write product description for new feature
+/write:fast create blog post about our API
+/write:cro optimize landing page copy for conversions
 ```
 
 ## Project Initialization

@@ -221,38 +221,38 @@ Create conversion rate optimization plan.
 
 ## Content Commands
 
-### /content:fast [request]
+### /write:fast [request]
 Quick copy writing.
 
 ```bash
-/content:fast write product description for new feature
+/write:fast write product description for new feature
 ```
 
 **When to use**: Fast content generation
 
-### /content:good [request]
+### /write:good [request]
 High-quality, conversion-focused copy.
 
 ```bash
-/content:good write landing page hero section
+/write:good write landing page hero section
 ```
 
 **When to use**: Marketing copy requiring polish
 
-### /content:enhance [issue]
+### /write:enhance [issue]
 Enhance existing content.
 
 ```bash
-/content:enhance improve clarity of pricing page
+/write:enhance improve clarity of pricing page
 ```
 
 **When to use**: Improving existing copy
 
-### /content:cro [issue]
+### /write:cro [issue]
 Conversion rate optimization for content.
 
 ```bash
-/content:cro optimize email campaign copy
+/write:cro optimize email campaign copy
 ```
 
 **When to use**: Conversion-focused content improvements
