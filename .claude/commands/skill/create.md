@@ -23,7 +23,13 @@ Base on the requirements:
 - If you receive a lot of files, use multiple `Explore` subagents to explore them in parallel, then report back to main agent.
 - If you're given a Github URL, use [`repomix`](https://repomix.com/guide/usage) command to summarize ([install it](https://repomix.com/guide/installation) if needed) and spawn multiple `Explore` subagents to explore it in parallel, then report back to main agent.
 
+### Scopes
+- Project-scope: Current working project directory (e.g. `.claude/`)
+- User-scope: Home/user directory (e.g. `~/.claude/`)
+
 **IMPORTANT:**
+- ALWAYS make changes to skills in the project-scope `.claude/skills/` directory (UNLESS you're allowed to).
+- DO NOT make any changes to skills in the home/user-scope `~/.claude/skills/` directory (UNLESS you're allowed to).
 - Skills are not documentation, they are practical instructions for Claude Code to use the tools, packages, plugins or APIs to achieve the tasks.
 - Each skill teaches Claude how to perform a specific development task, not what a tool does.
 - Claude Code can activate multiple skills automatically to achieve the user's request.

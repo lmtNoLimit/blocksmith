@@ -1,5 +1,5 @@
 ---
-description: ⚡⚡⚡ Scan & analyze the codebase.
+description: 💡💡💡 Scan & analyze the codebase.
 argument-hint: [tasks-or-prompt]
 ---
 

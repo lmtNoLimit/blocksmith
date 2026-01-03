@@ -16,7 +16,13 @@ Optimize an existing skill in `.claude/skills/${SKILL}` directory.
 Always keep in mind that `SKILL.md` and reference files should be token consumption efficient, so that **progressive disclosure** can be leveraged at best.
 `SKILL.md` is always short and concise, straight to the point, treat it as a quick reference guide.
 
+### Scopes
+- Project-scope: Current working project directory (e.g. `.claude/`)
+- User-scope: Home/user directory (e.g. `~/.claude/`)
+
 **IMPORTANT:**
+- ALWAYS make changes to skills in the project-scope directory (UNLESS you're allowed to).
+- DO NOT make any changes to skills in the user-scope directory (UNLESS you're allowed to).
 - Skills are not documentation, they are practical instructions for Claude Code to use the tools, packages, plugins or APIs to achieve the tasks.
 - Each skill teaches Claude how to perform a specific development task, not what a tool does.
 - Claude Code can activate multiple skills automatically to achieve the user's request.

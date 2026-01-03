@@ -1,5 +1,5 @@
 ---
-description: ⚡ Analyze the codebase and update documentation
+description: 💡 Analyze the codebase and update documentation
 argument-hint: [focused-topics] [should-scan-codebase]
 ---
 
@@ -18,5 +18,6 @@ $2: Should scan codebase (`Boolean`, default: `false`)
 ## Important:
 - Use `docs/` directory as the source of truth for documentation.
 - Do not scan the entire codebase unless the user explicitly requests it.
+- Especially do not scan the `.claude` directory.
 
 **IMPORTANT**: **Do not** start implementing.

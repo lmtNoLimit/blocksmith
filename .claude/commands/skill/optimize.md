@@ -28,7 +28,13 @@ An output implementation plan must also follow the progressive disclosure struct
 - Save the overview access point at `plan.md`, keep it generic, under 80 lines, and list each phase with status/progress and links.
 - For each phase, add `phase-XX-phase-name.md` files containing sections (Context links, Overview with date/priority/statuses, Key Insights, Requirements, Architecture, Related code files, Implementation Steps, Todo list, Success Criteria, Risk Assessment, Security Considerations, Next steps).
 
+### Scopes
+- Project-scope: Current working project directory (e.g. `.claude/`)
+- User-scope: Home/user directory (e.g. `~/.claude/`)
+
 **IMPORTANT:**
+- ALWAYS make changes to skills in the project-scope `.claude/skills/` directory (UNLESS you're allowed to).
+- DO NOT make any changes to skills in the home/user-scope `~/.claude/skills/` directory (UNLESS you're allowed to).
 - Skills are not documentation, they are practical instructions for Claude Code to use the tools, packages, plugins or APIs to achieve the tasks.
 - Each skill teaches Claude how to perform a specific development task, not what a tool does.
 - Claude Code can activate multiple skills automatically to achieve the user's request.

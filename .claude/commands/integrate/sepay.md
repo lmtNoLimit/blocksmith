@@ -1,5 +1,5 @@
 ---
-description: ⚡⚡ Implement payment integration with SePay.vn
+description: 💡💡 Implement payment integration with SePay.vn
 argument-hint: [tasks]
 ---
 

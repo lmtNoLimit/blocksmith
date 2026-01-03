@@ -8,7 +8,10 @@ Think hard to plan & start working on these tasks follow the Orchestration Proto
 
 ## Required Skills (Priority Order)
 1. **`ui-ux-pro-max`** - Design intelligence database (ALWAYS ACTIVATE FIRST)
-2. **`frontend-design`** - Quick implementation
+2. **`creativity`** - Creative direction, style templates, color psychology
+3. **`aesthetic`** - Design principles
+4. **`frontend-design`** - Quick implementation
+5. **`assets-organizing`** - Standardized output paths
 
 **Ensure token efficiency while maintaining high quality.**
 
