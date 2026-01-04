@@ -4,15 +4,14 @@
 
 AI Section Generator (Blocksmith) is a production-ready Shopify embedded app that leverages Google Gemini 2.5 Flash to generate Shopify Liquid theme sections from natural language prompts. The app features a modern React Router 7 SSR architecture with comprehensive AI chat integration, live preview rendering via App Proxy native Shopify Liquid, multi-tenant billing, and full TypeScript strict mode.
 
-**Total Files**: 275 TypeScript/TSX files (254 in core pack)
-**Total Tokens**: 273,261 tokens (via repomix 2025-12-26)
+**Total Files**: 235 TypeScript/TSX files in app/ directory
 **Code Languages**: TypeScript (strict mode), Prisma, CSS/TailwindCSS, JSON
 **Architecture**: Service-oriented with adapter pattern, singleton pattern, multi-tenant isolation, native App Proxy rendering
 
 ### Quick Stats
-- Routes: 20 file-based
+- Routes: 28 file-based
 - Services: 25 server modules
-- Components: 95 React components across 8 feature domains
+- Components: 107 React components across 8 feature domains
 - Database Models: 11 Prisma models
 - Test Files: 30+ test suites
 
@@ -20,8 +19,8 @@ AI Section Generator (Blocksmith) is a production-ready Shopify embedded app tha
 
 ```
 ai-section-generator/
-├── app/                          # Application source (275 files)
-│   ├── routes/                   # 20 React Router file-based routes
+├── app/                          # Application source (235 files)
+│   ├── routes/                   # 28 React Router file-based routes
 │   │   ├── app._index.tsx        # Home/dashboard page
 │   │   ├── app.sections._index.tsx # Sections list
 │   │   ├── app.sections.new.tsx  # Create new section (ChatGPT-style)
@@ -34,7 +33,7 @@ ai-section-generator/
 │   │   └── app.tsx               # App layout with navigation
 │   ├── styles/                   # Global & route CSS (Phase 01)
 │   │   └── new-section.css       # Centered prompt layout styling
-│   ├── components/               # 95 React components (8 feature domains)
+│   ├── components/               # 107 React components (8 feature domains)
 │   │   ├── editor/               # Editor panels (7)
 │   │   │   ├── PolarisEditorLayout.tsx
 │   │   │   ├── ChatPanelWrapper.tsx
@@ -2676,9 +2675,9 @@ Phase 04 will integrate native preview into `CodePreviewPanel`, replacing or aug
 
 ---
 
-**Document Version**: 2.2
-**Last Updated**: 2025-12-24
-**Codebase Size**: ~335,835 tokens across 201 files (measured via repomix)
+**Document Version**: 2.3
+**Last Updated**: 2026-01-04
+**Codebase Size**: 235 app files in app/ directory
 **Primary Language**: TypeScript (TSX)
 **Recent Changes** (December 2025):
 - **Phase 01 Simplified /new Route + Chat Auto-Generation (NEW - 251214)**:

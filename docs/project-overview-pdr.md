@@ -138,7 +138,7 @@ AI Section Generator is a Shopify embedded app that enables merchants to generat
 - **Frontend**: React 18, React Router 7
 - **Backend**: Node.js (>= 20.19), React Router server-side
 - **Database**: Prisma ORM with SQLite (dev) / configurable for production
-- **AI**: Google Generative AI SDK (Gemini 2.0 Flash)
+- **AI**: Google Generative AI SDK (Gemini 2.5 Flash)
 - **Shopify Integration**: @shopify/shopify-app-react-router
 - **UI**: Polaris Web Components
 - **Build**: Vite 6
@@ -184,7 +184,7 @@ app/
   - `themeFilesUpsert` mutation: Create/update theme files
 
 #### Google Gemini API
-- **Model**: gemini-2.0-flash-exp
+- **Model**: gemini-2.5-flash
 - **Configuration**:
   - System instruction for Shopify Liquid expertise
   - Structured output (schema + style + markup)
@@ -331,6 +331,6 @@ Historical record of generated sections:
 
 ---
 
-**Document Version**: 1.2
-**Last Updated**: 2025-12-26
-**Status**: Phase 4 Complete - Production Ready (awaiting Shopify scope approval)
+**Document Version**: 1.3
+**Last Updated**: 2026-01-04
+**Status**: Phase 4 Complete + Phase 1 Auto-Save - Production Ready (awaiting Shopify scope approval)
