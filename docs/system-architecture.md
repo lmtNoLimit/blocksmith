@@ -1445,6 +1445,207 @@ const text = result.response.text();
 
 ---
 
+## 6. Chat/Streaming Architecture (Critical Implementation Notes)
+
+### Overview
+
+The ChatPanel system handles real-time AI conversation with streaming responses via Server-Sent Events (SSE). This architecture is CRITICAL to understand to avoid introducing duplicate AI responses.
+
+### Architecture Diagram
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                     app.sections.$id.tsx (Page)                         │
+│  ┌─────────────────────────────────────────────────────────────────┐   │
+│  │   useEditorState hook - orchestrates all state                   │   │
+│  │   - liveMessages state (synced from ChatPanel)                   │   │
+│  │   - version management (useVersionState)                         │   │
+│  └─────────────────────────────────────────────────────────────────┘   │
+│                               │                                         │
+│        ┌──────────────────────┼─────────────────────────┐              │
+│        ▼                                                ▼               │
+│  ┌──────────────────────────────────────────────────────────────────┐  │
+│  │ ChatPanelWrapper                                                  │  │
+│  │   ↓ initialMessages, onMessagesChange                            │  │
+│  │ ┌────────────────────────────────────────────────────────────┐   │  │
+│  │ │ ChatPanel                                                   │   │  │
+│  │ │   - useChat hook (state management + API calls)            │   │  │
+│  │ │   - Auto-trigger logic (for /new route redirect)           │   │  │
+│  │ │   - User-initiated send protection                         │   │  │
+│  │ └────────────────────────────────────────────────────────────┘   │  │
+│  └──────────────────────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────────────────┘
+         │
+         ▼
+┌─────────────────┐
+│ /api/chat/stream│  ←── SSE streaming endpoint
+│ (POST)          │
+└─────────────────┘
+         │
+         ▼
+┌────────────────────────────────────────────────────────────────┐
+│                        Backend Services                         │
+│  ┌──────────────────┐          ┌─────────────────────────┐     │
+│  │   ChatService    │◄────────►│      AIService          │     │
+│  │   (chat.server)  │          │    (ai.server)          │     │
+│  │   - Prisma DB    │          │   - Gemini 2.5 Flash    │     │
+│  │   - DUPLICATE    │          │   - Streaming generator │     │
+│  │     PREVENTION   │          │                         │     │
+│  └──────────────────┘          └─────────────────────────┘     │
+└────────────────────────────────────────────────────────────────┘
+```
+
+### ⚠️ CRITICAL: Duplicate Response Prevention
+
+The system has **4 layers of protection** against duplicate AI responses. **DO NOT REMOVE OR MODIFY these without understanding the full flow.**
+
+#### Layer 1: User-Initiated Send Flag (ChatPanel.tsx)
+
+```typescript
+// ChatPanel.tsx - CRITICAL: Set flag BEFORE calling sendMessage
+const isUserInitiatedSendRef = useRef(false);
+
+const handleSend = useCallback((message: string) => {
+  isUserInitiatedSendRef.current = true;  // ← SET FIRST
+  sendMessage(message);
+  setPrefilledInput("");
+}, [sendMessage]);
+
+// Auto-trigger effect checks this flag
+useEffect(() => {
+  if (isUserInitiatedSendRef.current) {
+    isUserInitiatedSendRef.current = false;
+    return;  // ← Skip if user just sent
+  }
+  // ... auto-trigger logic for /new route
+}, [messages, isStreaming, triggerGeneration]);
+```
+
+**Why**: Prevents race condition between `sendMessage` and auto-trigger `useEffect`.
+
+#### Layer 2: Initial Load Guard (ChatPanel.tsx)
+
+```typescript
+// Load initial messages ONLY on first mount per conversation
+useEffect(() => {
+  if (hasLoadedInitialRef.current) return;  // ← Only once!
+  if (initialMessages.length === 0) return;
+
+  hasLoadedInitialRef.current = true;
+  loadMessages(initialMessages);
+}, [initialMessages, loadMessages]);
+```
+
+**Why**: Prevents circular updates (ChatPanel → parent → ChatPanel) from triggering `SET_MESSAGES`.
+
+#### Layer 3: Generation Lock (useChat.ts)
+
+```typescript
+const isGeneratingRef = useRef(false);
+
+const streamResponse = async (content, skipAddMessage) => {
+  if (isGeneratingRef.current) {
+    console.warn('[useChat] Ignoring duplicate generation call');
+    return;  // ← Block concurrent calls
+  }
+  isGeneratingRef.current = true;
+  // ... streaming logic
+  finally {
+    isGeneratingRef.current = false;
+  }
+};
+
+// BOTH sendMessage AND triggerGeneration check this lock
+const sendMessage = async (content) => {
+  if (isGeneratingRef.current) return;  // ← Double-check
+  // ...
+};
+
+const triggerGeneration = async (content) => {
+  if (isGeneratingRef.current) return;  // ← Double-check
+  // ...
+};
+```
+
+**Why**: Prevents concurrent API calls even if React batching causes timing issues.
+
+#### Layer 4: Server-Side Duplicate Prevention (chat.server.ts)
+
+```typescript
+async addAssistantMessage(conversationId, content, codeSnapshot, tokenCount, modelId) {
+  // Check if assistant already responded to last user message
+  const existingAssistant = await this.checkForExistingAssistantResponse(conversationId);
+  if (existingAssistant) {
+    console.warn('[ChatService] Duplicate assistant message prevented');
+    return existingAssistant;  // ← Return existing, don't create new
+  }
+  // ... create message
+}
+```
+
+**Why**: Last line of defense - even if 2 API calls slip through, only 1 message is saved.
+
+### Common Pitfalls (DO NOT DO)
+
+❌ **Don't remove `isUserInitiatedSendRef` check** - Will cause duplicate on every user send
+
+❌ **Don't re-enable messagesId comparison in loadMessages** - Will cause circular updates
+
+❌ **Don't remove `isGeneratingRef` checks** - Will allow concurrent API calls
+
+❌ **Don't add new effects that trigger generation without checking all refs**
+
+❌ **Don't call `sendMessage` or `triggerGeneration` without understanding the full flow**
+
+### Safe Modifications
+
+✅ **Adding new UI in ChatPanel** - Safe, doesn't affect generation flow
+
+✅ **Modifying message display** - Safe, affects rendering only
+
+✅ **Adding new SSE event types** - Safe, handled in streamResponse
+
+✅ **Changing AI prompt/model** - Safe, only affects ai.server.ts
+
+### Debug Logging
+
+Console logs are added for debugging duplicate issues:
+```
+[useChat] sendMessage called, isStreaming: false, isGenerating: false
+[useChat] Starting generation: gen-xxx-yyy, skipAddMessage: false
+[useChat] Generation complete: gen-xxx-yyy
+[useChat] Ignoring duplicate generation call, existing: gen-xxx, new: gen-yyy
+[ChatService] Duplicate assistant message prevented, returning existing
+```
+
+### Data Flow Summary
+
+```
+User sends message:
+1. handleSend sets isUserInitiatedSendRef = true
+2. sendMessage checks isGeneratingRef (should be false)
+3. sendMessage sets isGeneratingRef = true
+4. sendMessage dispatches ADD_USER_MESSAGE + START_STREAMING
+5. React re-renders → auto-trigger effect runs
+6. Auto-trigger sees isUserInitiatedSendRef = true → skips
+7. streamResponse makes API call
+8. Server streams response, creates assistant message
+9. COMPLETE_STREAMING dispatched
+10. isGeneratingRef = false
+
+/new route redirect (auto-trigger):
+1. Page loads with initialMessages = [user message from DB]
+2. loadMessages loads them (first time only)
+3. Auto-trigger effect runs
+4. isUserInitiatedSendRef = false, isStreaming = false
+5. hasTriggeredAutoGenRef = false, has user message, no assistant
+6. Sets hasTriggeredAutoGenRef = true
+7. Calls triggerGeneration (with continueGeneration=true)
+8. Same flow as above from step 7
+```
+
+---
+
 ## Technology Stack Summary
 
 ### Frontend
@@ -1477,10 +1678,11 @@ const text = result.response.text();
 
 ---
 
-**Document Version**: 1.9
-**Last Updated**: 2026-01-01
+**Document Version**: 2.0
+**Last Updated**: 2026-01-04
 **Architecture Status**: Native App Proxy Rendering Only, Phase 01 Auto-Save + Phase 02-04 Complete
 **Recent Changes** (January 2026):
+- **260104**: Chat/Streaming Architecture Documentation - Added critical section documenting 4-layer duplicate prevention (user-initiated flag, initial load guard, generation lock, server-side protection). Fixed race condition bug causing duplicate AI responses.
 - **260101**: Phase 01 Auto-Save - Added silent background persistence when AI generates and applies version (useVersionState onAutoSave callback + useEditorState useFetcher auto-save)
 - **251226**: LiquidJS Removal - Removed client-side LiquidJS rendering engine, Drop classes (18 files), useLiquidRenderer hook, and liquidjs dependency. All preview rendering now uses native Shopify Liquid via App Proxy
 - **251225**: Phase 01 Completion - Added transformSectionSettings: true to api.proxy.render.tsx for automatic syntax transformation ({{ section.settings.X }} → {{ settings_X }}) in native Shopify Liquid rendering

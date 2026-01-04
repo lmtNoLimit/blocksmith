@@ -66,29 +66,24 @@ export function ChatPanel({
   // Track if we've already triggered auto-generation and loaded initial messages
   const hasTriggeredAutoGenRef = useRef(false);
   const hasLoadedInitialRef = useRef(false);
-  const initialMessagesIdRef = useRef<string | null>(null);
+  // Track user-initiated sends to prevent auto-trigger race condition
+  const isUserInitiatedSendRef = useRef(false);
 
   // Reset flags when conversation changes
   useEffect(() => {
     hasTriggeredAutoGenRef.current = false;
     hasLoadedInitialRef.current = false;
-    initialMessagesIdRef.current = null;
+    isUserInitiatedSendRef.current = false;
   }, [conversationId]);
 
-  // Load initial messages only once per conversation
+  // Load initial messages ONLY on first mount per conversation
+  // After initial load, local state is authoritative - ignore parent updates
+  // (Parent updates come from onMessagesChange sync, which creates circular dependency)
   useEffect(() => {
+    if (hasLoadedInitialRef.current) return; // Already loaded, skip
     if (initialMessages.length === 0) return;
 
-    // Create a stable ID from the messages to detect actual changes
-    const messagesId = initialMessages.map(m => m.id).join(',');
-
-    // Skip if we've already loaded these exact messages
-    if (hasLoadedInitialRef.current && messagesId === initialMessagesIdRef.current) {
-      return;
-    }
-
     hasLoadedInitialRef.current = true;
-    initialMessagesIdRef.current = messagesId;
     loadMessages(initialMessages);
   }, [initialMessages, loadMessages]);
 
@@ -98,7 +93,14 @@ export function ChatPanel({
   }, [messages, onMessagesChange]);
 
   // Auto-trigger AI generation if last message is user with no assistant response
+  // This is for route navigation (e.g., from /new), NOT for user-initiated sends
   useEffect(() => {
+    // Skip if user just clicked send - prevents race condition with sendMessage
+    if (isUserInitiatedSendRef.current) {
+      isUserInitiatedSendRef.current = false;
+      return;
+    }
+
     // Early exit for streaming or already triggered
     if (isStreaming || hasTriggeredAutoGenRef.current) return;
     if (messages.length === 0) return;
@@ -162,9 +164,17 @@ export function ChatPanel({
 
   // Phase 05: Clear prefilled input after send
   const handleSend = useCallback((message: string) => {
+    // Flag user-initiated send to prevent auto-trigger race condition
+    isUserInitiatedSendRef.current = true;
     sendMessage(message);
     setPrefilledInput("");
   }, [sendMessage]);
+
+  // Wrap retry to also prevent auto-trigger race condition
+  const handleRetry = useCallback(() => {
+    isUserInitiatedSendRef.current = true;
+    retryFailedMessage();
+  }, [retryFailedMessage]);
 
   return (
     <div className="chat-panel-container">
@@ -215,7 +225,7 @@ export function ChatPanel({
             <s-button
               slot="primary-action"
               variant="primary"
-              onClick={retryFailedMessage}
+              onClick={handleRetry}
             >
               Retry
             </s-button>

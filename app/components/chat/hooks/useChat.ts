@@ -121,6 +121,8 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
   const abortControllerRef = useRef<AbortController | null>(null);
   // Generation lock to prevent duplicate calls (not affected by React re-renders)
   const isGeneratingRef = useRef(false);
+  // Track current generation to detect and abort duplicates
+  const currentGenerationIdRef = useRef<string | null>(null);
 
   // Streaming progress tracking for build phases
   const {
@@ -142,12 +144,19 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
    * @param skipAddMessage - If true, skip adding user message (for auto-generation)
    */
   const streamResponse = useCallback(async (content: string, skipAddMessage: boolean) => {
+    // Generate unique ID for this generation request
+    const generationId = `gen-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+
     // Prevent duplicate concurrent calls using ref (survives React re-renders)
     if (isGeneratingRef.current) {
-      console.warn('[useChat] Ignoring duplicate generation call');
+      console.warn('[useChat] Ignoring duplicate generation call, existing:', currentGenerationIdRef.current, 'new:', generationId);
       return;
     }
+
+    // Set lock and track this generation
     isGeneratingRef.current = true;
+    currentGenerationIdRef.current = generationId;
+    console.log('[useChat] Starting generation:', generationId, 'skipAddMessage:', skipAddMessage);
 
     // Abort any existing request
     abortControllerRef.current?.abort();
@@ -254,12 +263,21 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
       setFailedMessage({ content: content.trim(), error: chatError });
     } finally {
       // Always reset generation lock
+      console.log('[useChat] Generation complete:', generationId);
       isGeneratingRef.current = false;
+      currentGenerationIdRef.current = null;
     }
   }, [conversationId, currentCode, onCodeUpdate, processToken]);
 
   const sendMessage = useCallback(async (content: string) => {
+    console.log('[useChat] sendMessage called, isStreaming:', state.isStreaming, 'isGenerating:', isGeneratingRef.current);
     if (!content.trim() || state.isStreaming) return;
+
+    // Double-check generation lock (belt and suspenders)
+    if (isGeneratingRef.current) {
+      console.warn('[useChat] sendMessage blocked by isGeneratingRef');
+      return;
+    }
 
     // Reset progress for new generation
     resetProgress();
@@ -283,7 +301,14 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
    * Used for auto-generation when redirected from /new route
    */
   const triggerGeneration = useCallback(async (content: string) => {
+    console.log('[useChat] triggerGeneration called, isStreaming:', state.isStreaming, 'isGenerating:', isGeneratingRef.current);
     if (!content.trim() || state.isStreaming) return;
+
+    // Double-check generation lock (belt and suspenders)
+    if (isGeneratingRef.current) {
+      console.warn('[useChat] triggerGeneration blocked by isGeneratingRef');
+      return;
+    }
 
     // Reset progress for new generation
     resetProgress();

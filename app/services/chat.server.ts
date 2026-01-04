@@ -58,6 +58,7 @@ export class ChatService {
 
   /**
    * Add assistant message (after streaming completes)
+   * Includes duplicate prevention - returns existing if assistant already responded
    */
   async addAssistantMessage(
     conversationId: string,
@@ -66,6 +67,13 @@ export class ChatService {
     tokenCount?: number,
     modelId?: string
   ): Promise<UIMessage> {
+    // DUPLICATE PREVENTION: Check if assistant already responded to last user message
+    const existingAssistant = await this.checkForExistingAssistantResponse(conversationId);
+    if (existingAssistant) {
+      console.warn('[ChatService] Duplicate assistant message prevented, returning existing');
+      return existingAssistant;
+    }
+
     const message = await prisma.message.create({
       data: {
         conversationId,
@@ -87,6 +95,29 @@ export class ChatService {
     });
 
     return this.toUIMessage(message);
+  }
+
+  /**
+   * Check if there's already an assistant response after the last user message
+   * Returns the existing assistant message if found, null otherwise
+   */
+  private async checkForExistingAssistantResponse(conversationId: string): Promise<UIMessage | null> {
+    // Get last 2 messages to check the pattern
+    const recentMessages = await prisma.message.findMany({
+      where: { conversationId },
+      orderBy: { createdAt: 'desc' },
+      take: 2,
+    });
+
+    if (recentMessages.length < 1) return null;
+
+    // If the most recent message is already an assistant message, it's a duplicate
+    const lastMessage = recentMessages[0];
+    if (lastMessage.role === 'assistant' && !lastMessage.isError) {
+      return this.toUIMessage(lastMessage);
+    }
+
+    return null;
   }
 
   /**
