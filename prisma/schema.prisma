@@ -177,8 +177,8 @@ model UsageRecord {
 // Plan configuration (pricing tiers)
 model PlanConfiguration {
   id          String @id @default(auto()) @map("_id") @db.ObjectId
-  planName    String @unique // starter, growth, professional
-  displayName String // "Starter", "Growth", "Professional"
+  planName    String @unique // free, pro, agency
+  displayName String // "Free", "Pro", "Agency"
   description String // Short description for UI
 
   // Pricing
@@ -188,7 +188,8 @@ model PlanConfiguration {
   cappedAmount  Float // Max total monthly charge
 
   // Features
-  features String[] // Array of feature descriptions for UI
+  features     String[] // Array of feature descriptions for UI
+  featureFlags String[] // Feature gating flags: live_preview, publish_theme, chat_refinement, team_seats, batch_generation, custom_templates
 
   // Display
   badge     String? // "Popular", "Best Value" (null if none)
@@ -284,4 +285,21 @@ model SectionFeedback {
   @@index([sectionId])
   @@index([shop])
   @@index([createdAt])
+}
+
+// Free trial for new merchants (7 days, 10 generations, Pro features)
+model Trial {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  shop        String    @unique
+  startedAt   DateTime  @default(now())
+  endsAt      DateTime  // 7 days from start
+  usageCount  Int       @default(0)
+  maxUsage    Int       @default(10)
+  status      String    @default("active") // active, expired, converted
+  convertedTo String?   // Plan name if converted to paid
+
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([status, endsAt])
 }

@@ -1,7 +1,7 @@
 /**
- * Warning banner when approaching quota cap (>= 75%)
- * Shows upgrade CTA at 90% threshold
- * Dismissible with local storage persistence
+ * Multi-threshold usage alert banner
+ * Shows alerts at 50%, 75%, 90% usage thresholds
+ * Dismissible with local storage persistence per threshold
  */
 
 import { useState, useEffect } from "react";
@@ -12,43 +12,67 @@ interface UsageAlertBannerProps {
   onUpgradeClick: () => void;
 }
 
+const THRESHOLDS = [
+  { percent: 50, tone: "info" as const, message: "You've used half your monthly quota" },
+  { percent: 75, tone: "warning" as const, message: "You're approaching your quota limit" },
+  { percent: 90, tone: "critical" as const, message: "Almost at quota - overages will apply soon" },
+];
+
 export function UsageAlertBanner({ quota, onUpgradeClick }: UsageAlertBannerProps) {
-  const [dismissed, setDismissed] = useState(false);
+  const [dismissedThreshold, setDismissedThreshold] = useState<number | null>(null);
 
-  // Load dismissed state from localStorage
+  // Find the highest applicable threshold
+  const activeThreshold = [...THRESHOLDS]
+    .reverse()
+    .find((t) => quota.percentUsed >= t.percent);
+
+  // Load dismissed state from localStorage (wrapped in try/catch for private browsing)
   useEffect(() => {
-    const key = `usage-alert-dismissed-${quota.percentUsed}`;
-    const isDismissed = localStorage.getItem(key) === "true";
-    setDismissed(isDismissed);
-  }, [quota.percentUsed]);
+    if (!activeThreshold) return;
 
-  // Don't show if <75% or already dismissed
-  if (quota.percentUsed < 75 || dismissed) return null;
+    try {
+      const key = `usage-alert-dismissed-${activeThreshold.percent}`;
+      const isDismissed = localStorage.getItem(key) === "true";
+      if (isDismissed) {
+        setDismissedThreshold(activeThreshold.percent);
+      } else {
+        setDismissedThreshold(null);
+      }
+    } catch {
+      // localStorage not available (private browsing) - show banner
+      setDismissedThreshold(null);
+    }
+  }, [activeThreshold?.percent]);
 
-  const isCritical = quota.percentUsed >= 90;
+  // Don't show if no threshold reached or dismissed
+  if (!activeThreshold || dismissedThreshold === activeThreshold.percent) {
+    return null;
+  }
 
   const handleDismiss = () => {
-    setDismissed(true);
-    const key = `usage-alert-dismissed-${quota.percentUsed}`;
-    localStorage.setItem(key, "true");
+    setDismissedThreshold(activeThreshold.percent);
+    try {
+      const key = `usage-alert-dismissed-${activeThreshold.percent}`;
+      localStorage.setItem(key, "true");
+    } catch {
+      // localStorage not available - dismiss for this session only
+    }
   };
 
+  const isCritical = activeThreshold.percent >= 90;
+  const showUpgradeButton = activeThreshold.percent >= 75;
+
   return (
-    <s-banner
-      tone={isCritical ? "critical" : "warning"}
-      onDismiss={handleDismiss}
-    >
+    <s-banner tone={activeThreshold.tone} onDismiss={handleDismiss}>
       <s-grid gap="small-200">
         <s-paragraph>
-          {isCritical
-            ? `⚠️ You've used ${Math.round(quota.percentUsed)}% of your monthly quota. Consider upgrading to avoid hitting your cap.`
-            : `You've used ${Math.round(quota.percentUsed)}% of your monthly quota.`
-          }
+          {activeThreshold.message} ({Math.round(quota.percentUsed)}% used)
         </s-paragraph>
-        {isCritical && (
+
+        {showUpgradeButton && (
           <s-stack direction="inline" gap="small-200">
             <s-button
-              variant="primary"
+              variant={isCritical ? "primary" : "secondary"}
               onClick={onUpgradeClick}
               accessibilityLabel="Upgrade your plan"
             >

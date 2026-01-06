@@ -66,4 +66,5 @@ export interface SaveActionData {
   sectionId?: string;
   templateSaved?: boolean;
   redirect?: string;
+  upgradeRequired?: "pro" | "agency"; // Feature gating: plan required for action
 }

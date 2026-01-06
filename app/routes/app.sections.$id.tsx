@@ -13,6 +13,7 @@ import { themeAdapter } from '../services/adapters/theme-adapter';
 import { sectionService } from '../services/section.server';
 import { chatService } from '../services/chat.server';
 import prisma from '../db.server';
+import { getFeaturesSummary, hasFeature } from '../services/feature-gate.server';
 
 import {
   PolarisEditorLayout,
@@ -62,6 +63,9 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const conversation = await chatService.getOrCreateConversation(sectionId, shop);
   const messages = await chatService.getMessages(conversation.id);
 
+  // Load feature gates for UI
+  const features = await getFeaturesSummary(shop, conversation.id);
+
   return {
     section,
     themes,
@@ -71,6 +75,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     },
     shopDomain: shop,
     initialVersionId: versionId,
+    features,
   };
 }
 
@@ -108,6 +113,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
   }
 
   if (actionType === 'publish') {
+    // Feature gate: Check publish_theme access
+    const canPublish = await hasFeature(shop, 'publish_theme');
+    if (!canPublish) {
+      return {
+        success: false,
+        message: 'Publishing to theme requires Pro plan',
+        upgradeRequired: 'pro',
+      } satisfies SaveActionData;
+    }
+
     const code = formData.get('code') as string;
     const name = formData.get('name') as string;
     const themeId = formData.get('themeId') as string;
@@ -206,7 +221,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function UnifiedEditorPage() {
-  const { section, themes, conversation, shopDomain, initialVersionId } = useLoaderData<typeof loader>();
+  const { section, themes, conversation, shopDomain, initialVersionId, features } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const submit = useSubmit();
@@ -435,17 +450,30 @@ export default function UnifiedEditorPage() {
         Sections
       </s-link>
 
-      {/* Primary action - Publish button triggers modal via commandFor */}
-      <s-button
-        slot="primary-action"
-        variant="primary"
-        commandFor={PUBLISH_MODAL_ID}
-        command="--show"
-        loading={isPublishing || undefined}
-        disabled={isLoading || undefined}
-      >
-        Publish
-      </s-button>
+      {/* Primary action - Publish button with feature gating */}
+      {features.canPublish ? (
+        <s-button
+          slot="primary-action"
+          variant="primary"
+          commandFor={PUBLISH_MODAL_ID}
+          command="--show"
+          loading={isPublishing || undefined}
+          disabled={isLoading || undefined}
+        >
+          Publish
+        </s-button>
+      ) : (
+        <s-tooltip id="publish-upgrade-tooltip">
+          <span slot="content">Upgrade to Pro to publish directly to your theme</span>
+          <s-button
+            slot="primary-action"
+            variant="primary"
+            disabled
+          >
+            Publish
+          </s-button>
+        </s-tooltip>
+      )}
 
       {/* Publish Modal - triggered by primary action button */}
       <PublishModal
@@ -457,7 +485,7 @@ export default function UnifiedEditorPage() {
         selectedThemeName={selectedThemeName}
         onPublish={handlePublish}
         isPublishing={isPublishing}
-        canPublish={canPublish && !isLoading}
+        canPublish={canPublish && !isLoading && features.canPublish}
         code={sectionCode}
       />
 

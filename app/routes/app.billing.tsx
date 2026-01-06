@@ -18,6 +18,7 @@ import {
   cancelSubscription,
   checkQuota,
 } from "../services/billing.server";
+import { getUsageStats } from "../services/usage-analytics.server";
 import type { PlanTier } from "../types/billing";
 import {
   PlanSelector,
@@ -32,16 +33,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
   const status = url.searchParams.get("status");
   const charge_id = url.searchParams.get("charge_id");
 
-  const [plans, subscription, quota] = await Promise.all([
+  const [plans, subscription, quota, stats] = await Promise.all([
     getActivePlans(),
     getSubscription(session.shop),
     checkQuota(session.shop),
+    getUsageStats(session.shop),
   ]);
 
   return {
     plans,
     subscription,
     quota,
+    stats,
     shop: session.shop,
     approvalStatus: status, // 'success', 'declined', or null
     chargeId: charge_id,
@@ -97,7 +100,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function BillingPage() {
-  const { plans, subscription, quota, approvalStatus, chargeId } =
+  const { plans, subscription, quota, stats, approvalStatus, chargeId } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
@@ -188,10 +191,9 @@ export default function BillingPage() {
                 <s-grid gridTemplateColumns="1fr auto" alignItems="center">
                   <s-grid gap="small-100">
                     <s-heading>
-                      {subscription.planName === "starter" && "Starter Plan"}
-                      {subscription.planName === "growth" && "Growth Plan"}
-                      {subscription.planName === "professional" &&
-                        "Professional Plan"}
+                      {subscription.planName === "free" && "Free Plan"}
+                      {subscription.planName === "pro" && "Pro Plan"}
+                      {subscription.planName === "agency" && "Agency Plan"}
                     </s-heading>
                     <s-paragraph color="subdued">
                       ${subscription.basePrice}/month + usage charges
@@ -235,7 +237,7 @@ export default function BillingPage() {
         )}
 
         {/* Usage Dashboard */}
-        <UsageDashboard quota={quota} subscription={subscription} />
+        <UsageDashboard quota={quota} subscription={subscription} stats={stats} />
 
         {/* Plan Selector */}
         <PlanSelector
@@ -266,9 +268,9 @@ export default function BillingPage() {
                 <s-paragraph>
                   You&apos;re currently on the{" "}
                   <s-text type="strong">
-                    {subscription.planName === "starter" && "Starter"}
-                    {subscription.planName === "growth" && "Growth"}
-                    {subscription.planName === "professional" && "Professional"}
+                    {subscription.planName === "free" && "Free"}
+                    {subscription.planName === "pro" && "Pro"}
+                    {subscription.planName === "agency" && "Agency"}
                   </s-text>{" "}
                   plan.
                 </s-paragraph>

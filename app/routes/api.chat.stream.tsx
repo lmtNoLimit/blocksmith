@@ -5,6 +5,8 @@ import { aiService } from "../services/ai.server";
 import { extractCodeFromResponse } from "../utils/code-extractor";
 import { summarizeOldMessages } from "../utils/context-builder";
 import { sanitizeUserInput, sanitizeLiquidCode } from "../utils/input-sanitizer";
+import { checkRefinementAccess } from "../services/feature-gate.server";
+import { getTrialStatus, incrementTrialUsage } from "../services/trial.server";
 import type { ConversationContext } from "../types/ai.types";
 
 // Constants for input validation
@@ -49,6 +51,41 @@ export async function action({ request }: ActionFunctionArgs) {
   const conversation = await chatService.getConversation(conversationId);
   if (!conversation || conversation.shop !== shop) {
     return new Response("Conversation not found", { status: 404 });
+  }
+
+  // Trial gate: Check if trial user has remaining generations
+  const trialStatus = await getTrialStatus(shop);
+  if (trialStatus.isInTrial && trialStatus.usageRemaining <= 0) {
+    return new Response(
+      JSON.stringify({
+        error: "Trial limit reached. Upgrade to continue generating.",
+        trialExpired: true,
+        upgradeRequired: "pro",
+      }),
+      {
+        status: 403,
+        headers: { "Content-Type": "application/json" },
+      }
+    );
+  }
+
+  // Feature gate: Check refinement access (skip for initial generation)
+  if (!continueGeneration) {
+    const refinementCheck = await checkRefinementAccess(shop, conversationId);
+    if (!refinementCheck.allowed) {
+      return new Response(
+        JSON.stringify({
+          error: refinementCheck.reason,
+          upgradeRequired: refinementCheck.upgradeRequired,
+          used: refinementCheck.used,
+          limit: refinementCheck.limit,
+        }),
+        {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+    }
   }
 
   // Sanitize user input to prevent prompt injection
@@ -127,6 +164,11 @@ export async function action({ request }: ActionFunctionArgs) {
           tokenCount,
           'gemini-2.5-flash'
         );
+
+        // Increment trial usage if code was generated (shop captured from outer scope)
+        if (extraction.hasCode && trialStatus.isInTrial) {
+          await incrementTrialUsage(shop);
+        }
 
         // Send completion event
         controller.enqueue(

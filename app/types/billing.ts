@@ -9,7 +9,18 @@ import type { Subscription, UsageRecord, PlanConfiguration } from "@prisma/clien
 /**
  * Plan tier names
  */
-export type PlanTier = "starter" | "growth" | "professional";
+export type PlanTier = "free" | "pro" | "agency";
+
+/**
+ * Feature flags for gating premium features
+ */
+export type FeatureFlag =
+  | "live_preview"      // Full Shopify context in preview
+  | "publish_theme"     // Save directly to theme (not just draft)
+  | "chat_refinement"   // AI chat follow-ups
+  | "team_seats"        // Multiple users
+  | "batch_generation"  // Generate multiple sections
+  | "custom_templates"; // Custom brand templates
 
 /**
  * Subscription status from Shopify
@@ -33,6 +44,7 @@ export interface PlanConfig {
   overagePrice: number; // USD per additional generation
   cappedAmount: number; // Max total monthly charge (USD)
   features: string[];
+  featureFlags: string[]; // Runtime: string[], use FeatureFlag type for checks
   badge?: string; // "Popular", "Best Value"
   sortOrder: number;
   isActive: boolean;

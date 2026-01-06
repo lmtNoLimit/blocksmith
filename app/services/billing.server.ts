@@ -17,6 +17,7 @@ import type {
   PlanTier,
   SubscriptionStatus,
 } from "../types/billing";
+import { getTrialStatus, convertTrial } from "./trial.server";
 
 /**
  * Get plan configuration by tier
@@ -148,6 +149,9 @@ export async function createSubscription(
       overagesThisCycle: 0,
     },
   });
+
+  // Convert trial if active (mark as converted to this plan)
+  await convertTrial(shop, planName);
 
   return {
     confirmationUrl: result.confirmationUrl,
@@ -418,20 +422,54 @@ export async function recordUsage(
 
 /**
  * Check quota before generation
+ * Trial users get quota from trial, not free tier
  */
 export async function checkQuota(shop: string): Promise<QuotaCheck> {
   const subscription = await getSubscription(shop);
-  console.log("Subscription for quota check:", subscription);
-  // No subscription = free tier with limits
-  if (!subscription) {
+  const trial = await getTrialStatus(shop);
+
+  // Trial users - check trial quota first
+  if (trial.isInTrial && trial.usageRemaining > 0) {
     return {
-      hasQuota: true, // Allow 5 free generations
+      hasQuota: true,
       subscription: null,
-      usageThisCycle: 0,
-      includedQuota: 5, // Free tier limit
+      usageThisCycle: trial.usageCount,
+      includedQuota: trial.maxUsage,
       overagesThisCycle: 0,
       overagesRemaining: 0,
-      percentUsed: 0,
+      percentUsed: (trial.usageCount / trial.maxUsage) * 100,
+      isInTrial: true,
+      trialEndsAt: trial.endsAt,
+    };
+  }
+
+  // No subscription = free tier with limits from database
+  if (!subscription) {
+    const freePlan = await prisma.planConfiguration.findUnique({
+      where: { planName: "free" },
+    });
+    const freeQuota = freePlan?.includedQuota ?? 5;
+
+    // Count free tier usage (sections created this calendar month)
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0, 0, 0, 0);
+
+    const freeUsageCount = await prisma.section.count({
+      where: {
+        shop,
+        createdAt: { gte: startOfMonth },
+      },
+    });
+
+    return {
+      hasQuota: freeUsageCount < freeQuota,
+      subscription: null,
+      usageThisCycle: freeUsageCount,
+      includedQuota: freeQuota,
+      overagesThisCycle: 0,
+      overagesRemaining: 0,
+      percentUsed: Math.min((freeUsageCount / freeQuota) * 100, 100),
       isInTrial: false,
       trialEndsAt: null,
     };

@@ -18,6 +18,7 @@ import DOMPurify from "isomorphic-dompurify";
 import { authenticate } from "../shopify.server";
 import { getAuthenticatedCookiesForShop } from "../services/storefront-auth.server";
 import { storePreviewData } from "../services/preview-token-store.server";
+// Note: hasFeature import removed - preview is available for all plans
 
 // Max code length (same as proxy endpoint)
 const MAX_CODE_LENGTH = 100_000;
@@ -88,6 +89,9 @@ export async function action({ request }: ActionFunctionArgs) {
   // SECURITY: Use session.shop to prevent SSRF attacks
   // Do NOT use shopDomain from request body
   const shop = session.shop;
+
+  // Note: Live preview is available for ALL plans to showcase app value
+  // The conversion trigger is publishing (gated to Pro+), not previewing
 
   // Parse request body
   let body: {
