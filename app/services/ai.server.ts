@@ -141,6 +141,36 @@ Block Title Precedence (auto-display in editor):
   }]
 }
 
+=== PREVIEW SETTINGS (for resource pickers) ===
+preview_settings enables live preview data when no resource selected.
+
+Schema format:
+{
+  "presets": [{
+    "name": "Section Name",
+    "settings": {},
+    "preview_settings": {
+      "products": [{"title": "Product", "price": 1999}],
+      "collections": [{"title": "Collection"}],
+      "blogs": [{"title": "Blog"}],
+      "articles": [{"title": "Article"}],
+      "pages": [{"title": "Page"}]
+    }
+  }]
+}
+
+Key rules:
+- preview_settings goes inside preset object, NOT at section root
+- Use plural keys: products, collections, blogs, articles, pages
+- Minimal data: title + 1-2 key fields (price, image, etc.)
+- Limit lists to 3-5 items for performance
+- Only affects theme editor preview, not live store
+
+When to use:
+- Section has product/collection/article/blog/page picker
+- Section displays featured resource without merchant selection
+- Default empty state would break layout
+
 === CSS RULES ===
 - Wrap in {% style %}...{% endstyle %}
 - Root selector: #shopify-section-{{ section.id }}
