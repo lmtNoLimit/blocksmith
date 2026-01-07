@@ -3,6 +3,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from 'react-router';
 import {
   useActionData,
   useLoaderData,
+  useNavigate,
   useNavigation,
   useSubmit,
   data,
@@ -228,6 +229,7 @@ export default function UnifiedEditorPage() {
   const navigation = useNavigation();
   const submit = useSubmit();
   const shopify = useAppBridge();
+  const navigate = useNavigate();
 
   // Auto-apply callback - shows toast when AI version auto-applied
   const handleAutoApply = useMemo(() => {
@@ -480,29 +482,33 @@ export default function UnifiedEditorPage() {
         Sections
       </s-link>
 
-      {/* Primary action - Publish button with feature gating */}
-      {features.canPublish ? (
-        <s-button
-          slot="primary-action"
-          variant="primary"
-          commandFor={PUBLISH_MODAL_ID}
-          command="--show"
-          loading={isPublishing || undefined}
-          disabled={isLoading || undefined}
-        >
-          Publish
-        </s-button>
-      ) : (
-        <s-tooltip id="publish-upgrade-tooltip">
-          <span slot="content">Upgrade to Pro to publish directly to your theme</span>
+      {/* Primary action - Publish button */}
+      {/* Note: slot="primary-action" must be on direct child, no wrappers allowed */}
+      <s-button
+        slot="primary-action"
+        commandFor={features.canPublish ? PUBLISH_MODAL_ID : 'upgrade-publish-modal'}
+        command="--show"
+        loading={isPublishing || undefined}
+        disabled={isLoading || undefined}
+      >
+        Publish
+      </s-button>
+
+      {/* Upgrade modal for users without publish access */}
+      {!features.canPublish && (
+        <s-modal id="upgrade-publish-modal" heading="Upgrade to Publish">
+          <s-text>
+            Publishing sections directly to your theme requires a Pro plan.
+            Upgrade now to unlock this feature and save hours of manual work!
+          </s-text>
           <s-button
             slot="primary-action"
             variant="primary"
-            disabled
+            onClick={() => navigate('/app/billing')}
           >
-            Publish
+            Upgrade Now
           </s-button>
-        </s-tooltip>
+        </s-modal>
       )}
 
       {/* Publish Modal - triggered by primary action button */}

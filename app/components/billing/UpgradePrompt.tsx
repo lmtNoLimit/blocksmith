@@ -92,7 +92,7 @@ export function UpgradePrompt({
       >
         Maybe Later
       </s-button>
-      <s-button slot="primary-action" variant="primary" onClick={onUpgrade}>
+      <s-button slot="primary-action" onClick={onUpgrade}>
         View Plans
       </s-button>
     </s-modal>

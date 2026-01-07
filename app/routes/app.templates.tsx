@@ -202,7 +202,7 @@ export default function TemplatesPage() {
         <s-button slot="secondary-actions" onClick={handleResetToDefaults}>
           Reset to Defaults
         </s-button>
-        <s-button slot="primary-action" variant="primary" onClick={() => {
+        <s-button slot="primary-action" onClick={() => {
           setEditingTemplate(null);
           setShowEditor(true);
         }}>

@@ -148,7 +148,7 @@ export default function BillingPage() {
 
   return (
     <s-page heading="Billing & Usage" inlineSize="base">
-      <s-button slot="primary-action" variant="secondary" href="/docs/billing">
+      <s-button slot="secondary-actions" href="/docs/billing">
         Help
       </s-button>
 
