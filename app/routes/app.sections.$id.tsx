@@ -27,8 +27,10 @@ import {
 } from '../components/editor';
 import { ImagePickerModal } from '../components/preview/settings/ImagePickerModal';
 import { usePreviewSettings } from '../components/preview';
+import { updateSchemaDefaults } from '../components/preview/schema/parseSchema';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 import type { DeviceSize } from '../components/preview/types';
+import type { SettingsState } from '../components/preview/schema/SchemaTypes';
 
 import type { SaveActionData, Theme, UIMessage } from '../types';
 import { SECTION_STATUS } from '../types/section-status';
@@ -264,8 +266,39 @@ export default function UnifiedEditorPage() {
     initialVersionId,
   });
 
+  // Loading state (moved up for dependency ordering)
+  const isLoading = navigation.state === 'submitting';
+  const isPublishing = isLoading && navigation.formData?.get('action') === 'publish';
+
+  // Settings auto-save handler - updates schema defaults and saves silently
+  const handleSettingsSync = useCallback((
+    settings: SettingsState,
+    hasChanges: boolean
+  ) => {
+    if (!hasChanges || isLoading) return;
+
+    // Update Liquid code with new schema defaults
+    const updatedCode = updateSchemaDefaults(sectionCode, settings);
+
+    // Skip if no actual change to code
+    if (updatedCode === sectionCode) return;
+
+    // Update local code state with 'settings' source
+    handleCodeUpdate(updatedCode, 'settings');
+
+    // Silent auto-save (no toast)
+    const formData = new FormData();
+    formData.append('action', 'saveDraft');
+    formData.append('code', updatedCode);
+    formData.append('name', sectionName);
+    submit(formData, { method: 'post' });
+  }, [sectionCode, sectionName, isLoading, handleCodeUpdate, submit]);
+
   // Preview settings hook - manages schema-based settings for right panel
-  const previewSettings = usePreviewSettings(previewCode);
+  const previewSettings = usePreviewSettings(previewCode, {
+    onSettingsChange: handleSettingsSync,
+    debounceMs: 2000, // 2s debounce for auto-save
+  });
 
   // Device size state for preview panel header
   const [deviceSize, setDeviceSize] = useState<DeviceSize>('desktop');
@@ -298,9 +331,6 @@ export default function UnifiedEditorPage() {
   const openRenameModal = useCallback(() => {
     renameModalTriggerRef.current?.click();
   }, []);
-
-  const isLoading = navigation.state === 'submitting';
-  const isPublishing = isLoading && navigation.formData?.get('action') === 'publish';
 
   // Save handlers
   const handleSaveDraft = useCallback(() => {

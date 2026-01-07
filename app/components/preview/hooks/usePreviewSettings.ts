@@ -1,4 +1,5 @@
-import { useState, useCallback, useEffect, useMemo } from 'react';
+import { useState, useCallback, useEffect, useMemo, useRef } from 'react';
+import { useDebouncedCallback } from 'use-debounce';
 import { parseSchema, extractSettings, buildInitialState, buildBlockInstancesFromPreset } from '../schema/parseSchema';
 import { useResourceFetcher } from './useResourceFetcher';
 import type { SchemaSetting, SettingsState, BlockInstance, SchemaDefinition } from '../schema/SchemaTypes';
@@ -6,10 +7,25 @@ import type { SelectedResource } from '../ResourceSelector';
 import type { MockProduct, MockCollection } from '../mockData/types';
 
 /**
+ * Options for usePreviewSettings hook
+ */
+export interface UsePreviewSettingsOptions {
+  /** Callback when settings change (debounced) */
+  onSettingsChange?: (settings: SettingsState, hasChanges: boolean) => void;
+  /** Debounce delay in ms (default: 2000) */
+  debounceMs?: number;
+}
+
+/**
  * Hook for managing preview settings state
  * Extracts schema from Liquid code and provides settings management
+ * Supports bidirectional sync with optional callback
  */
-export function usePreviewSettings(liquidCode: string) {
+export function usePreviewSettings(
+  liquidCode: string,
+  options: UsePreviewSettingsOptions = {}
+) {
+  const { onSettingsChange, debounceMs = 2000 } = options;
   const { fetchProduct, fetchCollection, error: fetchError } = useResourceFetcher();
 
   // Parse schema from liquid code
@@ -36,9 +52,26 @@ export function usePreviewSettings(liquidCode: string) {
   const [loadedResources, setLoadedResources] = useState<Record<string, MockProduct | MockCollection>>({});
   const [isLoadingResource, setIsLoadingResource] = useState(false);
 
+  // Dirty state tracking
+  const [isDirty, setIsDirty] = useState(false);
+  const initialStateRef = useRef<SettingsState>(buildInitialState(schemaSettings));
+
+  // Refs for stable forceSync callback
+  const settingsRef = useRef<SettingsState>(settingsValues);
+  const isDirtyRef = useRef<boolean>(isDirty);
+
+  // Keep refs in sync with state
+  useEffect(() => {
+    settingsRef.current = settingsValues;
+    isDirtyRef.current = isDirty;
+  }, [settingsValues, isDirty]);
+
   // Reset settings when schema changes
   useEffect(() => {
-    setSettingsValues(buildInitialState(schemaSettings));
+    const defaults = buildInitialState(schemaSettings);
+    setSettingsValues(defaults);
+    initialStateRef.current = defaults;
+    setIsDirty(false);
   }, [schemaSettings]);
 
   // Initialize blocks from schema
@@ -47,10 +80,28 @@ export function usePreviewSettings(liquidCode: string) {
     setBlocksState(blocks);
   }, [parsedSchema]);
 
-  // Settings change handler
+  // Debounced callback for auto-save
+  const debouncedSync = useDebouncedCallback(
+    (settings: SettingsState, hasChanges: boolean) => {
+      onSettingsChange?.(settings, hasChanges);
+    },
+    debounceMs
+  );
+
+  // Cleanup debounced callback on unmount
+  useEffect(() => {
+    return () => {
+      debouncedSync.cancel();
+    };
+  }, [debouncedSync]);
+
+  // Settings change handler with dirty tracking and debounced sync
   const handleSettingsChange = useCallback((newValues: SettingsState) => {
     setSettingsValues(newValues);
-  }, []);
+    const hasChanges = JSON.stringify(newValues) !== JSON.stringify(initialStateRef.current);
+    setIsDirty(hasChanges);
+    debouncedSync(newValues, hasChanges);
+  }, [debouncedSync]);
 
   // Block setting change handler
   const handleBlockSettingChange = useCallback(
@@ -117,10 +168,19 @@ export function usePreviewSettings(liquidCode: string) {
     }
   }, [schemaSettings, fetchProduct, fetchCollection]);
 
-  // Reset to defaults
-  const resetToDefaults = useCallback(() => {
-    setSettingsValues(buildInitialState(schemaSettings));
-  }, [schemaSettings]);
+  // Reset to current schema defaults
+  const resetToSchemaDefaults = useCallback(() => {
+    const defaults = buildInitialState(schemaSettings);
+    setSettingsValues(defaults);
+    initialStateRef.current = defaults;
+    setIsDirty(false);
+    onSettingsChange?.(defaults, false); // Notify without dirty flag
+  }, [schemaSettings, onSettingsChange]);
+
+  // Force sync current state to parent (uses refs for stable callback)
+  const forceSync = useCallback(() => {
+    onSettingsChange?.(settingsRef.current, isDirtyRef.current);
+  }, [onSettingsChange]);
 
   return {
     // Schema data
@@ -129,6 +189,7 @@ export function usePreviewSettings(liquidCode: string) {
     // Settings state
     settingsValues,
     setSettingsValues: handleSettingsChange,
+    isDirty,
     // Blocks state
     blocksState,
     setBlocksState,
@@ -139,7 +200,8 @@ export function usePreviewSettings(liquidCode: string) {
     handleResourceSelect,
     isLoadingResource,
     // Actions
-    resetToDefaults,
+    resetToSchemaDefaults,
+    forceSync,
     // Errors
     fetchError,
   };

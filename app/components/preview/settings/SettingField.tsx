@@ -1,5 +1,6 @@
-import type { SchemaSetting } from '../schema/SchemaTypes';
+import type { SchemaSetting, SettingType } from '../schema/SchemaTypes';
 import type { SelectedResource } from '../ResourceSelector';
+import { isResourceType, isPresentationalType } from '../schema/parseSchema';
 import { TextSetting } from './TextSetting';
 import { NumberSetting } from './NumberSetting';
 import { SelectSetting } from './SelectSetting';
@@ -24,6 +25,50 @@ import { RadioSetting } from './RadioSetting';
 import { CollectionListSetting } from './CollectionListSetting';
 import { ProductListSetting } from './ProductListSetting';
 
+/**
+ * Info banner for settings that don't support schema defaults
+ */
+function ResourceSettingInfo() {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: '6px',
+      marginTop: '6px',
+      padding: '8px',
+      backgroundColor: '#f6f6f7',
+      borderRadius: '4px'
+    }}>
+      <span style={{ color: '#637381', fontSize: '14px' }}>ℹ</span>
+      <span style={{ fontSize: '12px', color: '#637381', lineHeight: '1.4' }}>
+        Resource settings don't support defaults. Values set per-instance in Theme Customizer.
+      </span>
+    </div>
+  );
+}
+
+/**
+ * Info banner for non-presentational block settings (preview-only)
+ */
+function BlockPreviewOnlyInfo() {
+  return (
+    <div style={{
+      display: 'flex',
+      alignItems: 'flex-start',
+      gap: '6px',
+      marginTop: '6px',
+      padding: '8px',
+      backgroundColor: '#fff8e6',
+      borderRadius: '4px'
+    }}>
+      <span style={{ color: '#8a6116', fontSize: '14px' }}>⚡</span>
+      <span style={{ fontSize: '12px', color: '#8a6116', lineHeight: '1.4' }}>
+        Preview only. Set in Theme Customizer for production.
+      </span>
+    </div>
+  );
+}
+
 export interface SettingFieldProps {
   setting: SchemaSetting;
   value: string | number | boolean;
@@ -42,6 +87,7 @@ export interface SettingFieldProps {
 
 /**
  * Routes setting to appropriate input component based on type
+ * Wraps resource settings with info banner and visual distinction
  */
 export function SettingField({
   setting,
@@ -63,6 +109,16 @@ export function SettingField({
   // This is critical for image picker in blocks where multiple blocks may have the same setting.id
   const uniqueId = blockId ? `${blockId}-${setting.id}` : setting.id;
 
+  // Detect setting type characteristics
+  const isResource = isResourceType(setting.type);
+  const isInBlock = Boolean(blockId);
+  const isPresentational = isPresentationalType(setting.type);
+  // Non-presentational block settings are preview-only (text, textarea, richtext, etc.)
+  const isBlockPreviewOnly = isInBlock && !isPresentational && !isResource;
+
+  // Render the field component based on type
+  let fieldComponent: React.ReactNode;
+
   switch (setting.type) {
     // Basic text inputs
     case 'text':
@@ -72,7 +128,7 @@ export function SettingField({
     case 'url':
     case 'html':
     case 'liquid':
-      return (
+      fieldComponent = (
         <TextSetting
           setting={setting}
           value={String(value || '')}
@@ -80,11 +136,12 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     // Number inputs
     case 'number':
     case 'range':
-      return (
+      fieldComponent = (
         <NumberSetting
           setting={setting}
           value={Number(value) || 0}
@@ -92,10 +149,11 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     // Select dropdown (auto-converts to segmented for ≤5 options)
     case 'select':
-      return (
+      fieldComponent = (
         <SelectSetting
           setting={setting}
           value={String(value || '')}
@@ -103,10 +161,11 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     // Radio button group
     case 'radio':
-      return (
+      fieldComponent = (
         <RadioSetting
           setting={setting}
           value={String(value || '')}
@@ -114,10 +173,11 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     // Checkbox
     case 'checkbox':
-      return (
+      fieldComponent = (
         <CheckboxSetting
           setting={setting}
           value={Boolean(value)}
@@ -125,11 +185,12 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     // Color pickers
     case 'color':
     case 'color_background':
-      return (
+      fieldComponent = (
         <ColorSetting
           setting={setting}
           value={String(value || '#000000')}
@@ -137,10 +198,11 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     // Image picker
     case 'image_picker':
-      return (
+      fieldComponent = (
         <ImageSetting
           setting={setting}
           value={String(value || '')}
@@ -149,10 +211,11 @@ export function SettingField({
           uniqueId={uniqueId}
         />
       );
+      break;
 
     // Video settings
     case 'video':
-      return (
+      fieldComponent = (
         <VideoSetting
           setting={setting}
           value={String(value || '')}
@@ -160,9 +223,10 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     case 'video_url':
-      return (
+      fieldComponent = (
         <VideoUrlSetting
           setting={setting}
           value={String(value || '')}
@@ -170,10 +234,11 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     // Font picker
     case 'font_picker':
-      return (
+      fieldComponent = (
         <FontPickerSetting
           setting={setting}
           value={String(value || 'system-ui')}
@@ -181,10 +246,11 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     // Text alignment
     case 'text_alignment':
-      return (
+      fieldComponent = (
         <TextAlignmentSetting
           setting={setting}
           value={String(value || 'left')}
@@ -192,10 +258,11 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     // Single resource pickers
     case 'product':
-      return (
+      fieldComponent = (
         <ProductSetting
           setting={setting}
           value={String(value || '')}
@@ -206,9 +273,10 @@ export function SettingField({
           loading={isLoadingResource}
         />
       );
+      break;
 
     case 'collection':
-      return (
+      fieldComponent = (
         <CollectionSetting
           setting={setting}
           value={String(value || '')}
@@ -219,10 +287,11 @@ export function SettingField({
           loading={isLoadingResource}
         />
       );
+      break;
 
     // Handle-based resource pickers (no App Bridge support)
     case 'article':
-      return (
+      fieldComponent = (
         <ArticleSetting
           setting={setting}
           value={String(value || '')}
@@ -230,9 +299,10 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     case 'blog':
-      return (
+      fieldComponent = (
         <BlogSetting
           setting={setting}
           value={String(value || '')}
@@ -240,9 +310,10 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     case 'page':
-      return (
+      fieldComponent = (
         <PageSetting
           setting={setting}
           value={String(value || '')}
@@ -250,9 +321,10 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     case 'link_list':
-      return (
+      fieldComponent = (
         <LinkListSetting
           setting={setting}
           value={String(value || '')}
@@ -260,10 +332,11 @@ export function SettingField({
           disabled={disabled}
         />
       );
+      break;
 
     // Multi-select resource pickers
     case 'collection_list':
-      return (
+      fieldComponent = (
         <CollectionListSetting
           setting={setting}
           value={String(value || '[]')}
@@ -274,9 +347,10 @@ export function SettingField({
           loading={isLoadingResource}
         />
       );
+      break;
 
     case 'product_list':
-      return (
+      fieldComponent = (
         <ProductListSetting
           setting={setting}
           value={String(value || '[]')}
@@ -287,10 +361,11 @@ export function SettingField({
           loading={isLoadingResource}
         />
       );
+      break;
 
     default:
       // Fallback to text input for unsupported types
-      return (
+      fieldComponent = (
         <TextSetting
           setting={{ ...setting, type: 'text' }}
           value={String(value || '')}
@@ -299,4 +374,29 @@ export function SettingField({
         />
       );
   }
+
+  // Wrap with visual distinction for resource settings (not in blocks - those are already styled)
+  if (isResource && !isInBlock) {
+    return (
+      <div style={{
+        borderLeft: '3px solid #e4e5e7',
+        paddingLeft: '12px'
+      }}>
+        {fieldComponent}
+        <ResourceSettingInfo />
+      </div>
+    );
+  }
+
+  // Show preview-only note for non-presentational block settings
+  if (isBlockPreviewOnly) {
+    return (
+      <div>
+        {fieldComponent}
+        <BlockPreviewOnlyInfo />
+      </div>
+    );
+  }
+
+  return <>{fieldComponent}</>;
 }

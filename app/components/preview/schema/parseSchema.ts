@@ -1,4 +1,36 @@
-import type { SchemaDefinition, SchemaSetting, SettingsState, SchemaBlock, BlockInstance } from './SchemaTypes';
+import type { SchemaDefinition, SchemaSetting, SettingsState, SchemaBlock, BlockInstance, SettingType } from './SchemaTypes';
+
+/**
+ * Resource types that don't support default values in Shopify schema
+ * These require metafield references or dynamic content
+ */
+export const RESOURCE_TYPES: SettingType[] = [
+  'product', 'collection', 'article', 'blog', 'page', 'link_list',
+  'product_list', 'collection_list', 'metaobject', 'metaobject_list'
+];
+
+/**
+ * Presentational setting types that support defaults in blocks
+ * These can be synced to preset.blocks[].settings
+ */
+export const PRESENTATIONAL_TYPES: SettingType[] = [
+  'checkbox', 'color', 'color_background', 'color_scheme',
+  'font_picker', 'number', 'radio', 'range', 'select', 'text_alignment'
+];
+
+/**
+ * Check if a setting type is a resource type (no default support)
+ */
+export function isResourceType(type: SettingType): boolean {
+  return RESOURCE_TYPES.includes(type);
+}
+
+/**
+ * Check if a setting type is presentational (supports block defaults)
+ */
+export function isPresentationalType(type: SettingType): boolean {
+  return PRESENTATIONAL_TYPES.includes(type);
+}
 
 /**
  * Resolve Shopify translation key to human-readable label.
@@ -323,4 +355,143 @@ export function buildBlockInstancesFromPreset(
       settings
     };
   });
+}
+
+/**
+ * Update schema setting defaults in Liquid code
+ * Modifies only the `default` attribute of each setting in {% schema %}
+ * Skips resource-based settings that don't support defaults
+ */
+export function updateSchemaDefaults(
+  liquidCode: string,
+  newDefaults: SettingsState
+): string {
+  const schemaMatch = liquidCode.match(
+    /(\{%\s*schema\s*%\})([\s\S]*?)(\{%\s*endschema\s*%\})/
+  );
+  if (!schemaMatch) return liquidCode;
+
+  const [fullMatch, openTag, schemaJson, closeTag] = schemaMatch;
+
+  try {
+    const schema = JSON.parse(schemaJson.trim()) as SchemaDefinition;
+
+    if (schema.settings) {
+      schema.settings = schema.settings.map(setting => {
+        if (!setting.id || newDefaults[setting.id] === undefined) {
+          return setting;
+        }
+        if (RESOURCE_TYPES.includes(setting.type)) {
+          return setting;
+        }
+        return { ...setting, default: newDefaults[setting.id] };
+      });
+    }
+
+    const updatedSchema = JSON.stringify(schema, null, 2);
+    return liquidCode.replace(fullMatch, `${openTag}\n${updatedSchema}\n${closeTag}`);
+  } catch {
+    console.error('Failed to update schema defaults');
+    return liquidCode;
+  }
+}
+
+/**
+ * Result of schema defaults update with tracking
+ */
+export interface SettingsSyncResult {
+  code: string;
+  unsupportedSettings: string[]; // IDs of resource settings that couldn't be synced
+}
+
+/**
+ * Update schema defaults with detailed report of skipped settings
+ * Returns both updated code and list of unsupported settings
+ */
+export function updateSchemaDefaultsWithReport(
+  liquidCode: string,
+  newDefaults: SettingsState
+): SettingsSyncResult {
+  const unsupportedSettings: string[] = [];
+
+  const schemaMatch = liquidCode.match(
+    /(\{%\s*schema\s*%\})([\s\S]*?)(\{%\s*endschema\s*%\})/
+  );
+  if (!schemaMatch) return { code: liquidCode, unsupportedSettings };
+
+  const [fullMatch, openTag, schemaJson, closeTag] = schemaMatch;
+
+  try {
+    const schema = JSON.parse(schemaJson.trim()) as SchemaDefinition;
+
+    if (schema.settings) {
+      schema.settings = schema.settings.map(setting => {
+        if (!setting.id || newDefaults[setting.id] === undefined) {
+          return setting;
+        }
+        if (RESOURCE_TYPES.includes(setting.type)) {
+          unsupportedSettings.push(setting.id);
+          return setting;
+        }
+        return { ...setting, default: newDefaults[setting.id] };
+      });
+    }
+
+    const updatedSchema = JSON.stringify(schema, null, 2);
+    const code = liquidCode.replace(fullMatch, `${openTag}\n${updatedSchema}\n${closeTag}`);
+    return { code, unsupportedSettings };
+  } catch {
+    console.error('Failed to update schema defaults');
+    return { code: liquidCode, unsupportedSettings };
+  }
+}
+
+/**
+ * Build default value for a setting type
+ * Used when setting has no explicit default
+ */
+function buildDefaultForType(setting: SchemaSetting): string | number | boolean {
+  switch (setting.type) {
+    case 'checkbox':
+      return false;
+    case 'number':
+    case 'range':
+      return setting.min ?? 0;
+    case 'color':
+    case 'color_background':
+      return '#000000';
+    case 'select':
+    case 'radio':
+      return setting.options?.[0]?.value ?? '';
+    case 'text_alignment':
+      return 'left';
+    case 'font_picker':
+      return 'system-ui';
+    case 'url':
+      return '#';
+    default:
+      return '';
+  }
+}
+
+/**
+ * Compare current schema defaults with new settings
+ * Returns only changed settings for efficient updates
+ */
+export function getSettingsDiff(
+  schema: SchemaDefinition | null,
+  newValues: SettingsState
+): Partial<SettingsState> {
+  if (!schema?.settings) return {};
+
+  const diff: Partial<SettingsState> = {};
+  for (const setting of schema.settings) {
+    if (!setting.id) continue;
+    const oldValue = setting.default ?? buildDefaultForType(setting);
+    const newValue = newValues[setting.id];
+    if (newValue !== undefined && oldValue !== newValue) {
+      diff[setting.id] = newValue;
+    }
+  }
+  return diff;
 }

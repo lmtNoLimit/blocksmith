@@ -4,7 +4,7 @@ import type { Section } from '@prisma/client';
 import type { Theme, UIMessage } from '../../../types';
 import { useVersionState } from './useVersionState';
 
-export type CodeSource = 'initial' | 'chat';
+export type CodeSource = 'initial' | 'chat' | 'settings';
 
 interface UseEditorStateOptions {
   section: Section;
@@ -83,11 +83,11 @@ export function useEditorState({
     [sectionCode, originalCode]
   );
 
-  // Handle code update from chat - stable ref (no deps)
-  const handleCodeUpdate = useCallback((newCode: string) => {
+  // Handle code update from various sources - stable ref (no deps)
+  const handleCodeUpdate = useCallback((newCode: string, source: CodeSource = 'chat') => {
     if (typeof newCode === 'string' && newCode.length > 0) {
       setSectionCode(newCode);
-      setLastCodeSource('chat');
+      setLastCodeSource(source);
     }
   }, []);
 
