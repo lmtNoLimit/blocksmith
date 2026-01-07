@@ -98,17 +98,15 @@ export function CodePreviewPanel({
           background="base"
         >
           <s-stack direction="inline" justifyContent="space-between" alignItems="center">
-            {/* Left: View mode tabs */}
-            <s-button-group gap="none" accessibilityLabel="View mode">
+            {/* Left: View mode tabs - using s-stack for segmented control */}
+            <s-stack direction="inline" gap="none">
               <s-button
-                slot="secondary-actions"
                 variant={activeTab === 'preview' ? 'primary' : 'secondary'}
                 onClick={() => setActiveTab('preview')}
               >
                 Preview
               </s-button>
               <s-button
-                slot="secondary-actions"
                 variant={activeTab === 'code' ? 'primary' : 'secondary'}
                 onClick={() => setActiveTab('code')}
               >
@@ -117,40 +115,36 @@ export function CodePreviewPanel({
               {/* Diff tab - only show if there are changes */}
               {diff.hasDiff && (
                 <s-button
-                  slot="secondary-actions"
                   variant={activeTab === 'diff' ? 'primary' : 'secondary'}
                   onClick={() => setActiveTab('diff')}
                 >
                   Diff ({diff.stats.additions + diff.stats.deletions})
                 </s-button>
               )}
-            </s-button-group>
+            </s-stack>
 
             {/* Center: Device selector (only in preview mode) */}
             {activeTab === 'preview' && (
-              <s-button-group gap="none" accessibilityLabel="Device size">
+              <s-stack direction="inline" gap="none">
                 <s-button
-                  slot="secondary-actions"
-                  variant={deviceSize === 'mobile' ? 'primary' : 'tertiary'}
+                  variant={deviceSize === 'mobile' ? 'primary' : 'secondary'}
                   onClick={() => onDeviceSizeChange('mobile')}
                 >
                   Mobile
                 </s-button>
                 <s-button
-                  slot="secondary-actions"
-                  variant={deviceSize === 'tablet' ? 'primary' : 'tertiary'}
+                  variant={deviceSize === 'tablet' ? 'primary' : 'secondary'}
                   onClick={() => onDeviceSizeChange('tablet')}
                 >
                   Tablet
                 </s-button>
                 <s-button
-                  slot="secondary-actions"
-                  variant={deviceSize === 'desktop' ? 'primary' : 'tertiary'}
+                  variant={deviceSize === 'desktop' ? 'primary' : 'secondary'}
                   onClick={() => onDeviceSizeChange('desktop')}
                 >
                   Desktop
                 </s-button>
-              </s-button-group>
+              </s-stack>
             )}
 
             {/* Right: Actions */}
