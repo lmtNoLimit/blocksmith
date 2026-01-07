@@ -37,6 +37,11 @@
           {
             "type": "command",
             "command": "node .claude/hooks/brand-guidelines-reminder.cjs"
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/brand-guidelines-reminder.cjs",
+            "_origin": "marketing"
           }
         ]
       },
@@ -46,6 +51,11 @@
           {
             "type": "command",
             "command": "node .claude/hooks/campaign-tracking.cjs"
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/campaign-tracking.cjs",
+            "_origin": "marketing"
           }
         ]
       },
@@ -59,6 +69,11 @@
           {
             "type": "command",
             "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/subagent-init.cjs"
+          },
+          {
+            "type": "command",
+            "command": "node \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/approval-workflow.cjs",
+            "_origin": "marketing"
           }
         ]
       }

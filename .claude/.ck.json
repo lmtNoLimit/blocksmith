@@ -7,14 +7,22 @@
     "issuePrefix": "GH-",
     "reportsDir": "reports",
     "resolution": {
-      "order": ["session", "branch"],
+      "order": [
+        "session",
+        "branch"
+      ],
       "branchPattern": "(?:feat|fix|chore|refactor|docs)/(?:[^/]+/)?(.+)"
     },
     "validation": {
       "mode": "prompt",
       "minQuestions": 3,
       "maxQuestions": 8,
-      "focusAreas": ["assumptions", "risks", "tradeoffs", "architecture"]
+      "focusAreas": [
+        "assumptions",
+        "risks",
+        "tradeoffs",
+        "architecture"
+      ]
     }
   },
   "paths": {
@@ -34,5 +42,17 @@
     "packageManager": "auto",
     "framework": "auto"
   },
-  "assertions": []
+  "assertions": [],
+  "kits": {
+    "ClaudeKit Marketing": {
+      "installedSettings": {
+        "hooks": [
+          "node $HOME/.claude/hooks/brand-guidelines-reminder.cjs",
+          "node $HOME/.claude/hooks/campaign-tracking.cjs",
+          "node $HOME/.claude/hooks/approval-workflow.cjs"
+        ],
+        "mcpServers": []
+      }
+    }
+  }
 }
