@@ -552,11 +552,11 @@ export default function SectionsPage() {
   return (
     <>
       <s-page heading="Sections" inlineSize="large">
-        {/* Primary action button */}
+        {/* Primary action button - uses navigate() to preserve session context */}
         <s-button
           slot="primary-action"
           variant="primary"
-          href="/app/sections/new"
+          onClick={() => navigate("/app/sections/new")}
         >
           Create Section
         </s-button>
