@@ -29,7 +29,12 @@
     "generate:templates:features": "npx tsx scripts/batch-generate-templates.ts --category=features",
     "generate:templates:cta": "npx tsx scripts/batch-generate-templates.ts --category=cta",
     "validate:templates": "npx tsx scripts/validate-templates.ts",
-    "validate:templates:latest": "npx tsx scripts/validate-templates.ts"
+    "validate:templates:latest": "npx tsx scripts/validate-templates.ts",
+    "integrate:templates": "npx tsx scripts/integrate-templates.ts",
+    "integrate:templates:dry": "npx tsx scripts/integrate-templates.ts --dry-run",
+    "integrate:verify": "npx tsx scripts/integrate-templates.ts --verify",
+    "migrate:template-code": "npx tsx scripts/migrate-template-code.ts",
+    "migrate:template-code:dry": "npx tsx scripts/migrate-template-code.ts --dry-run"
   },
   "type": "module",
   "engines": {

@@ -2206,6 +2206,94 @@ npx tsx scripts/validate-templates.ts           # Direct execution
 - Contains: Summary metrics, category breakdown, error/warning lists, full details
 - Exit code: 1 if any invalid templates, 0 if all valid
 
+## Phase 3: Template Integration & Migration (NEW)
+
+Complete Phase 3 implements two new scripts for integrating validated templates and migrating existing shops.
+
+### Template Integration Script
+
+`scripts/integrate-templates.ts` merges validated Liquid code from generated templates into `app/data/default-templates.ts`.
+
+**Features**:
+- Reads validated template output from `scripts/output/generated-templates-*.json`
+- Automatically finds latest generated file (no input arg required)
+- Preserves existing templates with code (no overwrites)
+- Outputs integration report with added/skipped counts
+- Three operation modes: normal, dry-run, verify
+
+**NPM Scripts**:
+```json
+{
+  "integrate:templates": "npx tsx scripts/integrate-templates.ts",
+  "integrate:templates:dry": "npx tsx scripts/integrate-templates.ts --dry-run",
+  "integrate:verify": "npx tsx scripts/integrate-templates.ts --verify"
+}
+```
+
+**Usage**:
+```bash
+npm run integrate:templates              # Merge latest validated output
+npm run integrate:templates:dry          # Preview changes without applying
+npm run integrate:verify                 # Verify all templates have code
+```
+
+**Integration Results**:
+- Status per template: `added` | `skipped_has_code` | `skipped_no_code` | `failed`
+- Output file: `scripts/output/integration-report-{timestamp}.json`
+- Updates `app/data/default-templates.ts` with code blocks
+- Exit code: 1 if failures, 0 on success
+
+**Process**:
+1. Load generated templates from output JSON
+2. For each template with code:
+   - Check if default template already has code
+   - Skip if code exists (preserve existing)
+   - Add code if missing
+   - Handle failures with error logging
+3. Generate integration report with summary
+
+### Template Code Migration Script
+
+`scripts/migrate-template-code.ts` updates all existing shops' templates with new pre-built Liquid code after integration.
+
+**Features**:
+- Updates shop templates matching by title
+- Only updates templates missing code (preserves custom templates)
+- Matches templates from DEFAULT_TEMPLATES
+- Supports single shop migration via `--shop` flag
+- Two operation modes: normal, dry-run
+
+**NPM Scripts**:
+```json
+{
+  "migrate:template-code": "npx tsx scripts/migrate-template-code.ts",
+  "migrate:template-code:dry": "npx tsx scripts/migrate-template-code.ts --dry-run"
+}
+```
+
+**Usage**:
+```bash
+npm run migrate:template-code            # Migrate all shops
+npm run migrate:template-code:dry        # Preview migrations
+npx tsx scripts/migrate-template-code.ts --shop=example.myshopify.com  # Migrate single shop
+```
+
+**Migration Process**:
+1. Query all shops with templates missing code
+2. For each shop:
+   - Find matching default template by title
+   - Check if default template has code
+   - Update shop template with code (or skip if no code)
+   - Log details: templates checked, templates updated
+3. Generate migration summary with total shops/templates updated
+4. Exit code: 1 on errors, 0 on success
+
+**Database Impact**:
+- Updates `SectionTemplate.code` field
+- Matches by `shop` + `title`
+- Atomic per-template updates (fails gracefully on errors)
+- Dry-run mode: queries only, no updates
+
 ## Data Flow
 
 ### AI Section Generation Flow

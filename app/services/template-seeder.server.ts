@@ -5,7 +5,8 @@ import { DEFAULT_TEMPLATES, type DefaultTemplate } from "../data/default-templat
  * Template Seeder Service
  *
  * Seeds default section templates for a shop on first access.
- * Prevents duplicate seeding by checking if shop already has templates.
+ * Handles both initial seeding and migration of pre-built code
+ * to existing templates.
  */
 export const templateSeeder = {
   /**
@@ -19,17 +20,60 @@ export const templateSeeder = {
   },
 
   /**
-   * Seed default templates for a shop
-   * Only seeds if shop has no existing templates
+   * Update existing templates with new pre-built code
+   * Only updates templates that have null code in DB but code in DEFAULT_TEMPLATES
+   * Called during shop access to sync code updates silently
    */
-  async seedDefaultTemplates(shop: string): Promise<{ seeded: boolean; count: number }> {
+  async updateTemplatesWithCode(shop: string): Promise<{ updated: number }> {
+    // Get templates without code in DB
+    const templatesNeedingCode = await prisma.sectionTemplate.findMany({
+      where: {
+        shop,
+        code: null,
+      },
+      select: { id: true, title: true },
+    });
+
+    if (templatesNeedingCode.length === 0) {
+      return { updated: 0 };
+    }
+
+    // Match with DEFAULT_TEMPLATES by title and update if code available
+    let updated = 0;
+    for (const dbTemplate of templatesNeedingCode) {
+      const defaultTemplate = DEFAULT_TEMPLATES.find(
+        (t) => t.title === dbTemplate.title && t.code
+      );
+
+      if (defaultTemplate?.code) {
+        await prisma.sectionTemplate.update({
+          where: { id: dbTemplate.id },
+          data: { code: defaultTemplate.code },
+        });
+        updated++;
+      }
+    }
+
+    return { updated };
+  },
+
+  /**
+   * Seed default templates for a shop
+   * If shop already has templates, runs migration to update code
+   * For new shops, seeds all templates with pre-built code
+   */
+  async seedDefaultTemplates(
+    shop: string
+  ): Promise<{ seeded: boolean; count: number; updated: number }> {
     // Check if already seeded
     const hasExisting = await this.hasTemplates(shop);
     if (hasExisting) {
-      return { seeded: false, count: 0 };
+      // Migrate existing templates with new pre-built code
+      const { updated } = await this.updateTemplatesWithCode(shop);
+      return { seeded: false, count: 0, updated };
     }
 
-    // Seed all default templates
+    // Fresh seed for new shops
     const templates = DEFAULT_TEMPLATES.map((template: DefaultTemplate) => ({
       shop,
       title: template.title,
@@ -37,14 +81,14 @@ export const templateSeeder = {
       category: template.category,
       icon: template.icon,
       prompt: template.prompt,
-      code: template.code || null, // Include pre-built code if available
+      code: template.code || null,
     }));
 
     await prisma.sectionTemplate.createMany({
       data: templates,
     });
 
-    return { seeded: true, count: templates.length };
+    return { seeded: true, count: templates.length, updated: 0 };
   },
 
   /**
