@@ -1,6 +1,7 @@
 /**
  * Tests for /api/preview/configure-password route
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { action, loader } from "../api.preview.configure-password";
 import * as shopifyAuth from "../../shopify.server";

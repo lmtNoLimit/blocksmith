@@ -2,9 +2,8 @@
  * Tests for SchemaValidation component
  */
 
-import { render, screen } from '@testing-library/react';
+import { render } from '@testing-library/react';
 import { SchemaValidation } from '../SchemaValidation';
-import type { SchemaValidationResult } from '../validation/schema-validator';
 
 describe('SchemaValidation', () => {
   const mockValidationPassed: SchemaValidationResult = {

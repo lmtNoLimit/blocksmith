@@ -130,7 +130,7 @@ describe('MessageItem', () => {
         content: '```javascript\nconst x = 1;\n```',
       });
 
-      const { container } = render(<MessageItem message={message} />);
+      render(<MessageItem message={message} />);
 
       // User messages show code blocks
       expect(screen.getByText('const x = 1;')).toBeInTheDocument();
@@ -207,7 +207,7 @@ describe('MessageItem', () => {
         codeSnapshot: '<div>code</div>',
       });
 
-      const { container } = render(
+      render(
         <MessageItem
           message={message}
           versionNumber={1}

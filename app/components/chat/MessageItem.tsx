@@ -232,7 +232,7 @@ export const MessageItem = memo(function MessageItem({
                   borderColor="subdued"
                   padding="small base"
                 >
-                  <s-text>Here's your section code. You can preview it in the panel on the right.</s-text>
+                  <s-text>Here&apos;s your section code. You can preview it in the panel on the right.</s-text>
                 </s-box>
               </div>
             )}

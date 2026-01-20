@@ -12,7 +12,7 @@ import {
   RESOURCE_TYPES,
   PRESENTATIONAL_TYPES
 } from '../parseSchema';
-import type { SchemaDefinition, SchemaSetting, SettingType } from '../SchemaTypes';
+import type { SchemaDefinition, SchemaSetting } from '../SchemaTypes';
 
 describe('resolveTranslationKey', () => {
   it('resolves translation key with label suffix', () => {

@@ -2,7 +2,7 @@
  * Tests for schema validator
  */
 
-import { validateSchema, type SchemaValidationResult } from '../schema-validator';
+import { validateSchema } from '../schema-validator';
 
 describe('schema-validator', () => {
   describe('validateSchema', () => {

@@ -53,7 +53,7 @@ export function ElementInfoPanel({ element, onEdit, onClear }: ElementInfoPanelP
             borderColor="subdued"
           >
             <span style={{ ...truncateStyle, color: 'var(--p-color-text-subdued)', display: 'block' }}>
-              "{element.textContent}"
+              &quot;{element.textContent}&quot;
             </span>
           </s-box>
         )}

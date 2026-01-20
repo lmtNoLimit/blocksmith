@@ -29,19 +29,15 @@ export const VersionTimeline = memo(function VersionTimeline({
   selectedVersionId,
   onSelect,
 }: VersionTimelineProps) {
-  if (versions.length === 0) return null;
-
+  // Hook must be called before any early returns (React rules of hooks)
   const handleChange = useCallback((e: Event) => {
     const target = e.currentTarget as HTMLSelectElement;
     const value = target.value;
     onSelect(value || null);
   }, [onSelect]);
 
-  // Find the currently selected version for display
-  const selectedVersion = versions.find(v => v.id === selectedVersionId);
-  const displayLabel = selectedVersion
-    ? `v${selectedVersion.versionNumber}`
-    : 'Current';
+  if (versions.length === 0) return null;
+
 
   // Build options for s-select
   const options = [

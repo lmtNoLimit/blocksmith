@@ -1,1758 +1,718 @@
-# System Architecture
+# System Architecture - AI Section Generator (Blocksmith)
 
-## Overview
+**Document Version**: 1.5
+**Last Updated**: 2026-01-20
+**Status**: Production-Ready (Phase 4 Complete)
 
-AI Section Generator (Blocksmith) is a **Shopify embedded app** built with React Router 7 server-side rendering, TypeScript strict mode, and a comprehensive service-oriented architecture. The system generates production-ready Liquid sections using Google Gemini 2.5 Flash AI, with live preview rendering via App Proxy native Shopify Liquid and full multi-tenant isolation via shop domain verification.
+## Executive Summary
 
-**Key Architecture Traits**:
-- **Service-Oriented**: 25+ server modules with clear separation of concerns
-- **Component-Based**: 95 React components organized by feature domain
+AI Section Generator is a **Shopify embedded app** using React Router 7 server-side rendering with comprehensive service-oriented architecture. The system generates production-ready Liquid sections using Google Gemini 2.5 Flash AI, renders live previews via App Proxy native Shopify Liquid, and provides full multi-tenant isolation via shop domain verification.
+
+**Architecture Principles**:
+- **Service-Oriented**: 19 server modules with clear separation of concerns
+- **Component-Based**: 111 React components organized by feature domain
 - **Type-Safe**: Full TypeScript strict mode throughout
-- **Multi-Tenant**: Complete shop domain isolation for data and operations
-- **Adapter Pattern**: Mock/real service switching for development and testing
+- **Multi-Tenant**: Complete shop domain isolation (data + operations + billing)
+- **Adapter Pattern**: Mock/real service switching (development + testing)
 - **Streaming**: Server-Sent Events (SSE) for real-time chat updates
+- **Immutable Logs**: Audit trail for compliance and debugging
+
+## High-Level Data Flow
+
+```
+User (Shopify Merchant)
+        ↓
+    [Shopify Admin iframe]
+        ↓ HTTPS (App Bridge)
+        ↓
+[React Router App Server]
+    ├─ Routes (29 file-based)
+    ├─ Components (111 React)
+    └─ Services (19 server modules)
+        ├─ AI Service → Google Gemini 2.5 Flash
+        ├─ Shopify Service → GraphQL Admin API
+        ├─ Database Service → Prisma ORM
+        ├─ Billing Service → Shopify App Billing
+        └─ Auth Service → OAuth 2.0
+            ↓
+    [Prisma ORM]
+        ↓
+    [MongoDB / PostgreSQL / SQLite]
+```
 
 ## Architecture Diagram
 
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                        Shopify Admin                             │
-│  ┌────────────────────────────────────────────────────────┐    │
-│  │            Embedded App (iFrame)                       │    │
-│  │  ┌──────────────────────────────────────────────┐     │    │
-│  │  │    React UI (Polaris Web Components)        │     │    │
-│  │  │  - Generate Section Form                     │     │    │
-│  │  │  - Theme Selector                            │     │    │
-│  │  │  - Code Preview                              │     │    │
-│  │  │  - Service Mode Indicator (dev only)         │     │    │
-│  │  └───────────┬──────────────────────────────────┘     │    │
-│  │              │                                          │    │
-│  └──────────────┼──────────────────────────────────────────┘    │
-└─────────────────┼──────────────────────────────────────────────┘
-                  │ HTTPS (App Bridge)
-                  ▼
-┌─────────────────────────────────────────────────────────────────┐
-│                  React Router App Server                         │
-│  ┌────────────────────────────────────────────────────────┐    │
-│  │               Presentation Layer                       │    │
-│  │  ┌──────────────────────────────────────────────┐     │    │
-│  │  │  Routes (React Router 7)                    │     │    │
-│  │  │  - app.generate.tsx  (loader + action)      │     │    │
-│  │  │      Uses: aiAdapter, themeAdapter          │     │    │
-│  │  │      Imports: components from app/components│     │    │
-│  │  │  - app._index.tsx                           │     │    │
-│  │  │  - webhooks.*.tsx                           │     │    │
-│  │  │  - auth.*.tsx                               │     │    │
-│  │  └───────────┬──────────────────────────────────┘     │    │
-│  │              │                                          │    │
-│  │  ┌───────────▼──────────────────────────────────────┐ │    │
-│  │  │  Component Layer (Phase 04)                     │ │    │
-│  │  │  ┌──────────────────────────────────────────┐   │ │    │
-│  │  │  │  Shared Components                       │   │ │    │
-│  │  │  │  - Button, Card, Banner (Success/Error)  │   │ │    │
-│  │  │  └──────────────────────────────────────────┘   │ │    │
-│  │  │  ┌──────────────────────────────────────────┐   │ │    │
-│  │  │  │  Generate Feature Components             │   │ │    │
-│  │  │  │  - PromptInput, ThemeSelector            │   │ │    │
-│  │  │  │  - CodePreview, SectionNameInput         │   │ │    │
-│  │  │  │  - GenerateActions                       │   │ │    │
-│  │  │  └──────────────────────────────────────────┘   │ │    │
-│  │  │  - Barrel export (index.ts)                     │ │    │
-│  │  └─────────────────────────────────────────────────┘ │    │
-│  └──────────────┼──────────────────────────────────────────┘    │
-│                 │                                                │
-│  ┌──────────────▼──────────────────────────────────────────┐    │
-│  │          Business Logic Layer (Adapter Pattern)         │    │
-│  │                                                          │    │
-│  │  ┌───────────────────────────────────────────────────┐ │    │
-│  │  │  Feature Flag System                              │ │    │
-│  │  │  - FLAG_USE_MOCK_THEMES, FLAG_USE_MOCK_AI        │ │    │
-│  │  │  - Environment variable overrides                 │ │    │
-│  │  │  - flagManager.isEnabled(key)                     │ │    │
-│  │  └────────────────┬──────────────────────────────────┘ │    │
-│  │                   │                                     │    │
-│  │                   ▼                                     │    │
-│  │  ┌───────────────────────────────────────────────────┐ │    │
-│  │  │  Service Configuration (config.server.ts)         │ │    │
-│  │  │  - serviceConfig.aiMode: 'mock' | 'real'         │ │    │
-│  │  │  - serviceConfig.themeMode: 'mock' | 'real'      │ │    │
-│  │  └────────────────┬──────────────────────────────────┘ │    │
-│  │                   │                                     │    │
-│  │    ┌──────────────┴───────────────┐                    │    │
-│  │    │                              │                    │    │
-│  │    ▼                              ▼                    │    │
-│  │  ┌─────────────────┐    ┌──────────────────┐          │    │
-│  │  │  AI Adapter     │    │  Theme Adapter   │          │    │
-│  │  │  (routes calls) │    │  (routes calls)  │          │    │
-│  │  └────┬────────────┘    └────┬─────────────┘          │    │
-│  │       │                      │                         │    │
-│  │       │ if mock              │ if mock                 │    │
-│  │       ├─────────┐            ├─────────┐               │    │
-│  │       │         │            │         │               │    │
-│  │       ▼         ▼            ▼         ▼               │    │
-│  │  ┌──────────┐ ┌─────────┐ ┌──────────┐ ┌──────────┐  │    │
-│  │  │AIService │ │MockAI   │ │Theme     │ │MockTheme │  │    │
-│  │  │(real)    │ │Service  │ │Service   │ │Service   │  │    │
-│  │  │          │ │(mock)   │ │(real)    │ │(mock)    │  │    │
-│  │  └────┬─────┘ └────┬────┘ └────┬─────┘ └────┬─────┘  │    │
-│  └───────┼────────────┼───────────┼────────────┼─────────┘    │
-│          │            │           │            │               │
-│          │            │           │            │               │
-└──────────┼────────────┼───────────┼────────────┼───────────────┘
-           │            │           │            │
-           ▼            │           ▼            │
-   ┌─────────────────┐  │  ┌────────────────┐   │
-   │  Google Gemini  │  │  │  Shopify API   │   │
-   │  API            │  │  │  (GraphQL)     │   │
-   │  gemini-2.0     │  │  │  - themes      │   │
-   │  -flash-exp     │  │  │  - files       │   │
-   └─────────────────┘  │  └────────────────┘   │
-                        │                        │
-                        ▼                        ▼
-                   ┌──────────────┐     ┌────────────────┐
-                   │  Mock Data   │     │  Mock Store    │
-                   │  - Sections  │     │  (in-memory)   │
-                   │  - Themes    │     │  - Saved files │
-                   └──────────────┘     └────────────────┘
-```
-
-### Feature Flag Flow Diagram
+### System Overview
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  Environment Variables                                           │
-│  FLAG_USE_MOCK_THEMES=true                                      │
-│  FLAG_USE_MOCK_AI=false                                         │
-│  GEMINI_API_KEY=abc123...                                       │
-└────────────────┬────────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  FeatureFlagManager (flags/flag-utils.ts)                       │
-│  1. Check runtime overrides                                     │
-│  2. Check FLAG_* environment variables                          │
-│  3. Fall back to default values                                 │
-└────────────────┬────────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Service Configuration (config.server.ts)                       │
-│                                                                  │
-│  getThemeMode():                                                │
-│    if FLAG_USE_MOCK_THEMES=true → return 'mock'                │
-│    else if SERVICE_MODE='real' → return 'real'                 │
-│    else → return 'mock' (safe default)                         │
-│                                                                  │
-│  getAIMode():                                                   │
-│    if FLAG_USE_MOCK_AI=true → return 'mock'                    │
-│    else if GEMINI_API_KEY exists → return 'real'               │
-│    else → return 'mock'                                         │
-└────────────────┬────────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  serviceConfig Object (exported)                                │
-│  {                                                              │
-│    themeMode: 'mock',        // from FLAG_USE_MOCK_THEMES      │
-│    aiMode: 'real',           // from GEMINI_API_KEY            │
-│    enableLogging: true,      // from FLAG_VERBOSE_LOGGING      │
-│    simulateLatency: false,   // from FLAG_SIMULATE_API_LATENCY │
-│    showModeInUI: true        // from FLAG_SHOW_SERVICE_MODE    │
-│  }                                                              │
-└────────────────┬────────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Service Adapters (at module initialization)                    │
-│                                                                  │
-│  AIAdapter:                                                     │
-│    this.service = serviceConfig.aiMode === 'mock'               │
-│      ? mockAIService   ← Selected (aiMode='real' above)        │
-│      : aiService       ← USED                                   │
-│                                                                  │
-│  ThemeAdapter:                                                  │
-│    this.service = serviceConfig.themeMode === 'mock'            │
-│      ? mockThemeService ← USED (themeMode='mock' above)        │
-│      : themeService     ← Not selected                          │
-└────────────────┬────────────────────────────────────────────────┘
-                 │
-                 ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Runtime Behavior                                               │
-│                                                                  │
-│  Route calls aiAdapter.generateSection(prompt)                  │
-│    → Routes to AIService (real Gemini)                          │
-│    → Returns actual AI-generated Liquid code                    │
-│                                                                  │
-│  Route calls themeAdapter.getThemes(request)                    │
-│    → Routes to MockThemeService                                 │
-│    → Returns mock themes (Dawn, Refresh, Studio)                │
-│                                                                  │
-│  Route calls themeAdapter.createSection(...)                    │
-│    → Routes to MockThemeService                                 │
-│    → Saves to in-memory mock store (no Shopify API call)        │
-└─────────────────────────────────────────────────────────────────┘
+┌────────────────────────────────────────────────────────────────────────┐
+│                          Shopify Admin                                  │
+│  ┌──────────────────────────────────────────────────────────────┐     │
+│  │         Embedded App (iFrame) - Blocksmith                   │     │
+│  │                                                               │     │
+│  │  [Polaris Web Components - Native Shopify UX]                │     │
+│  │  ├─ React Router 7 Pages (29 routes)                         │     │
+│  │  ├─ 111 React Components                                     │     │
+│  │  │   ├─ Editor (7) - 3-column layout                         │     │
+│  │  │   ├─ Chat (23) - SSE streaming interface                  │     │
+│  │  │   ├─ Generate (14) - Creation workflow                    │     │
+│  │  │   ├─ Preview (45+) - Live rendering                       │     │
+│  │  │   ├─ Sections (6) - Management                            │     │
+│  │  │   ├─ Billing (8) - Plan + usage                           │     │
+│  │  │   ├─ Templates (5) - Library                              │     │
+│  │  │   └─ Common (9) - Shared UI                               │     │
+│  │  └─ State Management (useReducer hooks + useFetcher)         │     │
+│  │                                                               │     │
+│  └────────────────────┬─────────────────────────────────────────┘     │
+└─────────────────────────────────────────────────────────────────────────┘
+                        ↓ HTTPS (App Bridge)
+         ┌──────────────┴──────────────┐
+         ↓                             ↓
+┌─────────────────────┐    ┌──────────────────────────┐
+│  React Router       │    │  App Proxy               │
+│  App Server         │    │  /apps/blocksmith-       │
+│                     │    │   preview                │
+└─────────────────────┘    └──────────────────────────┘
 ```
 
-## Layer Breakdown
+### Request/Response Flow
 
-### 1. Presentation Layer
-
-**Location**: `app/routes/` and `app/components/`
-
-**Responsibilities**:
-- Handle HTTP requests (GET, POST)
-- Render React components server-side and client-side
-- Manage form submissions and navigation
-- Display UI with Polaris web components
-- Handle authentication redirects
-
-**Architecture**: The presentation layer is divided into two sub-layers:
-
-1. **Route Layer** (`app/routes/`): Handles data fetching, actions, and orchestrates component composition
-2. **Component Layer** (`app/components/`): Pure UI components for rendering (introduced Phase 04)
-
-**Key Components**:
-
-#### Route Layer
-
-**`app.generate.tsx` (Core Feature Route)**
-- **Loader**: Fetches merchant themes on page load
-- **Action**: Handles two actions:
-  - `generate`: Sends prompt to AI service, returns generated code
-  - `save`: Saves generated code to selected theme
-- **Component**: Orchestrates UI using components from `app/components/`:
-  - PromptInput, ThemeSelector, CodePreview
-  - SectionNameInput, GenerateActions
-  - SuccessBanner, ErrorBanner
-- **Phase 04 Refactoring**: Extracted all inline UI into reusable components
-
-#### `app.tsx` (Layout Route)
-- Wraps all `/app/*` routes
-- Provides App Bridge context
-- Renders navigation menu
-- Error boundary
-
-#### `webhooks.*.tsx` (Webhook Routes)
-- `webhooks.app.uninstalled.tsx`: Cleans up sessions on app uninstall
-- `webhooks.app.scopes_update.tsx`: Updates session scopes
-
-#### `auth.*.tsx` (Auth Routes)
-- `auth.login/route.tsx`: Login page with shop input
-- `auth.$.tsx`: OAuth callback handler
-
-#### Component Layer (Phase 04)
-
-**Location**: `app/components/`
-
-**Organization**:
-- **`shared/`**: Reusable components across features
-  - `Button.tsx`: Polaris button wrapper with TypeScript props
-  - `Card.tsx`: Polaris card wrapper
-  - `Banner.tsx`: Banner components (Base, Success, Error)
-
-- **`generate/`**: Feature-specific components for generate route
-  - `PromptInput.tsx`: Multiline prompt input field
-  - `ThemeSelector.tsx`: Theme dropdown selector
-  - `CodePreview.tsx`: Code display with syntax formatting
-  - `SectionNameInput.tsx`: Filename input with .liquid suffix
-  - `GenerateActions.tsx`: Generate and Save action buttons
-
-- **`ServiceModeIndicator.tsx`**: Debug mode indicator (dev only)
-- **`index.ts`**: Barrel export for centralized imports
-
-**Design Principles**:
-- **Pure Presentation**: No business logic, only UI rendering
-- **Fully Typed**: All props defined with TypeScript interfaces
-- **Small & Focused**: Each component under 200 lines
-- **Composable**: Components combine to build complex UIs
-- **Testable**: Pure functions enable isolated testing
-- **Reusable**: Components can be used across multiple routes
-
-**Benefits**:
-- Improved code reusability and maintainability
-- Clear separation between UI and business logic
-- Easier testing (components testable in isolation)
-- Reduced route file complexity
-- Scalable architecture for future features
-
-**Technology**:
-- React Router 7 (file-based routing)
-- Server-side rendering (SSR)
-- Polaris Web Components (UI)
-- React 18 hooks (useState, useEffect, etc.)
-- Component-based architecture (Phase 04)
-
-#### Phase 02: Block Defaults & Schema Parsing Expansion
-
-**Purpose**: Provide comprehensive default value handling for all 31 Shopify schema setting types, ensuring blocks render correctly with sensible defaults. DRY refactor using shared `buildInitialState()` function across components.
-
-**Key Changes**:
-
-1. **Enhanced buildInitialState() Function** (`app/components/preview/schema/parseSchema.ts`)
-   - **Coverage**: All 31 Shopify setting types (previously ~10)
-   - **Type-Specific Defaults**:
-     - Text inputs (text, textarea, richtext, inline_richtext, html, liquid): `''` (empty string)
-     - Numbers (number, range): `setting.min ?? 0`
-     - Boolean (checkbox): `false`
-     - Colors (color, color_background): `'#000000'`
-     - Selection (select, radio): First option value
-     - Text alignment: `'left'`
-     - Font picker: `'system-ui'`
-     - Media (image_picker): `'placeholder'` (preview only)
-     - Video (video, video_url): `''`
-     - URL: `'#'` (for button links)
-     - Resource pickers (product, collection, article, blog, page, link_list): `''` (empty)
-     - Resource lists (product_list, collection_list): `'[]'` (JSON string)
-     - Metaobjects (metaobject, metaobject_list): `''`
-     - Color schemes (color_scheme, color_scheme_group): `''`
-     - Display-only (header, paragraph): Skip (no value needed)
-
-2. **DRY Refactor in SettingsPanel** (`app/components/preview/settings/SettingsPanel.tsx`)
-   - `handleResetDefaults()` now uses `buildInitialState(settings)` instead of inline defaults
-   - Single source of truth for default value logic
-   - Reduced code duplication
-
-3. **Enhanced Schema Parser** (`app/components/preview/schema/parseSchema.ts`)
-   - `extractSettings()` explicitly supports 25+ types
-   - `buildBlockInstancesFromPreset()` initializes block settings with proper defaults
-   - Respects explicit `default` field when provided by schema author
-
-4. **Test Coverage** (`app/components/preview/schema/__tests__/parseSchema.test.ts`)
-   - 14 new test cases covering buildInitialState()
-   - Tests for each major type category
-   - Validates explicit defaults override type defaults
-   - Tests resource lists, colors, fonts, text alignment
-
-**Data Flow**:
 ```
-Schema Definition (with or without defaults)
-    ↓
-extractSettings() → Filter supported types
-    ↓
-buildInitialState() → Apply type-specific defaults
-    ↓
-SettingsPanel → Initial form state & Reset button
-    ↓
-Liquid Preview → Populated with default values
+1. USER ACTION (Merchant clicks "Generate")
+   ↓
+2. BROWSER (React component dispatches fetcher)
+   ↓ POST /api/chat/stream or POST /api/sections
+3. REACT ROUTER SERVER (Handles loader/action)
+   ↓
+4. AUTHENTICATE (Verify session + shop domain)
+   ↓
+5. BUSINESS LOGIC LAYER (Services)
+   ├─ Check feature gates (billing.server.ts)
+   ├─ Track usage (usage-tracking.server.ts)
+   ├─ Call AI or Shopify API
+   └─ Persist to database (Prisma)
+   ↓
+6. RESPONSE
+   ├─ For SSE: Stream chunks via Server-Sent Events
+   ├─ For JSON: Return JSON response
+   └─ For mutations: Return new state + redirect
+   ↓
+7. BROWSER (React component updates UI with response)
+   ↓
+8. DISPLAY (User sees generated section or preview)
 ```
 
-**Benefits**:
-- Eliminates "undefined" values in block previews
-- Consistent default behavior across all setting types
-- Blocks render immediately with sensible defaults
-- DRY principle - single source for defaults
-- Type-safe with comprehensive test coverage
-- Supports both explicit schema defaults and fallback type defaults
+## Layered Architecture
 
----
+### Layer 1: Presentation (React Components)
 
-### Phase 2: Password-Protected Store Integration
+**111 React Components** organized by feature domain:
 
-**Purpose**: Handle preview rendering for password-protected Shopify stores by providing in-context password configuration without requiring redirect to settings.
-
-**Key Changes**:
-
-1. **Error Detection** (`app/components/preview/AppProxyPreviewFrame.tsx`)
-   - `isPasswordError()` helper detects password-related errors via pattern matching
-   - Patterns: "password-protected", "password expired", "storefront password"
-   - Triggered when App Proxy render fails due to missing/invalid auth
-
-2. **Password Modal Integration** (`app/components/preview/PasswordConfigModal.tsx`)
-   - Appears automatically on password error detection
-   - User enters storefront password (from Online Store → Preferences)
-   - Submits to `/api/preview/configure-password` endpoint
-   - Success triggers preview refetch with new auth context
-   - Toast notification on successful save
-
-3. **Error Banner Split** (`app/components/preview/AppProxyPreviewFrame.tsx`)
-   - **Password errors**: Non-dismissible banner with "Configure Password" button
-   - **Non-password errors**: Dismissible banner with "Retry" button
-   - Prevents accidental dismissal of critical auth failures
-
-4. **API Endpoint** (`app/routes/api.preview.configure-password.tsx`)
-   - `POST /api/preview/configure-password`
-   - Validates password against Shopify storefront API
-   - Stores encrypted in session context for shop isolation
-   - Returns success/error response
-
-**Data Flow**:
 ```
-Preview Render Error
-    ↓
-isPasswordError() check
-    ↓
-YES → Auto-show PasswordConfigModal
-    ↓
-User enters password
-    ↓
-POST /api/preview/configure-password
-    ↓
-Validate against Shopify
-    ↓
-SUCCESS → Toast notification + refetch preview
-    FAILED → Error banner in modal
+app/components/
+├─ editor/               (7 files) - 3-column editor layout
+│  ├─ PolarisEditorLayout.tsx
+│  ├─ ChatPanelWrapper.tsx
+│  ├─ CodePreviewPanel.tsx
+│  ├─ PublishModal.tsx
+│  ├─ SettingsPanel.tsx
+│  ├─ hooks/
+│  │  ├─ useEditorState.ts
+│  │  ├─ useVersionState.ts
+│  │  └─ useAutoSave.ts
+│
+├─ chat/                 (23 files) - AI chat interface
+│  ├─ ChatPanel.tsx (main container)
+│  ├─ ChatInput.tsx (message input)
+│  ├─ MessageList.tsx (scrollable history)
+│  ├─ hooks/
+│  │  ├─ useChat.ts (message management)
+│  │  ├─ useStreamingMessage.ts (SSE handling)
+│  │  ├─ useAutoScroll.ts (scroll sync)
+│  │  └─ useChatSuggestions.ts (quick actions)
+│
+├─ generate/             (14 files) - Generation workflow
+│  ├─ GenerateLayout.tsx (2-column: input | preview)
+│  ├─ PromptInput.tsx (textarea)
+│  ├─ ThemeSelector.tsx (dropdown)
+│  ├─ CodePreview.tsx (syntax highlighting)
+│  └─ GenerateActions.tsx (Save/Publish buttons)
+│
+├─ preview/              (45+ files) - Live preview system
+│  ├─ AppProxyPreviewFrame.tsx (main renderer)
+│  ├─ PasswordConfigModal.tsx (password entry)
+│  ├─ hooks/ (4 custom hooks)
+│  ├─ schema/ (4 utilities for parsing)
+│  ├─ settings/ (20+ setting input controls)
+│  ├─ context-drops/ (18 context renderers)
+│  ├─ filters/ (25+ filter renderers)
+│  └─ resource-picker/ (8+ resource pickers)
+│
+├─ sections/             (6 files) - Section management
+├─ templates/            (5 files) - Template library
+├─ billing/              (8 files) - Plan management
+├─ home/                 (5 files) - Dashboard
+└─ common/               (9 files) - Shared UI (Button, Modal, etc.)
 ```
 
-**Security**:
-- Nonce-based postMessage validation for iframe communication
-- Session context ensures shop isolation
-- Password validated server-side before storage
-- No password exposure in client-side state
-- Encrypted storage in session context
+**Key Characteristics**:
+- 100% Polaris Web Components (`<s-*>` elements)
+- useReducer hooks for local state (no Redux/Zustand)
+- useFetcher for async operations
+- TypeScript strict mode with no `any` types
 
-**Benefits**:
-- Enables preview on password-protected stores without admin redirect
-- Seamless UX - password configured in-context
-- Automatic retry after auth succeeds
-- Error handling prevents user confusion
+### Layer 2: Routing (React Router 7)
 
----
+**29 File-Based Routes**:
 
-### 2. Business Logic Layer
+```
+app/routes/
+├─ Protected Routes (auth required):
+│  ├─ app._index.tsx         → GET /app (Dashboard)
+│  ├─ app.sections._index.tsx → GET /app/sections (List)
+│  ├─ app.sections.new.tsx    → GET /app/sections/new (Create)
+│  ├─ app.sections.$id.tsx    → GET /app/sections/:id (Edit)
+│  ├─ app.templates.tsx       → GET /app/templates (Library)
+│  ├─ app.billing.tsx         → GET /app/billing (Plans)
+│  ├─ app.settings.tsx        → GET /app/settings (Prefs)
+│  └─ app.tsx                 → Layout wrapper
+│
+├─ API Routes (JSON endpoints):
+│  ├─ api.chat.stream.ts      → POST (SSE streaming)
+│  ├─ api.chat.messages.ts    → GET (conversation)
+│  ├─ api.enhance-prompt.ts   → POST (optimize)
+│  ├─ api.preview.render.ts   → POST (render section)
+│  ├─ api.feedback.ts         → POST (quality rating)
+│  └─ api.sections.*.ts       → CRUD endpoints
+│
+├─ Webhooks:
+│  ├─ webhooks.app.uninstalled.tsx      → Cleanup
+│  ├─ webhooks.app.subscriptions-update.tsx → Billing
+│  └─ webhooks.app.scopes-update.tsx    → Permissions
+│
+├─ Auth:
+│  ├─ auth.callback.ts → OAuth callback
+│  ├─ auth.login.ts    → Initiate flow
+│  └─ auth.logout.ts   → Logout
+│
+└─ Public:
+   └─ _index/          → Landing page
+```
 
-**Location**: `app/services/`
+**Route Characteristics**:
+- Each route has optional `loader` (GET data) + `action` (POST/PATCH/DELETE)
+- Authentication via `authenticate.admin` (Shopify middleware)
+- Error boundaries for graceful error handling
+- Streaming responses for SSE endpoints
 
-**Responsibilities**:
-- Implement core business logic
-- Integrate with external APIs
-- Handle error recovery and fallbacks
-- Validate and transform data
-- Route requests to appropriate service implementations (mock vs real)
+### Layer 3: Business Logic (Services)
 
-**Architecture Pattern**: Adapter Pattern with Feature Flag Control
+**19 Server-Only Modules** (`.server.ts`):
 
-The business logic layer uses an **adapter pattern** to enable seamless switching between mock and real service implementations. This architecture supports:
-- Development without external API dependencies
-- Testing with consistent mock data
-- Gradual migration from mock to real services
-- Runtime service mode switching via environment variables
-
-**Service Layer Structure**:
 ```
 app/services/
-├── adapters/              # Service routing layer
-│   ├── ai-adapter.ts      # Routes AI requests to mock/real service
-│   └── theme-adapter.ts   # Routes theme requests to mock/real service
-├── flags/                 # Feature flag system
-│   ├── feature-flags.ts   # Flag definitions and defaults
-│   └── flag-utils.ts      # Flag manager and utilities
-├── mocks/                 # Mock implementations
-│   ├── mock-ai.server.ts      # Mock AI service
-│   ├── mock-theme.server.ts   # Mock theme service
-│   ├── mock-data.ts           # Predefined mock data
-│   └── mock-store.ts          # In-memory storage for mocks
-├── ai.server.ts           # Real AI service (Google Gemini)
-├── theme.server.ts        # Real theme service (Shopify API)
-└── config.server.ts       # Service configuration manager
+├─ CORE AI
+│  └─ ai.server.ts (290 LOC)
+│     - generateSection(prompt, context) → Liquid code
+│     - enhancePrompt(prompt) → improved prompt
+│     - Stream handling + mock fallback
+│
+├─ DATA MANAGEMENT
+│  ├─ section.server.ts (380 LOC)
+│  │   - CRUD: create, read, update, delete
+│  │   - Status: DRAFT → ACTIVE → ARCHIVE
+│  │
+│  ├─ chat.server.ts (220 LOC)
+│  │   - Conversation persistence
+│  │   - Message threading
+│  │
+│  └─ generation-log.server.ts (150 LOC)
+│      - Immutable audit trail
+│
+├─ EXTERNAL INTEGRATIONS
+│  ├─ shopify-data.server.ts (340 LOC)
+│  │   - GraphQL: themes, products, collections, articles
+│  │   - Pagination + field selection
+│  │
+│  ├─ theme.server.ts (290 LOC)
+│  │   - themeFilesUpsert mutation
+│  │   - Error handling: GraphQL userErrors, rate limits
+│  │
+│  └─ shopify.server.ts (280 LOC)
+│      - OAuth configuration
+│      - Session storage (online/offline)
+│      - API client initialization
+│
+├─ BILLING & FEATURE CONTROL
+│  ├─ billing.server.ts (450 LOC)
+│  │   - getSubscription(shop)
+│  │   - createSubscriptionIntent(shop, planName)
+│  │   - confirmSubscription(chargeId)
+│  │   - calculateUsageCharge(shop, usage)
+│  │   - Hybrid: recurring + usage-based
+│  │
+│  ├─ feature-gate.server.ts (180 LOC)
+│  │   - isFeatureEnabled(shop, feature)
+│  │   - getFeatureLimit(shop, feature)
+│  │   - Features: live_preview, publish_theme, chat_refinement
+│  │
+│  └─ usage-tracking.server.ts (280 LOC)
+│      - recordUsage(shop, feature, amount)
+│      - getUsage(shop, feature, period)
+│      - checkQuota(shop, feature)
+│      - isOverQuota(shop, feature)
+│
+├─ SECURITY & PRIVACY
+│  ├─ encryption.server.ts (170 LOC)
+│  │   - encryptPassword(password, key) → AES-256-GCM
+│  │   - decryptPassword(ciphertext, key)
+│  │
+│  └─ storefront-auth.server.ts (210 LOC)
+│      - createStorefrontSession(shop, password)
+│      - validateStorefrontToken(shop, token)
+│
+└─ (Additional services: database, logger, error handler, etc.)
 ```
 
-#### Feature Flag System
+**Service Characteristics**:
+- Server-only (cannot be imported on client)
+- Async/await with proper error handling
+- Dependency injection via function parameters
+- Testable interfaces for mock implementations
 
-**Purpose**: Control which features and services are enabled at runtime
+### Layer 4: Database (Prisma ORM)
 
-**Components**:
+**11 Models** with relationships:
 
-1. **`flags/feature-flags.ts`** - Flag Definitions
-   - Defines all available feature flags with metadata
-   - Provides default values for each flag
-   - Categorizes flags by purpose (service mode, features, performance, debug)
+```
+┌─────────────────────────────────────────┐
+│        Core Business Models             │
+├─────────────────────────────────────────┤
+│ Section                                 │
+│  ├─ id (PK), shop (FK), prompt         │
+│  ├─ content (Liquid code), status      │
+│  ├─ themeId?, themeName?, fileName?    │
+│  ├─ conversationId? (FK)               │
+│  └─ createdAt, updatedAt               │
+│                                         │
+│ Conversation  ←─────────────────────┐   │
+│  ├─ id, shop, sectionId (FK)        │   │
+│  ├─ messages[] (relation)           │   │
+│  └─ createdAt, updatedAt            │   │
+│                                     │   │
+│ Message                             │   │
+│  ├─ id, conversationId (FK) ────────┘   │
+│  ├─ role (user|assistant)               │
+│  ├─ content, codeVersion?               │
+│  └─ createdAt                           │
+└─────────────────────────────────────────┘
 
-2. **`flags/flag-utils.ts`** - Flag Manager
-   - Manages flag state and overrides
-   - Reads flag values from environment variables (`FLAG_*` prefix)
-   - Provides convenience functions for checking flag states
-   - Supports runtime overrides for testing
+┌─────────────────────────────────────────┐
+│          Billing Models                 │
+├─────────────────────────────────────────┤
+│ Subscription                            │
+│  ├─ id, shop (UK), planId (FK)         │
+│  ├─ chargeId, status (active|cancelled)│
+│  ├─ billingCycle, nextBillingDate      │
+│  └─ cancelledAt?                        │
+│                                         │
+│ UsageRecord                             │
+│  ├─ id, shop, feature                  │
+│  ├─ amount, billingPeriod              │
+│  └─ createdAt                          │
+│                                         │
+│ PlanConfiguration                      │
+│  ├─ id, planName (UK)                  │
+│  ├─ basePrice, features[] (JSON)       │
+│  ├─ limits (JSON), quotas (JSON)       │
+│  └─ createdAt                          │
+└─────────────────────────────────────────┘
 
-**Available Flags**:
-
-**Service Mode Flags**:
-- `USE_MOCK_THEMES`: Switch between mock and real theme service (default: true)
-- `USE_MOCK_AI`: Switch between mock and real AI service (default: false)
-
-**Performance Flags**:
-- `SIMULATE_API_LATENCY`: Add realistic delays to mock responses (default: false)
-- `CACHE_THEME_LIST`: Cache theme list to reduce API calls (default: false)
-
-**Debug Flags**:
-- `VERBOSE_LOGGING`: Enable detailed service logging (default: dev mode only)
-- `SHOW_SERVICE_MODE`: Display service mode indicator in UI (default: dev mode only)
-
-**Feature Toggle Flags** (future):
-- `ENABLE_SECTION_HISTORY`: Section generation history viewer
-- `ENABLE_TEMPLATE_LIBRARY`: Pre-built section templates
-- `ENABLE_AI_SETTINGS`: AI model configuration UI
-
-**Environment Variable Configuration**:
-```bash
-# Format: FLAG_{FLAG_NAME}={value}
-FLAG_USE_MOCK_THEMES=false    # Use real Shopify API
-FLAG_USE_MOCK_AI=true         # Use mock AI service
-FLAG_VERBOSE_LOGGING=true     # Enable debug logs
-FLAG_SIMULATE_API_LATENCY=true  # Add realistic delays
+┌─────────────────────────────────────────┐
+│      Template & Supporting Models       │
+├─────────────────────────────────────────┤
+│ SectionTemplate                         │
+│  ├─ id, name, category                 │
+│  ├─ code, schema, previewCode?         │
+│  ├─ tags, downloads, rating            │
+│  ├─ createdBy, createdAt               │
+│
+│ ShopSettings                            │
+│  ├─ shop (PK), timezone                │
+│  ├─ defaultTheme, preferences (JSON)   │
+│
+│ GenerationLog                           │
+│  ├─ id, shop, prompt, code             │
+│  ├─ result (JSON), createdAt           │
+│
+│ FailedUsageCharge                      │
+│  ├─ id, shop, amount, reason           │
+│  ├─ retryCount, createdAt              │
+│
+│ SectionFeedback                         │
+│  ├─ id, sectionId (FK), rating         │
+│  ├─ comment, createdAt                 │
+└─────────────────────────────────────────┘
 ```
 
-#### Service Configuration (`config.server.ts`)
+**Database Characteristics**:
+- SQLite (dev) / PostgreSQL or MongoDB (production)
+- Multi-tenant via shop domain foreign key
+- Immutable audit logs (GenerationLog, FailedUsageCharge)
+- Soft deletes via status enum (ARCHIVE state)
 
-**Purpose**: Determine which service implementations to use based on flags
+### Layer 5: External APIs
 
-**Configuration Logic**:
+#### Google Gemini 2.5 Flash
 
-1. **Theme Mode Determination**:
-   - Check `FLAG_USE_MOCK_THEMES` environment variable
-   - Fall back to legacy `SERVICE_MODE` environment variable
-   - Default to 'mock' if nothing specified (safe for development)
-
-2. **AI Mode Determination**:
-   - Check `FLAG_USE_MOCK_AI` environment variable
-   - Check if `GEMINI_API_KEY` exists (auto-enables real mode)
-   - Default to 'mock' if no API key
-
-**Service Config Object**:
-```typescript
-export const serviceConfig: ServiceConfig = {
-  themeMode: getThemeMode(),      // 'mock' | 'real'
-  aiMode: getAIMode(),            // 'mock' | 'real'
-  enableLogging: boolean,         // Verbose logging enabled?
-  simulateLatency: boolean,       // Add delays to mocks?
-  showModeInUI: boolean          // Show mode indicator?
-};
 ```
+POST https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent
 
-#### Service Adapters
-
-**Purpose**: Route service calls to appropriate implementation based on configuration
-
-**Pattern**:
-```typescript
-class AIAdapter implements AIServiceInterface {
-  private service: AIServiceInterface;
-
-  constructor() {
-    logServiceConfig();
-    this.service = serviceConfig.aiMode === 'mock'
-      ? mockAIService   // Use mock implementation
-      : aiService;      // Use real implementation
-  }
-
-  async generateSection(prompt: string): Promise<string> {
-    return this.service.generateSection(prompt);
-  }
+Request:
+{
+  "contents": [
+    {
+      "role": "user",
+      "parts": [
+        {
+          "text": "Generate a testimonials section..."
+        }
+      ]
+    }
+  ],
+  "systemInstruction": {
+    "parts": [
+      {
+        "text": "[137-line system prompt on Shopify Liquid expertise]"
+      }
+    ]
+  },
+  "safetySettings": [...]
 }
 
-export const aiAdapter = new AIAdapter();
+Response:
+{
+  "candidates": [
+    {
+      "content": {
+        "parts": [
+          {
+            "text": "{% schema %}\n{\n  \"name\": \"...\",\n  \"settings\": [...],\n  \"blocks\": [...]\n}\n{% endschema %}\n\n{% stylesheet %}\n  ...\n{% endstylesheet %}\n\n<div ...>\n  ...\n</div>"
+          }
+        ]
+      }
+    }
+  ]
+}
+
+Features:
+- Streaming (chunked response)
+- System instruction (137 lines of expertise)
+- Temperature: default (0.7)
+- Safety settings: default (minimal blocking)
+```
+
+#### Shopify GraphQL Admin API (2025-10)
+
+```
+Scopes Required:
+- write_products (admin_graphql_api access)
+- write_themes (theme:write, themeFilesUpsert)
+- read_themes (theme:read)
+- read_files (for theme file access)
+- write_app_proxy (for /apps/blocksmith-preview)
+
+Key Queries:
+- GetThemes { themes { id, name, role, createdAt } }
+- GetProducts { products { id, title, handle, images } }
+- GetCollections { collections { id, title, handle } }
+- GetArticles { articles { id, title, content, author } }
+
+Key Mutations:
+- themeFilesUpsert(
+    themeId, files: [
+      { path: "sections/my-section.liquid", body: "..." }
+    ]
+  ) → { files, userErrors }
+```
+
+#### Shopify App Billing API
+
+```
+- Create charge: CreateAppSubscription(plan, returnUrl)
+- Confirm charge: AppSubscription { chargeId, confirmationUrl }
+- Cancel: CancelAppSubscription(id)
+- Usage-based: CreatePublicAppSubscription(plan)
+  { chargeId, returnUrl }
+
+Payment Webhook (subscriptions/update):
+{
+  "app_subscription": {
+    "id": "gid://...",
+    "name": "Pro Plan",
+    "price": "19.99",
+    "returnUrl": "...",
+    "status": "active|pending|cancelled|declined",
+    "lineItems": [{ ... }]
+  }
+}
+```
+
+## Multi-Tenant Architecture
+
+Every operation is scoped to a **shop domain**:
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      Shopify Multi-Tenant                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                              │
+│  Shop A (shop-a.myshopify.com)                              │
+│  ├─ Sessions (A's oauth tokens)                             │
+│  ├─ Sections (A's generated sections)                       │
+│  ├─ Conversations (A's chat history)                        │
+│  ├─ Subscription (A's billing)                              │
+│  ├─ UsageRecords (A's generation count)                     │
+│  └─ ShopSettings (A's preferences)                          │
+│                                                              │
+│  Shop B (shop-b.myshopify.com)                              │
+│  ├─ Sessions (B's oauth tokens)                             │
+│  ├─ Sections (B's generated sections)                       │
+│  ├─ Conversations (B's chat history)                        │
+│  ├─ Subscription (B's billing)                              │
+│  ├─ UsageRecords (B's generation count)                     │
+│  └─ ShopSettings (B's preferences)                          │
+│                                                              │
+│  ... (100+ more shops)                                      │
+│                                                              │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Isolation Mechanisms**:
+
+1. **Session Verification**: Every authenticated request verifies session exists + is valid
+2. **Query Filtering**: All database queries include `WHERE shop = <currentShop>`
+3. **API Authorization**: Shopify OAuth tokens scoped to specific shop
+4. **Webhook Validation**: HMAC signature verification (shop domain in webhook)
+5. **Billing Isolation**: Plan + usage tracked per shop independently
+
+## SSE Streaming Architecture (Chat)
+
+For real-time AI responses without polling:
+
+```
+Browser                       Server
+
+User sends message
+    │
+    ├─→ POST /api/chat/stream
+    │   { message: "...", conversationId: "..." }
+    │
+    │   ←─ HTTP 200 (streaming)
+    │   ←─ Content-Type: text/event-stream
+    │   ←─ data: { "chunk": "{% schema %}\n", "status": "streaming" }\n\n
+    │   ←─ data: { "chunk": "{\n", "status": "streaming" }\n\n
+    │   ←─ data: { "chunk": "  \"name\": \"...\",\n", ... }\n\n
+    │   ...
+    │   ←─ data: { "chunk": "", "status": "complete", "messageId": "msg_123" }\n\n
+    │
+    └─→ (connection closes)
+
+React Component:
+- useStreamingMessage() hook handles stream
+- Accumulates chunks into code buffer
+- Real-time UI updates as chunks arrive
+- On complete: calls saveAutoSave (if enabled)
 ```
 
 **Benefits**:
-- Single import point for routes (`aiAdapter`, `themeAdapter`)
-- Transparent switching between implementations
-- No conditional logic in route handlers
-- Configuration logged once at startup
-
-**Usage in Routes**:
-```typescript
-import { aiAdapter } from "../services/adapters/ai-adapter";
-import { themeAdapter } from "../services/adapters/theme-adapter";
-
-// Generate section (routes to mock or real AI service)
-const code = await aiAdapter.generateSection(prompt);
-
-// Fetch themes (routes to mock or real theme service)
-const themes = await themeAdapter.getThemes(request);
-```
-
-#### Real Service Implementations
-
-**`ai.server.ts` - AIService**
-**Purpose**: Generate Liquid sections using Google Gemini AI
-
-**Implementation**:
-- Uses `@google/generative-ai` SDK
-- Model: `gemini-2.0-flash-exp`
-- System prompt enforces Liquid structure
-- Falls back to mock section on API errors
-
-**`theme.server.ts` - ThemeService**
-**Purpose**: Interact with Shopify themes via GraphQL
-
-**Implementation**:
-- Uses Shopify Admin GraphQL API (October 2025)
-- Authenticates via `authenticate.admin(request)`
-- Queries themes and creates/updates theme files
-- Handles GraphQL errors and userErrors
-
-#### Mock Service Implementations
-
-**`mocks/mock-ai.server.ts` - MockAIService**
-**Purpose**: Simulate AI generation without external API calls
-
-**Features**:
-- Returns predefined sections for common prompts (hero, product grid)
-- Generates dynamic mock sections for custom prompts
-- Simulates API latency (configurable)
-- Tracks generation count for debugging
-- Console logging with `[MOCK]` prefix
-
-**`mocks/mock-theme.server.ts` - MockThemeService**
-**Purpose**: Simulate Shopify theme operations without API calls
-
-**Features**:
-- Returns predefined themes (Dawn, Refresh, Studio)
-- Validates theme IDs before operations
-- Saves sections to in-memory mock store
-- Simulates API latency (configurable)
-- Filename normalization (matches real service)
-
-**`mocks/mock-store.ts` - MockStore**
-**Purpose**: In-memory storage for mock service data
-
-**Capabilities**:
-- Store saved sections by theme ID and filename
-- Track generation count
-- Retrieve saved sections for inspection
-- Clear all data (useful for testing)
-
-**`mocks/mock-data.ts` - Mock Data Definitions**
-- Predefined themes with realistic data
-- Predefined section templates (hero, product grid, etc.)
-- Dynamic section generator function
-
----
-
-### Subscription Billing System
-
-**Location**: `app/services/billing.server.ts`, `app/routes/webhooks.app.subscriptions_update.tsx`
-
-**Architecture**: Hybrid subscription model (base recurring + usage overages)
-
-#### Webhook Flow - APP_SUBSCRIPTIONS_UPDATE
-
-**Purpose**: Handle subscription lifecycle events (activated, cancelled, expired, upgraded)
-
-**Flow Diagram**:
-```
-┌─────────────────────────────────────────────────────────────┐
-│  Shopify sends APP_SUBSCRIPTIONS_UPDATE webhook             │
-│  - Triggered on status change (active, cancelled, etc.)     │
-│  - Payload includes subscriptionId, status, currentPeriodEnd│
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Webhook Handler (webhooks.app.subscriptions_update.tsx)    │
-│  1. Authenticate webhook (HMAC validation)                  │
-│  2. Extract payload (subscriptionId, status, period end)    │
-│  3. Validate payload structure                              │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Check currentPeriodEnd presence                            │
-│  - IF present: Use webhook value                            │
-│  - IF missing: Query Shopify GraphQL API (fallback)         │
-│  - Handles optional field safely                            │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ▼
-┌─────────────────────────────────────────────────────────────┐
-│  Database Lookup by shopifySubId                            │
-│  - Find existing subscription record                         │
-│  - IF NOT FOUND: Check for pending subscription             │
-└────────────────────┬────────────────────────────────────────┘
-                     │
-                     ├─ Existing Record Found ──────────────┐
-                     │                                        │
-                     │                                        ▼
-                     │                           ┌──────────────────────┐
-                     │                           │ Update Status        │
-                     │                           │ - status = new value │
-                     │                           │ - period end updated │
-                     │                           │ - reset usage (cycle)│
-                     │                           └──────────────────────┘
-                     │
-                     ├─ Not Found + Active Status ──────────┐
-                     │                                        │
-                     │                                        ▼
-                     │                           ┌──────────────────────┐
-                     │                           │ Pending Subscription │
-                     │                           │ Upgrade Handler      │
-                     │                           │ - Find pending by shop│
-                     │                           │ - Update with real ID │
-                     │                           │ - Activate record     │
-                     │                           │ - Fetch period end    │
-                     │                           │ - Reset usage counters│
-                     │                           └──────────────────────┘
-                     │
-                     └─ Shop Validation ─────────────────────┐
-                                                              │
-                                                              ▼
-                                                   ┌──────────────────────┐
-                                                   │ Verify shop matches  │
-                                                   │ subscription record  │
-                                                   └──────────────────────┘
-```
-
-#### Subscription Upgrade Flow
-
-**Problem**: Shopify billing API creates new subscription on upgrade, cancels old subscription
-**Solution**: Two-phase activation with pending status + webhook reconciliation
-
-**Upgrade Sequence**:
-```
-1. User initiates upgrade (changeSubscription)
-   ├─ Cancel old subscription
-   └─ Create new subscription (status: pending, temp shopifySubId)
-
-2. User approves subscription in Shopify
-   └─ Shopify activates subscription (new shopifySubId assigned)
-
-3. Webhook received (APP_SUBSCRIPTIONS_UPDATE)
-   ├─ Payload: new shopifySubId, status=ACTIVE
-   ├─ Database lookup by shopifySubId: NOT FOUND
-   ├─ Fallback: Find pending subscription by shop
-   ├─ Update pending record:
-   │   ├─ shopifySubId = actual ID from Shopify
-   │   ├─ status = active
-   │   ├─ currentPeriodEnd = fetched from GraphQL (if missing)
-   │   └─ Reset usage counters
-   └─ Activation complete
-```
-
-#### GraphQL Fallback Strategy
-
-**Scenario**: Webhook payload missing optional `currentPeriodEnd` field
-
-**Implementation**:
-```typescript
-// Check if webhook includes currentPeriodEnd
-if (app_subscription.current_period_end) {
-  currentPeriodEnd = new Date(app_subscription.current_period_end);
-} else if (app_subscription.status.toLowerCase() === "active" && admin) {
-  // ACTIVE but no period end - query Shopify
-  const fetchedDate = await fetchCurrentPeriodEnd(admin, shopifySubId);
-  currentPeriodEnd = fetchedDate ?? undefined;
-}
-```
-
-**GraphQL Query** (`billing.server.ts`):
-```graphql
-query getSubscription($id: ID!) {
-  appSubscription(id: $id) {
-    currentPeriodEnd
-  }
-}
-```
-
-**Benefits**:
-- Handles webhook payload variations
-- Ensures data consistency
-- Prevents Invalid Date errors
-- Graceful degradation (undefined if query fails)
-
-#### Error Handling Patterns
-
-**Webhook Processing**:
-- Validate topic matches APP_SUBSCRIPTIONS_UPDATE
-- Check payload structure (admin_graphql_api_id present)
-- Verify shop matches subscription record
-- Log all errors with context (shop, subscriptionId, status)
-- Return HTTP 400/404/500 with descriptive messages
-
-**Type Safety**:
-```typescript
-// Optional field handling
-current_period_end?: string | null;
-
-// Safe Date construction
-const currentPeriodEnd = app_subscription.current_period_end
-  ? new Date(app_subscription.current_period_end)
-  : undefined;
-```
-
-**Status Normalization**:
-```typescript
-// Case-insensitive comparison (Shopify inconsistent casing)
-if (app_subscription.status.toLowerCase() === "active") {
-  // Handle active status
-}
-```
-
-#### Billing Service Functions
-
-**`createSubscription(admin, input)`**:
-- Creates hybrid subscription (base + usage)
-- Cancels existing pending/declined subscriptions
-- Stores record with status=pending
-- Returns confirmationUrl for merchant approval
-
-**`changeSubscription(admin, input)`**:
-- Cancels old subscription
-- Creates new subscription (pending)
-- Webhook activates when merchant approves
-
-**`updateSubscriptionStatus(shopifySubId, status, currentPeriodEnd?)`**:
-- Updates subscription status in DB
-- Handles optional currentPeriodEnd
-- Resets usage counters on new billing cycle
-
-**`fetchCurrentPeriodEnd(admin, shopifySubId)`**:
-- Queries Shopify GraphQL for currentPeriodEnd
-- Fallback when webhook data incomplete
-- Returns Date | null (safe handling)
-
----
-
-### 3. Data Access Layer
-
-**Location**: `app/db.server.ts`, `prisma/schema.prisma`
-
-**Responsibilities**:
-- Database connection management
-- Data persistence
-- Schema migrations
-- Query execution
-
-**Technology**: Prisma ORM
-
-**Database Models**:
-
-#### Session
-```prisma
-model Session {
-  id            String    @id
-  shop          String
-  state         String
-  isOnline      Boolean   @default(false)
-  scope         String?
-  expires       DateTime?
-  accessToken   String
-  userId        BigInt?
-  firstName     String?
-  lastName      String?
-  email         String?
-  accountOwner  Boolean   @default(false)
-  locale        String?
-  collaborator  Boolean?  @default(false)
-  emailVerified Boolean?  @default(false)
-}
-```
-
-**Usage**:
-- Stores Shopify OAuth sessions (online and offline)
-- Accessed by Shopify session storage adapter
-- Updated on scope changes
-- Deleted on app uninstall
-
-#### GeneratedSection
-```prisma
-model GeneratedSection {
-  id        String   @id @default(uuid())
-  shop      String
-  prompt    String
-  content   String
-  createdAt DateTime @default(now())
-}
-```
-
-**Usage**:
-- Historical record of generated sections
-- Currently unused in UI (future feature: history viewer)
-- Could be used for analytics
-
-**Database Configuration**:
-- **Development**: SQLite (`dev.sqlite`)
-- **Production**: PostgreSQL or MySQL (configurable via DATABASE_URL)
-
-**Prisma Client**:
-```typescript
-// Singleton pattern for hot reload support
-declare global {
-  var prismaGlobal: PrismaClient;
-}
-
-const prisma = global.prismaGlobal ?? new PrismaClient();
-export default prisma;
-```
-
----
-
-### 4. Integration Layer
-
-#### Shopify Integration
-
-**Configuration**: `app/shopify.server.ts`
-
-```typescript
-const shopify = shopifyApp({
-  apiKey: process.env.SHOPIFY_API_KEY,
-  apiSecretKey: process.env.SHOPIFY_API_SECRET,
-  apiVersion: ApiVersion.October25,
-  scopes: ["write_products", "write_themes", "read_themes"],
-  appUrl: process.env.SHOPIFY_APP_URL,
-  authPathPrefix: "/auth",
-  sessionStorage: new PrismaSessionStorage(prisma),
-  distribution: AppDistribution.AppStore,
-});
-```
-
-**Authentication Flow**:
-1. Merchant visits app URL
-2. Redirects to `/auth/login` if not authenticated
-3. OAuth flow initiated via `login(request)`
-4. Shopify OAuth consent screen
-5. Callback to `/auth/*` with code
-6. Exchange code for access token
-7. Store session in database
-8. Redirect to `/app` (embedded in Shopify admin)
-
-**Session Management**:
-- Sessions stored in database via Prisma adapter
-- Supports online and offline tokens
-- Automatic token refresh
-- Session cleanup on uninstall
-
-**GraphQL API**:
-- Version: October 2025 (2025-10)
-- Authentication: Bearer token from session
-- Rate limiting: Shopify Admin API bucket (40 requests/sec)
-
-**Webhooks**:
-- `app/uninstalled`: Triggers cleanup
-- `app/scopes_update`: Updates session scopes
-- Registered in `shopify.app.toml`
-- Version: 2026-01
-
-#### Google Gemini Integration
-
-**SDK**: `@google/generative-ai` v0.24.1
-
-**Configuration**:
-```typescript
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const model = genAI.getGenerativeModel({
-  model: "gemini-2.0-flash-exp",
-  systemInstruction: SYSTEM_PROMPT
-});
-```
-
-**System Prompt**:
-- Enforces Liquid section structure
-- Defines CSS scoping rules
-- Sets best practices (responsive, semantic HTML, accessibility)
-- Specifies output format (no markdown blocks)
-
-**API Call**:
-```typescript
-const result = await model.generateContent(prompt);
-const text = result.response.text();
-```
-
-**Error Handling**:
-- Fallback to mock response on API error
-- Logs errors for debugging
-- Never returns empty response
-
----
-
-## Data Flow Diagrams
-
-### AI Section Generation Flow
+- No polling overhead
+- Real-time feedback to user
+- Automatic reconnection on network interruption
+- Proper cleanup on component unmount
+
+## Error Handling Strategy
 
 ```
-┌─────────────┐
-│   Merchant  │
-│  enters     │
-│  prompt     │
-└──────┬──────┘
-       │
-       ▼
-┌──────────────────────┐
-│ app.generate.tsx     │
-│ action(generate)     │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ AIService            │
-│ generateSection()    │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Google Gemini API    │
-│ gemini-2.0-flash-exp │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Generated Liquid     │
-│ Code (string)        │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Action returns       │
-│ { code, prompt }     │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ UI displays code     │
-│ in preview area      │
-└──────────────────────┘
+Layer 1: Input Validation
+  ├─ input-sanitizer.ts (XSS/injection prevention)
+  ├─ validators.ts (schema validation)
+  └─ TypeScript strict mode (compile-time checks)
+           ↓
+Layer 2: Service Error Handling
+  ├─ Try-catch blocks with structured logging
+  ├─ Retry logic (exponential backoff)
+  ├─ Graceful degradation (fallback to mock)
+  └─ Error transformation (user-friendly messages)
+           ↓
+Layer 3: Route Error Handling
+  ├─ Error boundaries in React components
+  ├─ Toast notifications for user feedback
+  ├─ Fallback UI for failed operations
+  └─ Redirect to error page if critical
+           ↓
+Layer 4: User Feedback
+  ├─ Toast notifications (success/error/warning)
+  ├─ Error banners with actionable text
+  ├─ Loading states + spinners
+  └─ Empty states with next steps
 ```
 
-### Theme Save Flow
+## Security Patterns
 
-```
-┌─────────────┐
-│  Merchant   │
-│  selects    │
-│  theme &    │
-│  filename   │
-└──────┬──────┘
-       │
-       ▼
-┌──────────────────────┐
-│ app.generate.tsx     │
-│ action(save)         │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ ThemeService         │
-│ createSection()      │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Normalize filename   │
-│ (sections/*.liquid)  │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Shopify Admin API    │
-│ themeFilesUpsert     │
-│ mutation             │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Check userErrors     │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Return success/error │
-│ to action            │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Display banner with  │
-│ feedback message     │
-└──────────────────────┘
-```
+### Authentication
+- **OAuth 2.0**: Shopify handles credential exchange
+- **Offline tokens**: Long-lived API access
+- **Online tokens**: Expires in 24 hours
+- **Session storage**: Encrypted in database
 
-### App Proxy Liquid Rendering Flow (Phase 01)
+### Authorization
+- **Scope-based**: write_themes, write_products, read_themes
+- **Shop isolation**: All queries filtered by shop domain
+- **Feature gates**: Plan-based access (live_preview, publish_theme)
+- **Usage limits**: Quota tracking per shop per period
 
-**Purpose**: Render generated Liquid sections on the storefront with shop context
+### Data Privacy
+- **Minimal PII**: Email, name from Shopify (no tracking)
+- **Password encryption**: AES-256-GCM for storefront passwords
+- **Immutable logs**: GenerationLog for audit trail
+- **No code caching**: AI responses not persisted beyond user session
 
-```
-┌─────────────────────────┐
-│  Merchant Preview Link  │
-│  /apps/blocksmith-      │
-│  preview?code=BASE64    │
-└────────────┬────────────┘
-             │
-             ▼
-┌──────────────────────────┐
-│  Shopify Storefront      │
-│  Routes to proxy URL     │
-└────────────┬─────────────┘
-             │
-             ▼
-┌──────────────────────────┐
-│  api.proxy.render        │
-│  authenticate.public.    │
-│  appProxy()              │
-└────────────┬─────────────┘
-             │
-             ▼
-┌──────────────────────────┐
-│  HMAC Signature          │
-│  Validation              │
-│  (Shopify-signed only)   │
-└────────────┬─────────────┘
-             │ Valid
-             ▼
-┌──────────────────────────┐
-│  Verify app installed    │
-│  Check session exists    │
-└────────────┬─────────────┘
-             │
-             ▼
-┌──────────────────────────┐
-│  Fetch code param        │
-│  Max 100KB (DoS limit)   │
-└────────────┬─────────────┘
-             │
-             ▼
-┌──────────────────────────┐
-│  Decode Base64 Liquid    │
-└────────────┬─────────────┘
-             │
-             ▼
-┌──────────────────────────┐
-│  Strip schema blocks     │
-│  Regex: {%-?schema-?%}   │
-└────────────┬─────────────┘
-             │
-             ▼
-┌──────────────────────────┐
-│  Return liquid()         │
-│  Content-Type:           │
-│  application/liquid      │
-└────────────┬─────────────┘
-             │
-             ▼
-┌──────────────────────────┐
-│  Shopify renders Liquid  │
-│  in storefront context   │
-│  (products, collections) │
-└──────────────────────────┘
-```
+### API Security
+- **HTTPS only**: All communication encrypted
+- **HMAC verification**: Webhooks signed by Shopify
+- **Rate limiting**: Respect Shopify API buckets
+- **Environment secrets**: GEMINI_API_KEY not committed
 
-**Key Details**:
-- **URL**: `https://{shop}.myshopify.com/apps/blocksmith-preview?code={base64-liquid}`
-- **Config**: Defined in `shopify.app.toml` (`[app_proxy]` block)
-- **Max Payload**: 100KB (prevents DoS attacks via oversized code)
-- **Schema Stripping**: Liquid `schema` blocks cannot be rendered by Shopify Liquid engine, must be removed
-- **Security**: HMAC signature validation ensures only Shopify can access the endpoint
+## Performance Optimization
 
-### Authentication Flow
+### Frontend
+- **Code splitting**: Route-based lazy loading
+- **Image optimization**: Shopify CDN for product images
+- **Streaming responses**: SSE reduces perceived latency
+- **Auto-save**: Silent background saves (useFetcher)
 
-```
-┌─────────────┐
-│  Merchant   │
-│  visits app │
-│  URL        │
-└──────┬──────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Shopify redirects    │
-│ to app URL           │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Check session exists │
-└──────┬───────────────┘
-       │
-       │ No session
-       ▼
-┌──────────────────────┐
-│ Redirect to          │
-│ /auth/login          │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Merchant enters      │
-│ shop domain          │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ login(request)       │
-│ initiates OAuth      │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Shopify OAuth        │
-│ consent screen       │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Merchant approves    │
-│ scopes               │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Callback to /auth/*  │
-│ with auth code       │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Exchange code for    │
-│ access token         │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Store session in DB  │
-│ via Prisma           │
-└──────┬───────────────┘
-       │
-       ▼
-┌──────────────────────┐
-│ Redirect to /app     │
-│ (embedded)           │
-└──────────────────────┘
-```
+### Backend
+- **Query optimization**: GraphQL field selection
+- **Connection pooling**: Prisma manages DB connections
+- **Caching**: Session tokens cached in-memory
+- **Async operations**: Non-blocking I/O throughout
 
----
+### Database
+- **Indexes**: shop + createdAt for common queries
+- **Pagination**: limit 20-50 per query
+- **Soft deletes**: status column avoids hard deletes
+- **Connection pooling**: Configurable in DATABASE_URL
+
+**Performance Targets**:
+- Section generation: < 10s (95th percentile)
+- Theme fetch: < 2s (95th percentile)
+- Section save: < 3s (95th percentile)
+- App load: < 1s (3G connection)
 
 ## Deployment Architecture
 
-### Development Environment
-
 ```
-┌─────────────────────────────────────┐
-│  Local Machine                      │
-│  ┌───────────────────────────────┐ │
-│  │  React Router Dev Server      │ │
-│  │  (Vite)                       │ │
-│  │  Port: 3000                   │ │
-│  └───────────────────────────────┘ │
-│  ┌───────────────────────────────┐ │
-│  │  SQLite Database              │ │
-│  │  File: dev.sqlite             │ │
-│  └───────────────────────────────┘ │
-└─────────────┬───────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────┐
-│  Cloudflare Tunnel                  │
-│  (Shopify CLI)                      │
-│  HTTPS: *.cloudflare.com            │
-└─────────────┬───────────────────────┘
-              │
-              ▼
-┌─────────────────────────────────────┐
-│  Shopify Admin (Development Store)  │
-│  Embeds app in iframe               │
-└─────────────────────────────────────┘
+Production Environment:
+  ├─ App Server (Node.js 20+)
+  │  ├─ React Router app (SSR)
+  │  ├─ API routes (JSON)
+  │  ├─ Webhook handlers
+  │  └─ Static assets (Vite build output)
+  │
+  ├─ Database
+  │  ├─ PostgreSQL 13+ (primary)
+  │  └─ or MongoDB 4.4+ (secondary)
+  │
+  ├─ Caching Layer
+  │  ├─ Session tokens (in-memory)
+  │  ├─ Theme list (5 min TTL)
+  │  └─ Plan config (1 hour TTL)
+  │
+  ├─ External Services
+  │  ├─ Google Gemini API
+  │  ├─ Shopify GraphQL Admin API
+  │  └─ Shopify App Billing API
+  │
+  └─ Monitoring
+     ├─ Error tracking (Sentry)
+     ├─ Performance monitoring (New Relic)
+     ├─ Log aggregation (CloudWatch/Datadog)
+     └─ Uptime monitoring (Pingdom)
+
+Options:
+- Google Cloud Run (recommended)
+- Fly.io
+- Render
+- Heroku (legacy)
+- Custom Docker on ECS/GKE
 ```
-
-### Production Environment (Recommended)
-
-```
-┌──────────────────────────────────────────────────┐
-│  Load Balancer (HTTPS)                           │
-│  - SSL Termination                               │
-│  - Health checks                                 │
-└──────────────┬───────────────────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────────────────┐
-│  Application Servers (Horizontal Scaling)        │
-│  ┌────────────────┐  ┌────────────────┐         │
-│  │  React Router  │  │  React Router  │  ...    │
-│  │  Server        │  │  Server        │         │
-│  │  Instance 1    │  │  Instance 2    │         │
-│  └────────────────┘  └────────────────┘         │
-└──────────────┬───────────────────────────────────┘
-               │
-               ▼
-┌──────────────────────────────────────────────────┐
-│  PostgreSQL / MySQL (Managed Database)           │
-│  - Session table                                 │
-│  - GeneratedSection table                        │
-│  - Connection pooling                            │
-└──────────────────────────────────────────────────┘
-```
-
-**Recommended Hosting Platforms**:
-1. **Google Cloud Run**: Serverless, auto-scaling, built-in load balancing
-2. **Fly.io**: Edge hosting, fast global deployment
-3. **Render**: Managed containers, auto-scaling, integrated DB
-
----
-
-## Security Architecture
-
-### Authentication & Authorization
-
-**OAuth 2.0 Flow**:
-- Shopify handles authentication
-- App receives access token
-- Token stored in database (encrypted by Prisma)
-- Token used for all API calls
-
-**Scope-Based Authorization**:
-- `read_themes`: View theme files
-- `write_themes`: Create/update theme files
-- `write_products`: Demo feature (can be removed)
-
-**Session Security**:
-- HttpOnly cookies (App Bridge handles)
-- CSRF protection (App Bridge provides)
-- Token expiration handling
-- Automatic token refresh
-
-### Data Security
-
-**API Keys**:
-- Stored in environment variables
-- Never committed to repository
-- Rotated regularly in production
-
-**Database Security**:
-- Connection strings in environment variables
-- SSL/TLS for production database connections
-- Row-level security (future enhancement)
-
-**Input Validation**:
-- Prompt length limits (future enhancement)
-- Filename sanitization (implemented)
-- GraphQL injection prevention (Shopify handles)
-
-### Network Security
-
-**HTTPS**:
-- Required by Shopify for embedded apps
-- SSL certificates managed by hosting provider
-- Cloudflare tunnel in development
-
-**CORS**:
-- Configured for Shopify admin origins
-- App Bridge handles cross-origin communication
-
-**Rate Limiting**:
-- Shopify Admin API: 40 requests/sec
-- Gemini API: Per-project quota
-- App-level rate limiting (future enhancement)
-
----
 
 ## Scalability Considerations
 
 ### Horizontal Scaling
+- **Stateless servers**: Sessions in database (not memory)
+- **Load balancing**: Multiple app instances behind LB
+- **Database replication**: Read replicas for analytics
+- **Session affinity**: Not required (sessions are DB-backed)
 
-**Stateless Design**:
-- No in-memory state
-- All state in database or client
-- Can deploy multiple instances
+### Vertical Scaling
+- **Resource limits**: CPU/memory per instance
+- **Connection pools**: Database connections pooled per instance
+- **Timeout configuration**: Reasonable defaults (30s route, 10s AI)
 
-**Database Connection Pooling**:
-```typescript
-// Prisma supports connection pooling
-// Configure in DATABASE_URL
-// postgresql://user:pass@host/db?connection_limit=10
-```
+### Sharding (if needed)
+- **By shop domain**: Shop A → shard 1, Shop B → shard 2
+- **By feature**: Billing data separate database
+- **By time**: Logs in separate hot/cold storage
 
-**Load Balancing**:
-- Round-robin or least-connections
-- Health check endpoint (future)
-- Session affinity not required
-
-### Performance Optimization
-
-**Caching Strategy** (Future):
-- Cache theme list (TTL: 5 minutes)
-- Cache generated sections (per prompt hash)
-- Use Redis for distributed caching
-
-**Database Optimization**:
-- Indexes on frequently queried fields (shop, createdAt)
-- Prepared statements (Prisma provides)
-- Connection pooling
-
-**API Optimization**:
-- Batch GraphQL queries when possible
-- Use dataloader pattern for N+1 prevention (future)
-- Implement retry logic with exponential backoff
-
-### Monitoring & Observability
-
-**Logging** (Future):
-- Structured logging (JSON format)
-- Log levels (debug, info, warn, error)
-- Request ID tracing
-
-**Metrics** (Future):
-- API response times
-- Generation success rate
-- Database query performance
-- Error rates
-
-**Alerting** (Future):
-- High error rate alerts
-- API downtime alerts
-- Database connection failures
-
----
-
-## 5. Auto-Save Data Flow (Phase 1)
-
-### Overview
-
-**Auto-Save** automatically persists draft sections to the database when AI generates and applies a version, without requiring user action.
-
-### Flow Diagram
+## Testing Strategy
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                    ChatPanel (Component)                         │
-│  Receives AI response, adds to message stream                   │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  useVersionState Hook (Editor)                                  │
-│                                                                  │
-│  1. Detect new AI response (message with codeSnapshot)         │
-│  2. Add to versions array                                      │
-│  3. Auto-apply latest version (if not dirty, not browsing)    │
-│  4. Call onCodeChange() → update draft code                   │
-│  5. Call onAutoApply() → (optional) UI feedback               │
-│  6. Call onAutoSave(code) → Silent background save ✨        │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  useEditorState Hook                                            │
-│                                                                  │
-│  handleAutoSave(code):                                          │
-│    - Create FormData with action="saveDraft"                  │
-│    - Include code + sectionName                               │
-│    - Submit via useFetcher (silent, no UI notification)       │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  React Router Action Handler                                    │
-│  (app/routes/app.sections.$id.tsx)                            │
-│                                                                  │
-│  if (action === "saveDraft"):                                 │
-│    - Validate code length (max 100KB)                         │
-│    - Update Section in database                               │
-│    - Return success/error (no redirect)                       │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                         ▼
-┌─────────────────────────────────────────────────────────────────┐
-│  Database (Prisma)                                              │
-│                                                                  │
-│  Section.update({                                              │
-│    code: generatedCode,                                        │
-│    name: sectionName,                                          │
-│    updatedAt: now()                                            │
-│  })                                                             │
-└─────────────────────────────────────────────────────────────────┘
+Unit Tests (Components + Services)
+  ├─ Jest + React Testing Library
+  ├─ 30+ test suites
+  ├─ Mock services (MockAIService, MockThemeService)
+  └─ Snapshot tests for complex components
+
+Integration Tests (Routes + Services)
+  ├─ Loader + action testing
+  ├─ Database operations
+  ├─ API mocking with MSW
+  └─ End-to-end flows
+
+E2E Tests (Full user journey)
+  ├─ Playwright scripts
+  ├─ Shopify sandbox store
+  ├─ Real Gemini API calls
+  └─ Billing flows (test mode)
 ```
 
-### Key Components
-
-**useVersionState Hook** (`app/components/editor/hooks/useVersionState.ts`):
-- Line 114: `onAutoSave?.(latestVer.code)` - Calls auto-save callback when version auto-applies
-- Triggered only when:
-  - New AI version detected (message with codeSnapshot)
-  - Draft is NOT dirty (not modified by user)
-  - User is NOT browsing version history
-  - Version is first OR newly added
-
-**useEditorState Hook** (`app/components/editor/hooks/useEditorState.ts`):
-- Line 78: `const autoSaveFetcher = useFetcher()` - Create fetcher for silent requests
-- Line 81-87: `handleAutoSave()` callback:
-  - Submits FormData with `action: "saveDraft"`
-  - Includes current code and section name
-  - Uses `method: 'post'` for idempotent saves
-- Line 120: Passed to `useVersionState` as `onAutoSave` prop
-
-**Router Action Handler** (`app/routes/app.sections.$id.tsx`):
-- Handles `action === "saveDraft"` from FormData
-- Validates code length (prevents oversized saves)
-- Updates Section in database with new code
-- Returns success response (no redirect/reload)
-
-### Characteristics
-
-**Silent Persistence**:
-- No toast notification displayed
-- No UI flashing or loading indicators
-- User continues editing without interruption
-
-**Automatic Trigger**:
-- Happens automatically when AI applies version
-- No explicit "Save" button click required
-- User only needs to "Publish to Theme" for theme deployment
-
-**Data Loss Prevention**:
-- Saves current code state to database
-- If user refreshes page after generation, draft is preserved
-- New chat messages still restore from latest saved draft on page reload
-
-**Concurrency**:
-- Multiple rapid generations may queue multiple saves
-- Latest save wins (database row updated with most recent code)
-- No locking or transaction conflicts (row-level atomicity via Prisma)
-
-### Integration Points
-
-| Component | Hook | Purpose |
-|-----------|------|---------|
-| ChatPanel | useEditorState | Triggers on new AI message |
-| Editor Hook | useVersionState | Detects version auto-apply |
-| Version Hook | onAutoSave | Calls handleAutoSave callback |
-| Fetcher | React Router | Silent background submission |
-| Database | Prisma | Persistent storage |
-
----
-
-## 6. Chat/Streaming Architecture (Critical Implementation Notes)
-
-### Overview
-
-The ChatPanel system handles real-time AI conversation with streaming responses via Server-Sent Events (SSE). This architecture is CRITICAL to understand to avoid introducing duplicate AI responses.
-
-### Architecture Diagram
+## Monitoring & Observability
 
 ```
-┌─────────────────────────────────────────────────────────────────────────┐
-│                     app.sections.$id.tsx (Page)                         │
-│  ┌─────────────────────────────────────────────────────────────────┐   │
-│  │   useEditorState hook - orchestrates all state                   │   │
-│  │   - liveMessages state (synced from ChatPanel)                   │   │
-│  │   - version management (useVersionState)                         │   │
-│  └─────────────────────────────────────────────────────────────────┘   │
-│                               │                                         │
-│        ┌──────────────────────┼─────────────────────────┐              │
-│        ▼                                                ▼               │
-│  ┌──────────────────────────────────────────────────────────────────┐  │
-│  │ ChatPanelWrapper                                                  │  │
-│  │   ↓ initialMessages, onMessagesChange                            │  │
-│  │ ┌────────────────────────────────────────────────────────────┐   │  │
-│  │ │ ChatPanel                                                   │   │  │
-│  │ │   - useChat hook (state management + API calls)            │   │  │
-│  │ │   - Auto-trigger logic (for /new route redirect)           │   │  │
-│  │ │   - User-initiated send protection                         │   │  │
-│  │ └────────────────────────────────────────────────────────────┘   │  │
-│  └──────────────────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────────────────┘
-         │
-         ▼
-┌─────────────────┐
-│ /api/chat/stream│  ←── SSE streaming endpoint
-│ (POST)          │
-└─────────────────┘
-         │
-         ▼
-┌────────────────────────────────────────────────────────────────┐
-│                        Backend Services                         │
-│  ┌──────────────────┐          ┌─────────────────────────┐     │
-│  │   ChatService    │◄────────►│      AIService          │     │
-│  │   (chat.server)  │          │    (ai.server)          │     │
-│  │   - Prisma DB    │          │   - Gemini 2.5 Flash    │     │
-│  │   - DUPLICATE    │          │   - Streaming generator │     │
-│  │     PREVENTION   │          │                         │     │
-│  └──────────────────┘          └─────────────────────────┘     │
-└────────────────────────────────────────────────────────────────┘
-```
+Metrics:
+  ├─ Generation latency (histogram)
+  ├─ API error rate (counter)
+  ├─ Active sessions (gauge)
+  ├─ Database query time (histogram)
+  └─ Gemini API cost (counter)
 
-### ⚠️ CRITICAL: Duplicate Response Prevention
+Logs:
+  ├─ Structured JSON logs
+  ├─ Shop domain in every log entry
+  ├─ Request ID for tracing
+  └─ Error stack traces
 
-The system has **4 layers of protection** against duplicate AI responses. **DO NOT REMOVE OR MODIFY these without understanding the full flow.**
-
-#### Layer 1: User-Initiated Send Flag (ChatPanel.tsx)
-
-```typescript
-// ChatPanel.tsx - CRITICAL: Set flag BEFORE calling sendMessage
-const isUserInitiatedSendRef = useRef(false);
-
-const handleSend = useCallback((message: string) => {
-  isUserInitiatedSendRef.current = true;  // ← SET FIRST
-  sendMessage(message);
-  setPrefilledInput("");
-}, [sendMessage]);
-
-// Auto-trigger effect checks this flag
-useEffect(() => {
-  if (isUserInitiatedSendRef.current) {
-    isUserInitiatedSendRef.current = false;
-    return;  // ← Skip if user just sent
-  }
-  // ... auto-trigger logic for /new route
-}, [messages, isStreaming, triggerGeneration]);
-```
-
-**Why**: Prevents race condition between `sendMessage` and auto-trigger `useEffect`.
-
-#### Layer 2: Initial Load Guard (ChatPanel.tsx)
-
-```typescript
-// Load initial messages ONLY on first mount per conversation
-useEffect(() => {
-  if (hasLoadedInitialRef.current) return;  // ← Only once!
-  if (initialMessages.length === 0) return;
-
-  hasLoadedInitialRef.current = true;
-  loadMessages(initialMessages);
-}, [initialMessages, loadMessages]);
-```
-
-**Why**: Prevents circular updates (ChatPanel → parent → ChatPanel) from triggering `SET_MESSAGES`.
-
-#### Layer 3: Generation Lock (useChat.ts)
-
-```typescript
-const isGeneratingRef = useRef(false);
-
-const streamResponse = async (content, skipAddMessage) => {
-  if (isGeneratingRef.current) {
-    console.warn('[useChat] Ignoring duplicate generation call');
-    return;  // ← Block concurrent calls
-  }
-  isGeneratingRef.current = true;
-  // ... streaming logic
-  finally {
-    isGeneratingRef.current = false;
-  }
-};
-
-// BOTH sendMessage AND triggerGeneration check this lock
-const sendMessage = async (content) => {
-  if (isGeneratingRef.current) return;  // ← Double-check
-  // ...
-};
-
-const triggerGeneration = async (content) => {
-  if (isGeneratingRef.current) return;  // ← Double-check
-  // ...
-};
-```
-
-**Why**: Prevents concurrent API calls even if React batching causes timing issues.
-
-#### Layer 4: Server-Side Duplicate Prevention (chat.server.ts)
-
-```typescript
-async addAssistantMessage(conversationId, content, codeSnapshot, tokenCount, modelId) {
-  // Check if assistant already responded to last user message
-  const existingAssistant = await this.checkForExistingAssistantResponse(conversationId);
-  if (existingAssistant) {
-    console.warn('[ChatService] Duplicate assistant message prevented');
-    return existingAssistant;  // ← Return existing, don't create new
-  }
-  // ... create message
-}
-```
-
-**Why**: Last line of defense - even if 2 API calls slip through, only 1 message is saved.
-
-### Common Pitfalls (DO NOT DO)
-
-❌ **Don't remove `isUserInitiatedSendRef` check** - Will cause duplicate on every user send
-
-❌ **Don't re-enable messagesId comparison in loadMessages** - Will cause circular updates
-
-❌ **Don't remove `isGeneratingRef` checks** - Will allow concurrent API calls
-
-❌ **Don't add new effects that trigger generation without checking all refs**
-
-❌ **Don't call `sendMessage` or `triggerGeneration` without understanding the full flow**
-
-### Safe Modifications
-
-✅ **Adding new UI in ChatPanel** - Safe, doesn't affect generation flow
-
-✅ **Modifying message display** - Safe, affects rendering only
-
-✅ **Adding new SSE event types** - Safe, handled in streamResponse
-
-✅ **Changing AI prompt/model** - Safe, only affects ai.server.ts
-
-### Debug Logging
-
-Console logs are added for debugging duplicate issues:
-```
-[useChat] sendMessage called, isStreaming: false, isGenerating: false
-[useChat] Starting generation: gen-xxx-yyy, skipAddMessage: false
-[useChat] Generation complete: gen-xxx-yyy
-[useChat] Ignoring duplicate generation call, existing: gen-xxx, new: gen-yyy
-[ChatService] Duplicate assistant message prevented, returning existing
-```
-
-### Data Flow Summary
-
-```
-User sends message:
-1. handleSend sets isUserInitiatedSendRef = true
-2. sendMessage checks isGeneratingRef (should be false)
-3. sendMessage sets isGeneratingRef = true
-4. sendMessage dispatches ADD_USER_MESSAGE + START_STREAMING
-5. React re-renders → auto-trigger effect runs
-6. Auto-trigger sees isUserInitiatedSendRef = true → skips
-7. streamResponse makes API call
-8. Server streams response, creates assistant message
-9. COMPLETE_STREAMING dispatched
-10. isGeneratingRef = false
-
-/new route redirect (auto-trigger):
-1. Page loads with initialMessages = [user message from DB]
-2. loadMessages loads them (first time only)
-3. Auto-trigger effect runs
-4. isUserInitiatedSendRef = false, isStreaming = false
-5. hasTriggeredAutoGenRef = false, has user message, no assistant
-6. Sets hasTriggeredAutoGenRef = true
-7. Calls triggerGeneration (with continueGeneration=true)
-8. Same flow as above from step 7
+Traces:
+  ├─ Distributed tracing (OpenTelemetry)
+  ├─ Service-to-service calls
+  ├─ Database queries
+  └─ External API calls
 ```
 
 ---
 
-## Technology Stack Summary
-
-### Frontend
-- **UI Framework**: React 18.3
-- **Routing**: React Router 7.9
-- **Component Library**: Polaris Web Components
-- **State Management**: React hooks (useState, useEffect)
-- **Form Handling**: React Router useSubmit, FormData
-
-### Backend
-- **Runtime**: Node.js >= 20.19
-- **Framework**: React Router 7 (SSR)
-- **Language**: TypeScript 5.9
-- **Build Tool**: Vite 6.3
-
-### Database
-- **ORM**: Prisma 6.16
-- **Development**: SQLite
-- **Production**: PostgreSQL or MySQL (recommended)
-
-### External APIs
-- **Shopify Admin API**: GraphQL (October 2025)
-- **Google Gemini API**: gemini-2.0-flash-exp model
-
-### DevOps
-- **Version Control**: Git
-- **CI/CD**: Not configured (future)
-- **Hosting**: Configurable (Google Cloud Run, Fly.io, Render)
-- **Monitoring**: Not configured (future)
-
----
-
-**Document Version**: 2.0
-**Last Updated**: 2026-01-04
-**Architecture Status**: Native App Proxy Rendering Only, Phase 01 Auto-Save + Phase 02-04 Complete
-**Recent Changes** (January 2026):
-- **260104**: Chat/Streaming Architecture Documentation - Added critical section documenting 4-layer duplicate prevention (user-initiated flag, initial load guard, generation lock, server-side protection). Fixed race condition bug causing duplicate AI responses.
-- **260101**: Phase 01 Auto-Save - Added silent background persistence when AI generates and applies version (useVersionState onAutoSave callback + useEditorState useFetcher auto-save)
-- **251226**: LiquidJS Removal - Removed client-side LiquidJS rendering engine, Drop classes (18 files), useLiquidRenderer hook, and liquidjs dependency. All preview rendering now uses native Shopify Liquid via App Proxy
-- **251225**: Phase 01 Completion - Added transformSectionSettings: true to api.proxy.render.tsx for automatic syntax transformation ({{ section.settings.X }} → {{ settings_X }}) in native Shopify Liquid rendering
-- **251212**: Phase 02 Block Defaults - Expanded buildInitialState() to support all 31 Shopify schema types, DRY refactor with shared function in SettingsPanel
-- **251209**: Redirect after save with toast notifications (Section edit flow complete)
-- **251209**: s-select and s-text-field Web Components consolidation
-- **251202**: Subscription billing fixes - webhook processing, upgrade flow, GraphQL fallback
-- **Phase 04**: Component layer with 9 reusable UI components (Button, Card, Banner, PromptInput, ThemeSelector, CodePreview, SectionNameInput, GenerateActions, ServiceModeIndicator)
-- **Phase 03**: Feature flag system, adapter pattern with mock services, dual-action save flow, section editing
-- **Phase 02**: Block defaults and schema parsing expansion for 31 Shopify setting types
-- **Phase 01**: Resource context integration with SectionSettingsDrop
+**Document Version**: 1.5
+**Last Updated**: 2026-01-20
+**Maintainer**: Documentation Manager

@@ -26,7 +26,7 @@ function escapeLiquidCapture(value: string): string {
     .replace(/\{\{/g, '{ {')
     .replace(/\}\}/g, '} }')
     .replace(/\{%/g, '{ %')
-    .replace(/\%\}/g, '% }');
+    .replace(/%\}/g, '% }');
 }
 
 /**

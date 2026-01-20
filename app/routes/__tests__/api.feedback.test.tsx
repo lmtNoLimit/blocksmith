@@ -1,6 +1,7 @@
 /**
  * Tests for /api/feedback route
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { action } from '../api.feedback';
 import prisma from '../../db.server';

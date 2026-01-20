@@ -3,7 +3,6 @@
  * Tests code display, copy functionality, and code block rendering
  */
 import { render, screen } from '@testing-library/react';
-import userEvent from '@testing-library/user-event';
 import { CodeBlock } from '../CodeBlock';
 
 describe('CodeBlock', () => {
