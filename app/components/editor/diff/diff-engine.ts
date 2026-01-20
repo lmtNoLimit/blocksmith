@@ -129,9 +129,6 @@ function groupIntoHunks(lines: DiffLine[], contextLines: number): DiffHunk[] {
   if (lines.length === 0) return [];
 
   const hunks: DiffHunk[] = [];
-  const currentHunk: DiffLine[] = [];
-  const lastChangeIndex = -1;
-  const hasChange = false;
 
   // Find indices of changed lines
   const changeIndices: number[] = [];
@@ -170,7 +167,7 @@ function groupIntoHunks(lines: DiffLine[], contextLines: number): DiffHunk[] {
 /**
  * Create a DiffHunk from lines slice
  */
-function createHunk(lines: DiffLine[], startOffset: number): DiffHunk {
+function createHunk(lines: DiffLine[], _startOffset: number): DiffHunk {
   let oldCount = 0;
   let newCount = 0;
   let firstOldLineNum: number | undefined;

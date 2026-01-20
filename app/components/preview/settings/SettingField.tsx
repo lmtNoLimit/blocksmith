@@ -1,4 +1,4 @@
-import type { SchemaSetting, SettingType } from '../schema/SchemaTypes';
+import type { SchemaSetting } from '../schema/SchemaTypes';
 import type { SelectedResource } from '../ResourceSelector';
 import { isResourceType, isPresentationalType } from '../schema/parseSchema';
 import { TextSetting } from './TextSetting';
@@ -41,7 +41,7 @@ function ResourceSettingInfo() {
     }}>
       <span style={{ color: '#637381', fontSize: '14px' }}>ℹ</span>
       <span style={{ fontSize: '12px', color: '#637381', lineHeight: '1.4' }}>
-        Resource settings don't support defaults. Values set per-instance in Theme Customizer.
+        Resource settings don&apos;t support defaults. Values set per-instance in Theme Customizer.
       </span>
     </div>
   );

@@ -1,6 +1,7 @@
 /**
  * Tests for Liquid section schema validation rules
  */
+/* eslint-disable @typescript-eslint/no-explicit-any */
 
 import { VALIDATION_RULES, type ParsedSchema } from '../validation-rules';
 

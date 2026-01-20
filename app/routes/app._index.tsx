@@ -3,7 +3,7 @@ import type {
   HeadersFunction,
   LoaderFunctionArgs,
 } from "react-router";
-import { useLoaderData, useNavigate } from "react-router";
+import { useLoaderData } from "react-router";
 import { authenticate } from "../shopify.server";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import prisma from "../db.server";
@@ -134,7 +134,6 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function Homepage() {
   const { stats, onboarding, news } = useLoaderData<typeof loader>();
-  const navigate = useNavigate();
 
   return (
     <s-page heading="Dashboard" inlineSize="base">
