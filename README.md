@@ -1,37 +1,37 @@
 # AI Section Generator (Blocksmith)
 
-Generate custom Shopify Liquid theme sections using AI. Describe what you want in natural language, get production-ready Liquid code, and save directly to your theme.
+AI-powered custom Shopify Liquid sections without coding. Merchants describe sections in natural language, get production-ready Liquid code with live preview, and save directly to their theme.
 
-**Built with**: React Router 7, TypeScript, Prisma, Google Gemini 2.5 Flash, MongoDB, Shopify Polaris
+**Stack**: React Router 7, TypeScript, Prisma, Google Gemini 2.5 Flash, MongoDB, Shopify Polaris
 
 ## What is this?
 
-Blocksmith is a Shopify embedded app that enables merchants to create custom theme sections without coding:
+**Blocksmith** enables Shopify merchants to create custom theme sections in 4 steps:
 
-1. **Describe** - Tell the AI what you want ("A testimonials section with 3 columns")
-2. **Generate** - AI creates complete Liquid code with schema, styles, and markup
-3. **Preview** - See how it looks with real shop context
-4. **Save** - Publish directly to your theme with one click
+1. **Describe** - Natural language prompt ("Testimonials section with 3 columns")
+2. **Generate** - AI creates production-ready Liquid + schema + styles
+3. **Preview** - See live rendering with real shop data
+4. **Save** - Publish directly to theme with one click
 
-## Core Features
+## Key Features
 
-- **AI-Powered Generation** - Google Gemini 2.5 Flash generates production-ready Liquid
-- **Interactive Chat** - Refine sections via conversation with streaming updates
-- **Live Preview** - See changes in real-time with Shopify context (products, collections, etc.)
-- **Theme Integration** - Save sections directly to merchant Shopify themes
-- **Dual-Action Save** - Save as Draft or Publish to Theme with toast notifications
-- **Section Editing** - Edit and regenerate sections while preserving drafts
-- **Billing System** - Hybrid pricing with base recurring + usage-based charges
-- **Polaris Web Components** - Native Shopify admin UX with `<s-*>` elements
+- **AI Generation**: Google Gemini 2.5 Flash produces Liquid code
+- **Interactive Chat**: Refine sections via conversation (SSE streaming)
+- **Live Preview**: Real-time rendering with 18 context types + 25+ filters
+- **Theme Publishing**: Direct save to Shopify themes via GraphQL
+- **Dual-Action Save**: Draft persistence + theme publishing
+- **Auto-Save**: Silent background saves prevent data loss
+- **Hybrid Billing**: Recurring + usage-based pricing
+- **Polaris Web Components**: Native Shopify admin UX
 
 ## Documentation
 
-**For developers**, start with these:
-- [Quick Start](#quick-start) - Setup and local development
-- [Project Overview & PDR](docs/project-overview-pdr.md) - Product scope, requirements, roadmap
-- [Codebase Summary](docs/codebase-summary.md) - Structure, components, services (235 app files, 28 routes, 107 components)
-- [Code Standards](docs/code-standards.md) - Development guidelines and patterns
-- [System Architecture](docs/system-architecture.md) - Technical design and data flow
+**Quick Links**:
+- [Quick Start](#quick-start) - Setup in 5 minutes
+- [Project Overview & PDR](docs/project-overview-pdr.md) - Features, requirements, roadmap
+- [Codebase Summary](docs/codebase-summary.md) - 111 components, 19 services, 11 models
+- [Code Standards](docs/code-standards.md) - TypeScript strict, patterns, testing
+- [System Architecture](docs/system-architecture.md) - Data flow, integrations, scalability
 
 ## Project Status
 
