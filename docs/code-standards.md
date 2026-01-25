@@ -472,6 +472,104 @@ const session = await prisma.session.findUnique({
 const session = await prisma.$queryRaw`SELECT * FROM Session WHERE id = ${sessionId}`;
 ```
 
+## Data Integrity & Transaction Patterns
+
+### Cascade Delete Operations
+
+When deleting parent records that have dependent child records, use atomic Prisma transactions to ensure data consistency. The cascade delete pattern prevents orphaned records and maintains referential integrity.
+
+**Example: Section Cascade Delete (Phase 01)**
+
+```typescript
+/**
+ * Delete section and all dependent records in a single atomic transaction
+ * Preserves GenerationLog for audit trail (sectionId becomes nullable)
+ */
+async delete(id: string, shop: string): Promise<boolean> {
+  const existing = await prisma.section.findFirst({
+    where: { id, shop },
+  });
+
+  if (!existing) return false;
+
+  try {
+    await prisma.$transaction(async (tx) => {
+      // 1. Find and delete conversation (1:1 relationship)
+      const conversation = await tx.conversation.findUnique({
+        where: { sectionId: id },
+      });
+
+      if (conversation) {
+        // Delete messages first (Prisma cascade exists, but explicit for clarity)
+        await tx.message.deleteMany({
+          where: { conversationId: conversation.id },
+        });
+        // Delete conversation
+        await tx.conversation.delete({
+          where: { id: conversation.id },
+        });
+      }
+
+      // 2. Delete billing/feedback records (many:1 relationships)
+      await tx.usageRecord.deleteMany({
+        where: { sectionId: id },
+      });
+      await tx.sectionFeedback.deleteMany({
+        where: { sectionId: id },
+      });
+      await tx.failedUsageCharge.deleteMany({
+        where: { sectionId: id },
+      });
+
+      // 3. Finally delete section
+      await tx.section.delete({
+        where: { id },
+      });
+    });
+
+    return true;
+  } catch (error) {
+    console.error(`[sectionService.delete] Failed to delete section ${id}:`, error);
+    throw error;
+  }
+}
+```
+
+**Cascade Delete Dependencies**:
+- **Deleted with section**:
+  - `Message` (via `Conversation`)
+  - `Conversation` (1:1 with section)
+  - `UsageRecord` (tracks AI generation usage)
+  - `SectionFeedback` (user quality feedback)
+  - `FailedUsageCharge` (retry queue)
+
+- **Preserved**:
+  - `GenerationLog` (audit trail, sectionId becomes orphan reference) - enables post-deletion audit queries
+
+**Key Patterns**:
+1. Always wrap multi-table deletes in `prisma.$transaction()` for atomicity
+2. Delete child records before parent to respect foreign key constraints
+3. Preserve immutable audit logs even after deletion
+4. Explicit `deleteMany()` calls make intent clear, even if Prisma cascade rules exist
+5. Return meaningful success/failure indicators
+6. Log errors with full context for debugging
+
+**Testing Cascade Delete**:
+```typescript
+it('should cascade delete section and all related records', async () => {
+  // Mock transaction execution
+  mockedTransaction.mockImplementationOnce(async (callback) => callback(txMocks));
+
+  const result = await sectionService.delete('section-123', 'myshop.myshopify.com');
+
+  expect(result).toBe(true);
+  expect(txMocks.message.deleteMany).toHaveBeenCalledWith({ where: { conversationId: 'conv-123' } });
+  expect(txMocks.conversation.delete).toHaveBeenCalledWith({ where: { id: 'conv-123' } });
+  expect(txMocks.usageRecord.deleteMany).toHaveBeenCalledWith({ where: { sectionId: 'section-123' } });
+  expect(txMocks.section.delete).toHaveBeenCalled();
+});
+```
+
 ## Error Handling Standards
 
 ### Service Layer Error Handling

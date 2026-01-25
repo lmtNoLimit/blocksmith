@@ -1,10 +1,9 @@
 // @jest-environment node
-import type { Mock } from 'jest';
 import type { Section } from '@prisma/client';
 
 // Type alias for convenience
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-type MockedFunction<T extends (...args: any[]) => any> = Mock<ReturnType<T>, Parameters<T>>;
+type MockedFunction<T extends (...args: any[]) => any> = jest.Mock<ReturnType<T>, Parameters<T>>;
 
 // Mock Prisma BEFORE importing sectionService
 jest.mock('../../db.server', () => ({
@@ -18,6 +17,23 @@ jest.mock('../../db.server', () => ({
       count: jest.fn(),
       delete: jest.fn(),
     },
+    conversation: {
+      findUnique: jest.fn(),
+      delete: jest.fn(),
+    },
+    message: {
+      deleteMany: jest.fn(),
+    },
+    usageRecord: {
+      deleteMany: jest.fn(),
+    },
+    sectionFeedback: {
+      deleteMany: jest.fn(),
+    },
+    failedUsageCharge: {
+      deleteMany: jest.fn(),
+    },
+    $transaction: jest.fn(),
   },
 }));
 
@@ -52,7 +68,6 @@ describe('SectionService', () => {
     themeName: null,
     fileName: null,
     createdAt: new Date('2025-01-01T00:00:00Z'),
-    updatedAt: new Date('2025-01-01T00:00:00Z'),
     ...overrides,
   });
 
@@ -725,18 +740,80 @@ describe('SectionService', () => {
   });
 
   // ============================================================================
-  // DELETE Tests
+  // DELETE Tests (Cascade Delete)
   // ============================================================================
   describe('delete', () => {
-    it('should delete section by id', async () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockedTransaction = prisma.$transaction as jest.Mock<any>;
+
+    beforeEach(() => {
+      // Setup $transaction to execute the callback with mocked tx
+      mockedTransaction.mockImplementation(async (callback) => {
+        const tx = {
+          conversation: { findUnique: jest.fn(), delete: jest.fn() },
+          message: { deleteMany: jest.fn() },
+          usageRecord: { deleteMany: jest.fn() },
+          sectionFeedback: { deleteMany: jest.fn() },
+          failedUsageCharge: { deleteMany: jest.fn() },
+          section: { delete: jest.fn() },
+        };
+        return callback(tx);
+      });
+    });
+
+    it('should cascade delete section and all related records', async () => {
       const mockSection = createMockSection();
       mockedPrismaSection.findFirst.mockResolvedValueOnce(mockSection);
-      mockedPrismaSection.delete.mockResolvedValueOnce(mockSection);
+
+      // Setup transaction mock to track calls
+      const txMocks = {
+        conversation: { findUnique: jest.fn().mockResolvedValue({ id: 'conv-123', sectionId: 'section-123' }), delete: jest.fn() },
+        message: { deleteMany: jest.fn() },
+        usageRecord: { deleteMany: jest.fn() },
+        sectionFeedback: { deleteMany: jest.fn() },
+        failedUsageCharge: { deleteMany: jest.fn() },
+        section: { delete: jest.fn() },
+      };
+      mockedTransaction.mockImplementationOnce(async (callback) => callback(txMocks));
 
       const result = await sectionService.delete('section-123', 'myshop.myshopify.com');
 
       expect(result).toBe(true);
-      expect(mockedPrismaSection.delete).toHaveBeenCalledWith({ where: { id: 'section-123' } });
+      expect(mockedTransaction).toHaveBeenCalled();
+      expect(txMocks.conversation.findUnique).toHaveBeenCalledWith({ where: { sectionId: 'section-123' } });
+      expect(txMocks.message.deleteMany).toHaveBeenCalledWith({ where: { conversationId: 'conv-123' } });
+      expect(txMocks.conversation.delete).toHaveBeenCalledWith({ where: { id: 'conv-123' } });
+      expect(txMocks.usageRecord.deleteMany).toHaveBeenCalledWith({ where: { sectionId: 'section-123' } });
+      expect(txMocks.sectionFeedback.deleteMany).toHaveBeenCalledWith({ where: { sectionId: 'section-123' } });
+      expect(txMocks.failedUsageCharge.deleteMany).toHaveBeenCalledWith({ where: { sectionId: 'section-123' } });
+      expect(txMocks.section.delete).toHaveBeenCalledWith({ where: { id: 'section-123' } });
+    });
+
+    it('should skip conversation/message deletion if no conversation exists', async () => {
+      const mockSection = createMockSection();
+      mockedPrismaSection.findFirst.mockResolvedValueOnce(mockSection);
+
+      const txMocks = {
+        conversation: { findUnique: jest.fn().mockResolvedValue(null), delete: jest.fn() },
+        message: { deleteMany: jest.fn() },
+        usageRecord: { deleteMany: jest.fn() },
+        sectionFeedback: { deleteMany: jest.fn() },
+        failedUsageCharge: { deleteMany: jest.fn() },
+        section: { delete: jest.fn() },
+      };
+      mockedTransaction.mockImplementationOnce(async (callback) => callback(txMocks));
+
+      const result = await sectionService.delete('section-123', 'myshop.myshopify.com');
+
+      expect(result).toBe(true);
+      expect(txMocks.conversation.findUnique).toHaveBeenCalled();
+      expect(txMocks.message.deleteMany).not.toHaveBeenCalled();
+      expect(txMocks.conversation.delete).not.toHaveBeenCalled();
+      // Other deletes should still happen
+      expect(txMocks.usageRecord.deleteMany).toHaveBeenCalled();
+      expect(txMocks.sectionFeedback.deleteMany).toHaveBeenCalled();
+      expect(txMocks.failedUsageCharge.deleteMany).toHaveBeenCalled();
+      expect(txMocks.section.delete).toHaveBeenCalled();
     });
 
     it('should return false if section not found', async () => {
@@ -745,7 +822,17 @@ describe('SectionService', () => {
       const result = await sectionService.delete('section-999', 'myshop.myshopify.com');
 
       expect(result).toBe(false);
-      expect(mockedPrismaSection.delete).not.toHaveBeenCalled();
+      expect(mockedTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should throw error if transaction fails', async () => {
+      const mockSection = createMockSection();
+      mockedPrismaSection.findFirst.mockResolvedValueOnce(mockSection);
+      mockedTransaction.mockRejectedValueOnce(new Error('Transaction failed'));
+
+      await expect(
+        sectionService.delete('section-123', 'myshop.myshopify.com')
+      ).rejects.toThrow('Transaction failed');
     });
   });
 

@@ -360,6 +360,30 @@ app/services/
 - Multi-tenant via shop domain foreign key
 - Immutable audit logs (GenerationLog, FailedUsageCharge)
 - Soft deletes via status enum (ARCHIVE state)
+- Atomic cascade delete via Prisma transactions (Phase 01)
+
+**Cascade Delete Pattern (Phase 01 - Section Service)**:
+
+When a Section is deleted, all dependent records are removed in a single atomic transaction:
+
+```
+DELETE Section
+  ├─ DELETE Conversation (1:1 relation to Section)
+  │   └─ DELETE Messages (child of Conversation)
+  ├─ DELETE UsageRecords (references Section)
+  ├─ DELETE SectionFeedback (references Section)
+  └─ DELETE FailedUsageCharge (references Section)
+
+PRESERVE: GenerationLog (sectionId becomes orphan reference for audit purposes)
+```
+
+This pattern ensures:
+- **Data consistency**: All related records removed together (atomicity)
+- **No orphans**: No dangling foreign key references
+- **Audit trail**: Immutable logs preserved for compliance/debugging
+- **Transaction safety**: Rollback on any deletion failure
+
+See `Code Standards > Data Integrity & Transaction Patterns` for implementation details.
 
 ### Layer 5: External APIs
 

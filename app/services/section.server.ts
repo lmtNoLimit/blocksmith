@@ -287,7 +287,9 @@ export const sectionService = {
   },
 
   /**
-   * Delete section entry
+   * Delete section and all related data (cascade delete)
+   * Deletes: Messages, Conversation, UsageRecord, SectionFeedback, FailedUsageCharge
+   * Preserves: GenerationLog (audit trail - sectionId becomes orphan reference)
    */
   async delete(id: string, shop: string): Promise<boolean> {
     const existing = await prisma.section.findFirst({
@@ -296,8 +298,46 @@ export const sectionService = {
 
     if (!existing) return false;
 
-    await prisma.section.delete({ where: { id } });
-    return true;
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Get conversation for this section (1:1 relationship)
+        const conversation = await tx.conversation.findUnique({
+          where: { sectionId: id },
+        });
+
+        if (conversation) {
+          // Delete messages first (explicit, even though Prisma cascade exists)
+          await tx.message.deleteMany({
+            where: { conversationId: conversation.id },
+          });
+          // Delete conversation
+          await tx.conversation.delete({
+            where: { id: conversation.id },
+          });
+        }
+
+        // Delete billing/feedback records
+        await tx.usageRecord.deleteMany({
+          where: { sectionId: id },
+        });
+        await tx.sectionFeedback.deleteMany({
+          where: { sectionId: id },
+        });
+        await tx.failedUsageCharge.deleteMany({
+          where: { sectionId: id },
+        });
+
+        // Finally delete the section
+        await tx.section.delete({
+          where: { id },
+        });
+      });
+
+      return true;
+    } catch (error) {
+      console.error(`[sectionService.delete] Failed to delete section ${id}:`, error);
+      throw error;
+    }
   },
 
   /**

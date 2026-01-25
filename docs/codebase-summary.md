@@ -210,12 +210,23 @@ ai-section-generator-app/
 │   │   │   - addMessage(conversationId, role, content)
 │   │   │   - getConversation(id) → full history
 │   │   │
-│   │   ├── section.server.ts          # Section CRUD (380 LOC)
-│   │   │   - createSection(shop, prompt, code, status)
-│   │   │   - updateSection(id, { code, status, themeId, fileName })
-│   │   │   - listSections(shop, status) → paginated list
-│   │   │   - deleteSection(id) → archive/hard delete
-│   │   │   - Status lifecycle: DRAFT → ACTIVE → ARCHIVE
+│   │   ├── section.server.ts          # Section CRUD (420 LOC, Phase 01 Complete)
+│   │   │   - create(shop, prompt, code) → Section (DRAFT status)
+│   │   │   - update(id, shop, { code, status, themeId, fileName })
+│   │   │   - delete(id, shop) → CASCADE DELETE (Phase 01, atomic transaction)
+│   │   │   - Cascade: Messages, Conversation, UsageRecord, SectionFeedback, FailedUsageCharge
+│   │   │   - Preserves: GenerationLog (audit trail, sectionId becomes orphan)
+│   │   │   - publish(id, shop, { themeId, themeName, fileName })
+│   │   │   - unpublish(id, shop) → reverts to DRAFT
+│   │   │   - archive(id, shop) → INACTIVE status
+│   │   │   - restore(id, shop) → DRAFT status
+│   │   │   - listSections(shop, { page, limit, status? })
+│   │   │   - getById(id, shop)
+│   │   │   - getMostRecent(shop)
+│   │   │   - countByStatus(shop)
+│   │   │   - Status lifecycle: DRAFT → ACTIVE → INACTIVE (archive/restore)
+│   │   │   - Status transitions validated via SECTION_STATUS.isValidTransition()
+│   │   │   - All delete operations wrapped in Prisma transactions for data integrity
 │   │   │
 │   │   ├── billing.server.ts          # Shopify App Billing (450 LOC)
 │   │   │   - getSubscription(shop) → active plan

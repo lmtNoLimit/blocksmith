@@ -295,9 +295,15 @@ Historical record of generated sections:
 
 ### Phase 1 Enhancements
 - ✅ Auto-save draft on AI generation (silent, no user action)
-- ✅ Uses useFetcher for background persistence
-- ✅ Prevents data loss on page refresh
-- ✅ Works transparently with chat/version flows
+  - Uses useFetcher for background persistence
+  - Prevents data loss on page refresh
+  - Works transparently with chat/version flows
+- ✅ Cascade delete implementation for data integrity
+  - Atomic transaction-based deletion via Prisma
+  - Deletes dependent records: Messages, Conversation, UsageRecord, SectionFeedback, FailedUsageCharge
+  - Preserves GenerationLog for audit trail (sectionId becomes orphan reference)
+  - Prevents orphaned records and maintains referential integrity
+  - 4 comprehensive test cases covering all deletion scenarios
 
 ### Pending
 - ⏳ **Shopify write_themes scope approval** (blocks production deployment)
