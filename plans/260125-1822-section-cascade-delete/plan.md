@@ -1,7 +1,8 @@
 ---
 title: "Section Cascade Delete"
 description: "Delete all related data when a section is deleted"
-status: in-progress
+status: completed
+completed_at: 2026-01-25
 priority: P2
 effort: 2h
 branch: main
@@ -41,7 +42,7 @@ Using Prisma transaction to delete related records before section deletion. This
 | Phase | Description | Status |
 |-------|-------------|--------|
 | [Phase 01](./phase-01-section-service-cascade.md) | Update section.server.ts delete method | ✅ Completed (2026-01-25) |
-| [Phase 02](./phase-02-bulk-delete-transactional.md) | Make bulk delete transactional | ⬜ Pending |
+| [Phase 02](./phase-02-bulk-delete-transactional.md) | Make bulk delete transactional | ✅ Completed (2026-01-25) |
 
 ## Key Files
 

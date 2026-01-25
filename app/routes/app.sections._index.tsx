@@ -115,16 +115,24 @@ export async function action({ request }: ActionFunctionArgs) {
       };
     }
 
-    // Delete in parallel, max 50 at a time
+    // Bulk delete in single transaction, max 50 at a time
     const idsToDelete = ids.slice(0, 50);
-    await Promise.all(idsToDelete.map((id) => sectionService.delete(id, shop)));
-
-    return {
-      success: true,
-      action: "bulkDelete",
-      message: `${idsToDelete.length} section${idsToDelete.length > 1 ? "s" : ""} deleted successfully.`,
-      deletedCount: idsToDelete.length,
-    };
+    try {
+      const deletedCount = await sectionService.bulkDelete(idsToDelete, shop);
+      return {
+        success: true,
+        action: "bulkDelete",
+        message: `${deletedCount} section${deletedCount > 1 ? "s" : ""} deleted successfully.`,
+        deletedCount,
+      };
+    } catch (error) {
+      console.error("[bulkDelete action] Transaction failed:", error);
+      return {
+        success: false,
+        action: "bulkDelete",
+        message: "Failed to delete sections. Please try again.",
+      };
+    }
   }
 
   if (actionType === "bulkArchive") {

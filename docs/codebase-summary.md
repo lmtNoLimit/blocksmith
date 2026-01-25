@@ -1,7 +1,7 @@
 # Codebase Summary - AI Section Generator (Blocksmith)
 
-**Last Updated**: 2026-01-20
-**Version**: 1.4
+**Last Updated**: 2026-01-25
+**Version**: 1.5
 **Architecture**: Service-oriented, multi-tenant, React Router 7 SSR with TypeScript strict mode
 
 ## Overview
@@ -210,10 +210,16 @@ ai-section-generator-app/
 │   │   │   - addMessage(conversationId, role, content)
 │   │   │   - getConversation(id) → full history
 │   │   │
-│   │   ├── section.server.ts          # Section CRUD (420 LOC, Phase 01 Complete)
+│   │   ├── section.server.ts          # Section CRUD (430 LOC, Phase 02 Complete)
 │   │   │   - create(shop, prompt, code) → Section (DRAFT status)
 │   │   │   - update(id, shop, { code, status, themeId, fileName })
 │   │   │   - delete(id, shop) → CASCADE DELETE (Phase 01, atomic transaction)
+│   │   │   - bulkDelete(ids, shop) → Transactional cascade delete (Phase 02)
+│   │   │     - Single Prisma transaction for all-or-nothing semantics
+│   │   │     - Ownership validation via shop domain
+│   │   │     - Max 50 ids per request (enforced in route action)
+│   │   │     - Cascade order: messages → conversations → usage/feedback/charges → sections
+│   │   │     - Returns count of deleted sections
 │   │   │   - Cascade: Messages, Conversation, UsageRecord, SectionFeedback, FailedUsageCharge
 │   │   │   - Preserves: GenerationLog (audit trail, sectionId becomes orphan)
 │   │   │   - publish(id, shop, { themeId, themeName, fileName })
@@ -414,7 +420,7 @@ ai-section-generator-app/
   - Error recovery with retry logic
 
 ### Data Management
-- `section.server.ts` - Section CRUD with status lifecycle
+- `section.server.ts` - Section CRUD with status lifecycle, transactional bulk delete (Phase 02)
 - `chat.server.ts` - Conversation and message persistence
 - `generation-log.server.ts` - Immutable audit trail
 

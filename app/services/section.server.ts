@@ -376,4 +376,55 @@ export const sectionService = {
       where: { shop, status: SECTION_STATUS.ARCHIVE },
     });
   },
+
+  /**
+   * Bulk delete sections and all related data in single transaction
+   * All-or-nothing semantics - if any delete fails, entire operation rolls back
+   * @param ids - Section IDs to delete (max 50)
+   * @param shop - Shop identifier for ownership validation
+   * @returns Number of sections deleted
+   */
+  async bulkDelete(ids: string[], shop: string): Promise<number> {
+    // Early return for empty input
+    if (ids.length === 0) return 0;
+
+    // Validate ownership - only delete sections belonging to this shop
+    const existing = await prisma.section.findMany({
+      where: { id: { in: ids }, shop },
+      select: { id: true },
+    });
+    const validIds = existing.map((s) => s.id);
+
+    if (validIds.length === 0) return 0;
+
+    try {
+      await prisma.$transaction(async (tx) => {
+        // Get all conversations for these sections
+        const conversations = await tx.conversation.findMany({
+          where: { sectionId: { in: validIds } },
+          select: { id: true },
+        });
+        const convIds = conversations.map((c) => c.id);
+
+        // Cascade delete in dependency order
+        if (convIds.length > 0) {
+          await tx.message.deleteMany({ where: { conversationId: { in: convIds } } });
+          await tx.conversation.deleteMany({ where: { id: { in: convIds } } });
+        }
+
+        // Delete billing/feedback records
+        await tx.usageRecord.deleteMany({ where: { sectionId: { in: validIds } } });
+        await tx.sectionFeedback.deleteMany({ where: { sectionId: { in: validIds } } });
+        await tx.failedUsageCharge.deleteMany({ where: { sectionId: { in: validIds } } });
+
+        // Finally delete sections
+        await tx.section.deleteMany({ where: { id: { in: validIds } } });
+      });
+
+      return validIds.length;
+    } catch (error) {
+      console.error(`[sectionService.bulkDelete] Failed to bulk delete sections:`, error);
+      throw error;
+    }
+  },
 };

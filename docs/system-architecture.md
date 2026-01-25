@@ -1,8 +1,8 @@
 # System Architecture - AI Section Generator (Blocksmith)
 
-**Document Version**: 1.5
-**Last Updated**: 2026-01-20
-**Status**: Production-Ready (Phase 4 Complete)
+**Document Version**: 1.6
+**Last Updated**: 2026-01-25
+**Status**: Production-Ready (Phase 4 Complete + Phase 02 Bulk Delete)
 
 ## Executive Summary
 
@@ -218,8 +218,12 @@ app/services/
 │     - Stream handling + mock fallback
 │
 ├─ DATA MANAGEMENT
-│  ├─ section.server.ts (380 LOC)
+│  ├─ section.server.ts (430 LOC, Phase 02)
 │  │   - CRUD: create, read, update, delete
+│  │   - bulkDelete(ids, shop): Transactional cascade delete
+│  │     * All-or-nothing semantics via Prisma $transaction
+│  │     * Ownership validation (shop domain)
+│  │     * Dependency cascade: messages → conversations → records → sections
 │  │   - Status: DRAFT → ACTIVE → ARCHIVE
 │  │
 │  ├─ chat.server.ts (220 LOC)

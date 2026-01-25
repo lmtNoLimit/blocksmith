@@ -16,10 +16,13 @@ jest.mock('../../db.server', () => ({
       findMany: jest.fn(),
       count: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn(),
     },
     conversation: {
       findUnique: jest.fn(),
+      findMany: jest.fn(),
       delete: jest.fn(),
+      deleteMany: jest.fn(),
     },
     message: {
       deleteMany: jest.fn(),
@@ -833,6 +836,144 @@ describe('SectionService', () => {
       await expect(
         sectionService.delete('section-123', 'myshop.myshopify.com')
       ).rejects.toThrow('Transaction failed');
+    });
+  });
+
+  // ============================================================================
+  // BULK DELETE Tests (Transactional)
+  // ============================================================================
+  describe('bulkDelete', () => {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const mockedTransaction = prisma.$transaction as jest.Mock<any>;
+
+    it('should bulk delete multiple sections in single transaction', async () => {
+      // Setup: find valid sections
+      mockedPrismaSection.findMany.mockResolvedValueOnce([
+        { id: 'section-1' },
+        { id: 'section-2' },
+        { id: 'section-3' },
+      ]);
+
+      // Setup transaction mock
+      const txMocks = {
+        conversation: { findMany: jest.fn().mockResolvedValue([{ id: 'conv-1' }, { id: 'conv-2' }]), deleteMany: jest.fn() },
+        message: { deleteMany: jest.fn() },
+        usageRecord: { deleteMany: jest.fn() },
+        sectionFeedback: { deleteMany: jest.fn() },
+        failedUsageCharge: { deleteMany: jest.fn() },
+        section: { deleteMany: jest.fn() },
+      };
+      mockedTransaction.mockImplementationOnce(async (callback) => callback(txMocks));
+
+      const result = await sectionService.bulkDelete(
+        ['section-1', 'section-2', 'section-3'],
+        'myshop.myshopify.com'
+      );
+
+      expect(result).toBe(3);
+      expect(mockedTransaction).toHaveBeenCalled();
+      expect(txMocks.conversation.findMany).toHaveBeenCalledWith({
+        where: { sectionId: { in: ['section-1', 'section-2', 'section-3'] } },
+        select: { id: true },
+      });
+      expect(txMocks.message.deleteMany).toHaveBeenCalledWith({
+        where: { conversationId: { in: ['conv-1', 'conv-2'] } },
+      });
+      expect(txMocks.conversation.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: ['conv-1', 'conv-2'] } },
+      });
+      expect(txMocks.usageRecord.deleteMany).toHaveBeenCalledWith({
+        where: { sectionId: { in: ['section-1', 'section-2', 'section-3'] } },
+      });
+      expect(txMocks.sectionFeedback.deleteMany).toHaveBeenCalledWith({
+        where: { sectionId: { in: ['section-1', 'section-2', 'section-3'] } },
+      });
+      expect(txMocks.failedUsageCharge.deleteMany).toHaveBeenCalledWith({
+        where: { sectionId: { in: ['section-1', 'section-2', 'section-3'] } },
+      });
+      expect(txMocks.section.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: ['section-1', 'section-2', 'section-3'] } },
+      });
+    });
+
+    it('should only delete sections belonging to the shop', async () => {
+      // Only 2 of 3 IDs belong to this shop
+      mockedPrismaSection.findMany.mockResolvedValueOnce([
+        { id: 'section-1' },
+        { id: 'section-2' },
+      ]);
+
+      const txMocks = {
+        conversation: { findMany: jest.fn().mockResolvedValue([]), deleteMany: jest.fn() },
+        message: { deleteMany: jest.fn() },
+        usageRecord: { deleteMany: jest.fn() },
+        sectionFeedback: { deleteMany: jest.fn() },
+        failedUsageCharge: { deleteMany: jest.fn() },
+        section: { deleteMany: jest.fn() },
+      };
+      mockedTransaction.mockImplementationOnce(async (callback) => callback(txMocks));
+
+      const result = await sectionService.bulkDelete(
+        ['section-1', 'section-2', 'section-3'],
+        'myshop.myshopify.com'
+      );
+
+      // Only 2 valid sections deleted
+      expect(result).toBe(2);
+      expect(txMocks.section.deleteMany).toHaveBeenCalledWith({
+        where: { id: { in: ['section-1', 'section-2'] } },
+      });
+    });
+
+    it('should return 0 if no sections belong to the shop', async () => {
+      mockedPrismaSection.findMany.mockResolvedValueOnce([]);
+
+      const result = await sectionService.bulkDelete(
+        ['section-1', 'section-2'],
+        'myshop.myshopify.com'
+      );
+
+      expect(result).toBe(0);
+      expect(mockedTransaction).not.toHaveBeenCalled();
+    });
+
+    it('should skip conversation/message deletion if no conversations exist', async () => {
+      mockedPrismaSection.findMany.mockResolvedValueOnce([{ id: 'section-1' }]);
+
+      const txMocks = {
+        conversation: { findMany: jest.fn().mockResolvedValue([]), deleteMany: jest.fn() },
+        message: { deleteMany: jest.fn() },
+        usageRecord: { deleteMany: jest.fn() },
+        sectionFeedback: { deleteMany: jest.fn() },
+        failedUsageCharge: { deleteMany: jest.fn() },
+        section: { deleteMany: jest.fn() },
+      };
+      mockedTransaction.mockImplementationOnce(async (callback) => callback(txMocks));
+
+      await sectionService.bulkDelete(['section-1'], 'myshop.myshopify.com');
+
+      expect(txMocks.conversation.findMany).toHaveBeenCalled();
+      expect(txMocks.message.deleteMany).not.toHaveBeenCalled();
+      expect(txMocks.conversation.deleteMany).not.toHaveBeenCalled();
+      // Other deletes should still happen
+      expect(txMocks.usageRecord.deleteMany).toHaveBeenCalled();
+      expect(txMocks.section.deleteMany).toHaveBeenCalled();
+    });
+
+    it('should throw error and rollback if transaction fails', async () => {
+      mockedPrismaSection.findMany.mockResolvedValueOnce([{ id: 'section-1' }]);
+      mockedTransaction.mockRejectedValueOnce(new Error('Transaction failed'));
+
+      await expect(
+        sectionService.bulkDelete(['section-1'], 'myshop.myshopify.com')
+      ).rejects.toThrow('Transaction failed');
+    });
+
+    it('should handle empty ids array', async () => {
+      const result = await sectionService.bulkDelete([], 'myshop.myshopify.com');
+
+      expect(result).toBe(0);
+      expect(mockedTransaction).not.toHaveBeenCalled();
     });
   });
 

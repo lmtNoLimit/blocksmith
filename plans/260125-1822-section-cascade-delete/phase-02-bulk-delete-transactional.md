@@ -1,7 +1,9 @@
 ---
 parent: ./plan.md
 phase: 02
-status: pending
+status: completed
+completed_at: 2026-01-25
+reviewed_by: code-reviewer (a3b4219)
 ---
 
 # Phase 02: Bulk Delete Transactional
@@ -131,11 +133,11 @@ Wrap in try-catch, return appropriate error response.
 
 ## Todo List
 
-- [ ] Add `bulkDelete` method to sectionService
-- [ ] Update route action to use new method
-- [ ] Add error handling
-- [ ] Test bulk deletion (2-3 sections)
-- [ ] Verify transaction rollback on failure
+- [x] Add `bulkDelete` method to sectionService
+- [x] Update route action to use new method
+- [x] Add error handling
+- [x] Test bulk deletion (2-3 sections) - 6 test cases covering all edge cases
+- [x] Verify transaction rollback on failure - Test at line 963-969
 
 ## Success Criteria
 
