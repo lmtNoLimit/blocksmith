@@ -14,7 +14,7 @@ import { MessageItem } from './MessageItem';
 import { TypingIndicator } from './TypingIndicator';
 import { BuildProgressIndicator } from './BuildProgressIndicator';
 import { StreamingCodeBlock } from './StreamingCodeBlock';
-import type { UIMessage, CodeVersion } from '../../types';
+import type { UIMessage, CodeVersion, GenerationStatus } from '../../types';
 import type { StreamingProgress } from './hooks/useStreamingProgress';
 import type { Suggestion } from './utils/suggestion-engine';
 
@@ -68,6 +68,8 @@ export interface MessageListProps {
   streamingContent: string;
   // Build progress props
   progress?: StreamingProgress;
+  // Phase 4: Generation status for continuation feedback
+  generationStatus?: GenerationStatus;
   // Version props
   versions?: CodeVersion[];
   selectedVersionId?: string | null;
@@ -85,6 +87,7 @@ export function MessageList({
   isStreaming,
   streamingContent,
   progress,
+  generationStatus,
   versions = [],
   selectedVersionId,
   activeVersionId,
@@ -184,6 +187,18 @@ export function MessageList({
                     percentage={progress.percentage}
                     isComplete={progress.isComplete}
                   />
+                )}
+
+                {/* Phase 4: Continuation indicator */}
+                {generationStatus?.isContinuing && (
+                  <s-box padding="small base" background="subdued">
+                    <s-stack direction="inline" gap="small" alignItems="center">
+                      <s-spinner size="base" />
+                      <s-text color="subdued">
+                        Completing section (attempt {generationStatus.continuationAttempt}/2)...
+                      </s-text>
+                    </s-stack>
+                  </s-box>
                 )}
 
                 {/* Streaming code block (if code detected) */}

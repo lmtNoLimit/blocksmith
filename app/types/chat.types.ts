@@ -50,7 +50,37 @@ export interface SendMessageResponse {
 }
 
 // Streaming event types for SSE
-export type StreamEventType = 'message_start' | 'content_delta' | 'message_complete' | 'error';
+export type StreamEventType =
+  | 'message_start'
+  | 'content_delta'
+  | 'continuation_start'
+  | 'continuation_complete'
+  | 'message_complete'
+  | 'error';
+
+// Continuation start event data (Phase 4: UI Feedback)
+export interface ContinuationStartData {
+  attempt: number;
+  reason: 'token_limit' | 'incomplete_code';
+  errors: string[];
+}
+
+// Continuation complete event data (Phase 4: UI Feedback)
+export interface ContinuationCompleteData {
+  attempt: number;
+  isComplete: boolean;
+  totalLength: number;
+}
+
+// Message complete event data with completion metadata (Phase 4: UI Feedback)
+export interface MessageCompleteData {
+  messageId?: string;
+  codeSnapshot?: string;
+  hasCode?: boolean;
+  changes?: string[];
+  wasComplete?: boolean; // true if code is complete (no continuation needed or successful)
+  continuationCount?: number; // number of continuation attempts
+}
 
 export interface StreamEvent {
   type: StreamEventType;
@@ -58,8 +88,16 @@ export interface StreamEvent {
     messageId?: string;
     content?: string;
     codeSnapshot?: string;
-    changes?: string[]; // Phase 3: change summary bullets
+    changes?: string[];
     error?: string;
+    // Continuation fields (Phase 4)
+    attempt?: number;
+    reason?: 'token_limit' | 'incomplete_code';
+    errors?: string[];
+    isComplete?: boolean;
+    totalLength?: number;
+    wasComplete?: boolean;
+    continuationCount?: number;
   };
 }
 
@@ -74,6 +112,18 @@ export interface CodeVersion {
   isRestore?: boolean; // true if this version was restored from another
   restoredFromVersion?: number; // source version number if isRestore
 }
+
+// Generation status for UI feedback (Phase 4: UI Feedback)
+export interface GenerationStatus {
+  isGenerating: boolean;
+  isContinuing: boolean;
+  continuationAttempt: number;
+  wasComplete: boolean;
+  continuationCount: number;
+}
+
+// Code completion status for badges (Phase 4: UI Feedback)
+export type CompletionStatus = 'complete' | 'potentially-incomplete' | 'generating';
 
 // Conversation metadata (without messages)
 export interface ConversationMeta {

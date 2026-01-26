@@ -276,7 +276,13 @@ export async function action({ request }: ActionFunctionArgs) {
           }
         }
 
-        // Send completion event
+        // Determine completion status for Phase 4 UI feedback
+        const validation = process.env.FLAG_AUTO_CONTINUE === 'true'
+          ? validateLiquidCompleteness(fullContent)
+          : { isComplete: true };
+        const wasComplete = validation.isComplete;
+
+        // Send completion event with Phase 4 metadata
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({
@@ -286,6 +292,8 @@ export async function action({ request }: ActionFunctionArgs) {
                 codeSnapshot: sanitizedCode,
                 hasCode: extraction.hasCode,
                 changes: extraction.changes,
+                wasComplete, // Phase 4: true if code complete after all continuations
+                continuationCount, // Phase 4: number of continuation attempts
               },
             })}\n\n`
           )

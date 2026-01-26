@@ -190,6 +190,64 @@ describe('CodeBlock', () => {
     });
   });
 
+  // Phase 4: Completion status badge tests
+  describe('completion status badges', () => {
+    it('renders without badge when completionStatus is undefined', () => {
+      const { container } = render(<CodeBlock code="test" />);
+
+      expect(container.querySelector('s-badge')).not.toBeInTheDocument();
+    });
+
+    it('renders potentially incomplete badge', () => {
+      render(<CodeBlock code="test" completionStatus="potentially-incomplete" />);
+
+      expect(screen.getByText('Potentially Incomplete')).toBeInTheDocument();
+    });
+
+    it('renders tooltip for incomplete badge', () => {
+      const { container } = render(
+        <CodeBlock code="test" completionStatus="potentially-incomplete" />
+      );
+
+      const tooltip = container.querySelector('s-tooltip#incomplete-tooltip');
+      expect(tooltip).toBeInTheDocument();
+    });
+
+    it('renders auto-completed badge when complete with continuations', () => {
+      render(
+        <CodeBlock code="test" completionStatus="complete" continuationCount={2} />
+      );
+
+      expect(screen.getByText('Auto-completed')).toBeInTheDocument();
+    });
+
+    it('does not render auto-completed badge when continuationCount is 0', () => {
+      const { container } = render(
+        <CodeBlock code="test" completionStatus="complete" continuationCount={0} />
+      );
+
+      expect(container.querySelector('s-badge')).not.toBeInTheDocument();
+    });
+
+    it('renders tooltip with continuation count for auto-completed', () => {
+      const { container } = render(
+        <CodeBlock code="test" completionStatus="complete" continuationCount={1} />
+      );
+
+      const tooltip = container.querySelector('s-tooltip#autocomplete-tooltip');
+      expect(tooltip).toBeInTheDocument();
+      expect(screen.getByText(/AI continued 1 time\(s\)/)).toBeInTheDocument();
+    });
+
+    it('does not render badges when generating', () => {
+      const { container } = render(
+        <CodeBlock code="test" completionStatus="generating" />
+      );
+
+      expect(container.querySelector('s-badge')).not.toBeInTheDocument();
+    });
+  });
+
   describe('styling', () => {
     it('renders with inline styles (dark theme)', () => {
       const { container } = render(<CodeBlock code="test" language="js" />);

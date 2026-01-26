@@ -1,21 +1,21 @@
 # Codebase Summary - AI Section Generator (Blocksmith)
 
 **Last Updated**: 2026-01-26
-**Version**: 1.7 (Phase 3 Auto-Continuation Complete)
+**Version**: 1.8 (Phase 4 UI Feedback Complete)
 **Architecture**: Service-oriented, multi-tenant, React Router 7 SSR with TypeScript strict mode
 
 ## Overview
 
-**AI Section Generator** (Blocksmith) is a production-ready Shopify embedded app enabling merchants to create custom Liquid theme sections using Google Gemini 2.5 Flash AI without coding. The system features a modern React Router 7 server-side rendering architecture with comprehensive AI chat, live preview via App Proxy native Shopify Liquid, multi-tenant billing, and complete TypeScript strict mode throughout.
+**AI Section Generator** (Blocksmith) is a production-ready Shopify embedded app enabling merchants to create custom Liquid theme sections using Google Gemini 2.5 Flash AI without coding. The system features a modern React Router 7 server-side rendering architecture with comprehensive AI chat, live preview via App Proxy native Shopify Liquid, multi-tenant billing, complete TypeScript strict mode throughout, and UI feedback for continuation events during generation.
 
 **Codebase Stats**:
-- **Application Files**: 241 (TypeScript/TSX, Prisma, CSS, JSON)
-- **React Components**: 115 organized in 8 feature domains
+- **Application Files**: 242 (TypeScript/TSX, Prisma, CSS, JSON)
+- **React Components**: 116 organized in 8 feature domains
 - **Service Modules**: 19 server-only files (`.server.ts`)
 - **Routes**: 29 file-based (protected/public/webhooks/API)
 - **Database Models**: 11 Prisma models with relationships
-- **Test Suites**: 32+ Jest test files
-- **AI Chat Features**: Streaming SSE, phase tracking, structured change extraction (Phase 3), auto-continuation for truncated responses (Phase 3)
+- **Test Suites**: 33+ Jest test files
+- **AI Chat Features**: Streaming SSE, phase tracking, structured change extraction (Phase 3), auto-continuation for truncated responses (Phase 3), UI feedback badges for completion status (Phase 4)
 
 ## Directory Structure
 
@@ -34,7 +34,10 @@ ai-section-generator-app/
 │   │   │   ├── app.tsx                  # App layout wrapper (navigation, auth)
 │   │   │
 │   │   ├── API Routes (data endpoints):
-│   │   │   ├── api.chat.stream.tsx      # SSE streaming for chat with auto-continuation for truncated responses (Phase 3)
+│   │   │   ├── api.chat.stream.tsx      # SSE streaming for chat (Phase 4 updated)
+│   │   │   │   - Phase 3: Auto-continuation for truncated responses
+│   │   │   │   - Phase 4: Emits continuation_start/continuation_complete events
+│   │   │   │   - Phase 4: message_complete includes wasComplete, continuationCount
 │   │   │   ├── api.chat.messages.ts     # Conversation message persistence
 │   │   │   ├── api.enhance-prompt.ts    # Prompt optimization via Gemini
 │   │   │   ├── api.preview.render.ts    # App Proxy rendering (native Liquid)
@@ -68,12 +71,20 @@ ai-section-generator-app/
 │   │   │   │   └── useAutoSave.ts       # Silent draft persistence
 │   │   │   └── __tests__/               # 7 test suites
 │   │   │
-│   │   ├── chat/                        # AI chat interface (27 files)
+│   │   ├── chat/                        # AI chat interface (28 files, Phase 4 UI Feedback)
 │   │   │   ├── ChatPanel.tsx            # Main chat container
+│   │   │   │   - Phase 4: Receives generationStatus from useChat hook
+│   │   │   │   - Passes generationStatus to MessageList for UI feedback
 │   │   │   ├── ChatInput.tsx            # Message input with file support
-│   │   │   ├── MessageList.tsx          # Scrollable message history
+│   │   │   ├── MessageList.tsx          # Scrollable message history (Phase 4 updated)
+│   │   │   │   - Phase 4: Continuation indicator during auto-continuation
+│   │   │   │   - Shows continuation attempt and reason (token_limit, incomplete_code)
+│   │   │   │   - Displays as visual feedback banner
 │   │   │   ├── MessageItem.tsx          # Individual message styling
-│   │   │   ├── CodeBlock.tsx            # Code block rendering in chat
+│   │   │   ├── CodeBlock.tsx            # Code block rendering in chat (Phase 4 updated)
+│   │   │   │   - Phase 4: completionStatus prop ('complete', 'potentially-incomplete', 'generating')
+│   │   │   │   - 'potentially-incomplete': Warning badge with tooltip
+│   │   │   │   - 'complete' + continuationCount > 0: 'Auto-completed' badge with continuation count
 │   │   │   ├── AIResponseCard.tsx       # Unified streaming + completed AI responses (Phase 1)
 │   │   │   │   - Phase indicators: Analyzing → Schema → Styling → Finalizing
 │   │   │   │   - Change bullets: Extracted from AI response structured comments
@@ -89,7 +100,10 @@ ai-section-generator-app/
 │   │   │   ├── LoadingIndicator.tsx     # Streaming state indicator
 │   │   │   ├── TypingIndicator.tsx      # Typing animation
 │   │   │   ├── hooks/
-│   │   │   │   ├── useChat.ts           # Chat message management (stores changes from streaming)
+│   │   │   │   ├── useChat.ts           # Chat message management (Phase 4 updated)
+│   │   │   │   │   - Stores generationStatus state: isGenerating, isContinuing, etc.
+│   │   │   │   │   - Handles continuation_start/continuation_complete events
+│   │   │   │   │   - Tracks wasComplete and continuationCount from message_complete
 │   │   │   │   ├── useAutoScroll.ts     # Auto-scroll on new messages
 │   │   │   │   ├── useStreamingMessage.ts # SSE stream handling
 │   │   │   │   ├── useStreamingProgress.ts # Streaming phase tracking
@@ -104,7 +118,7 @@ ai-section-generator-app/
 │   │   │   │   │   - Max 5 changes enforced (UX: scannable display)
 │   │   │   │   ├── section-type-detector.ts # Detect section category from prompt
 │   │   │   │   └── suggestion-engine.ts     # Generate quick action suggestions
-│   │   │   └── __tests__/               # 6 test suites (added AIResponseCard + changes-extractor)
+│   │   │   └── __tests__/               # 7 test suites (added CodeBlock completion badges)
 │   │   │
 │   │   ├── generate/                    # Generation workflow (14 files)
 │   │   │   ├── GenerateLayout.tsx       # Two-column layout (input | preview)
@@ -347,14 +361,19 @@ ai-section-generator-app/
 │   │   ├── formatters.ts              # Output formatting
 │   │   └── __tests__/                 # 3 test suites
 │   │
-│   ├── types/                          # TypeScript definitions (8 files, Phase 3 Auto-Continuation)
+│   ├── types/                          # TypeScript definitions (8 files, Phase 4 UI Feedback)
 │   │   ├── ai.types.ts                # AI request/response types (updated Phase 3)
 │   │   │   - StreamingOptions → onToken, onComplete, onError callbacks
 │   │   │   - ExtendedStreamingOptions → extends with onFinishReason callback (Phase 3)
 │   │   │   - ContinuationResult → content, finishReason, continuationCount, wasComplete (Phase 3)
 │   │   │   - ConversationContext → currentCode, recentMessages, summarizedHistory
 │   │   │   - CodeExtractionResult → code extraction + structured changes
-│   │   ├── chat.types.ts              # Chat message types
+│   │   ├── chat.types.ts              # Chat message types (updated Phase 4)
+│   │   │   - GenerationStatus → isGenerating, isContinuing, continuationAttempt, wasComplete, continuationCount
+│   │   │   - CompletionStatus → 'complete' | 'potentially-incomplete' | 'generating'
+│   │   │   - ContinuationStartData → attempt, reason, errors
+│   │   │   - ContinuationCompleteData → attempt, isComplete, totalLength
+│   │   │   - MessageCompleteData → wasComplete, continuationCount metadata
 │   │   ├── section.types.ts           # Section model types
 │   │   ├── service.types.ts           # Service interfaces
 │   │   ├── section-status.ts          # Status enum (DRAFT, ACTIVE, ARCHIVE)
@@ -422,12 +441,13 @@ ai-section-generator-app/
 - SectionNameInput - Title input
 - StatusBadge - Status indicator
 
-### Chat (24 components)
-- ChatPanel, ChatInput, MessageList, CodeBlock, VersionCard
+### Chat (28 components, Phase 4 UI Feedback)
+- ChatPanel, ChatInput, MessageList, CodeBlock (Phase 4: completion badges), VersionCard
 - AIResponseCard, MessageItem, LoadingIndicator, TypingIndicator
 - BuildProgressIndicator, StreamingCodeBlock, VersionBadge, VersionTimeline
 - SuggestionChips, EmptyChatState
-- Custom hooks: useChat, useAutoScroll, useStreamingMessage, useStreamingProgress, useChatSuggestions
+- Custom hooks: useChat (Phase 4: generationStatus), useAutoScroll, useStreamingMessage, useStreamingProgress, useChatSuggestions
+- Phase 4 UI Feedback: Completion status badges, continuation indicators, generation status tracking
 - Utilities: code-extractor (extractCodeFromResponse, extractChanges), detectSectionType, getSuggestions
 
 ### Generate (14 components)
@@ -521,7 +541,7 @@ ai-section-generator-app/
 - `/app/settings` - User preferences
 
 ### API Routes (JSON endpoints)
-- `POST /api/chat/stream` - SSE streaming
+- `POST /api/chat/stream` - SSE streaming (Phase 4: continuation feedback events)
 - `GET /api/chat/messages` - Get conversation
 - `POST /api/enhance-prompt` - Optimize prompt
 - `POST /api/preview/render` - Render preview
@@ -669,7 +689,7 @@ SectionFeedback {
 
 ## Feature Status
 
-### Completed (Phase 4 + Phase 3 AI + Phase 2 Validation - 100%)
+### Completed (Phase 4 UI Feedback + Phase 3 Auto-Continuation + Phase 2 Validation - 100%)
 - ✅ Full 3-column editor layout
 - ✅ AI chat with streaming (SSE)
 - ✅ Live preview with 18 context + 25+ filters
@@ -679,9 +699,15 @@ SectionFeedback {
 - ✅ Section editing with auto-save
 - ✅ Hybrid billing (recurring + usage)
 - ✅ TypeScript strict mode
-- ✅ 30+ test suites
+- ✅ 33+ test suites
 - ✅ Comprehensive documentation
+- ✅ Phase 4: UI Feedback for generation status
+  - Completion status badges (complete, potentially-incomplete, generating)
+  - Continuation indicators with attempt count and reason (token_limit, incomplete_code)
+  - Auto-completed badge showing continuation count
+  - GenerationStatus tracking (isGenerating, isContinuing, wasComplete)
 - ✅ Phase 3: Structured change extraction from AI responses (<!-- CHANGES: [...] -->)
+- ✅ Phase 3: Auto-continuation for truncated responses with MAX_TOKENS detection
 - ✅ Phase 2: Liquid completeness validation (truncation detection, tag matching)
 
 ### Pending

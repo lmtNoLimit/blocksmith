@@ -80,6 +80,7 @@ export function ChatPanel({
     error,
     failedMessage,
     progress,
+    generationStatus, // Phase 4: Continuation status for UI feedback
     sendMessage,
     triggerGeneration,
     stopStreaming,
@@ -299,6 +300,7 @@ export function ChatPanel({
           isStreaming={isStreaming}
           streamingContent={streamingContent}
           progress={progress}
+          generationStatus={generationStatus}
           versions={versions}
           selectedVersionId={selectedVersionId}
           activeVersionId={activeVersionId}

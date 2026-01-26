@@ -4,7 +4,7 @@
  * Integrates with useStreamingProgress for build phase tracking
  */
 import { useReducer, useCallback, useRef, useEffect, useState } from 'react';
-import type { UIMessage, StreamEvent } from '../../../types';
+import type { UIMessage, StreamEvent, GenerationStatus } from '../../../types';
 import { parseError, formatErrorMessage, createUpgradeError, type ChatError, type ApiErrorResponse } from '../../../utils/error-handler';
 import { useStreamingProgress, type StreamingProgress } from './useStreamingProgress';
 
@@ -115,9 +115,20 @@ export interface UseChatOptions {
   onCodeUpdate?: (code: string) => void;
 }
 
+// Initial generation status (Phase 4: UI Feedback)
+const initialGenerationStatus: GenerationStatus = {
+  isGenerating: false,
+  isContinuing: false,
+  continuationAttempt: 0,
+  wasComplete: true,
+  continuationCount: 0,
+};
+
 export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOptions) {
   const [state, dispatch] = useReducer(chatReducer, initialState);
   const [failedMessage, setFailedMessage] = useState<FailedMessage | null>(null);
+  // Phase 4: Track generation and continuation status for UI feedback
+  const [generationStatus, setGenerationStatus] = useState<GenerationStatus>(initialGenerationStatus);
   const abortControllerRef = useRef<AbortController | null>(null);
   // Generation lock to prevent duplicate calls (not affected by React re-renders)
   const isGeneratingRef = useRef(false);
@@ -157,6 +168,15 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
     isGeneratingRef.current = true;
     currentGenerationIdRef.current = generationId;
     console.log('[useChat] Starting generation:', generationId, 'skipAddMessage:', skipAddMessage);
+
+    // Phase 4: Reset generation status for new stream
+    setGenerationStatus({
+      isGenerating: true,
+      isContinuing: false,
+      continuationAttempt: 0,
+      wasComplete: true,
+      continuationCount: 0,
+    });
 
     // Abort any existing request
     abortControllerRef.current?.abort();
@@ -210,6 +230,9 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
       let assistantContent = '';
       let codeSnapshot: string | undefined;
       let messageChanges: string[] | undefined;
+      // Phase 4: Track completion metadata from server
+      let wasComplete = true;
+      let continuationCount = 0;
 
       // Store server's real message ID from message_complete event
       let serverMessageId: string | undefined;
@@ -239,12 +262,35 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
                   }
                   break;
 
+                // Phase 4: Handle continuation start event
+                case 'continuation_start':
+                  continuationCount = event.data.attempt ?? 1;
+                  setGenerationStatus((prev: GenerationStatus) => ({
+                    ...prev,
+                    isContinuing: true,
+                    continuationAttempt: event.data.attempt ?? 1,
+                  }));
+                  break;
+
+                // Phase 4: Handle continuation complete event
+                case 'continuation_complete':
+                  setGenerationStatus((prev: GenerationStatus) => ({
+                    ...prev,
+                    isContinuing: false,
+                    wasComplete: event.data.isComplete ?? true,
+                    continuationCount: event.data.attempt ?? prev.continuationCount,
+                  }));
+                  break;
+
                 case 'message_complete':
                   // Capture server's real message ID to sync client state with DB
                   serverMessageId = event.data.messageId;
                   codeSnapshot = event.data.codeSnapshot;
                   // Phase 3: Capture changes array from extraction
                   messageChanges = event.data.changes;
+                  // Phase 4: Capture completion metadata
+                  wasComplete = event.data.wasComplete ?? true;
+                  continuationCount = event.data.continuationCount ?? 0;
                   if (codeSnapshot && onCodeUpdate) {
                     onCodeUpdate(codeSnapshot);
                   }
@@ -271,6 +317,15 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
         createdAt: new Date(),
       };
       dispatch({ type: 'COMPLETE_STREAMING', message: assistantMessage });
+
+      // Phase 4: Update final generation status
+      setGenerationStatus({
+        isGenerating: false,
+        isContinuing: false,
+        continuationAttempt: 0,
+        wasComplete,
+        continuationCount,
+      });
 
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
@@ -444,6 +499,7 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
     error: state.error,
     failedMessage,
     progress, // Build phase progress
+    generationStatus, // Phase 4: Generation and continuation status for UI feedback
     sendMessage,
     triggerGeneration,
     stopStreaming,

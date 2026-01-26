@@ -37,6 +37,12 @@ export type {
   StreamEvent,
   ConversationMeta,
   CodeVersion,
+  // Phase 4: UI Feedback types
+  ContinuationStartData,
+  ContinuationCompleteData,
+  MessageCompleteData,
+  GenerationStatus,
+  CompletionStatus,
 } from './chat.types';
 
 // AI Streaming Types

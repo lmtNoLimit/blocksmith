@@ -216,10 +216,10 @@ Historical record of generated sections:
 ## Current Status
 
 **Version**: 1.0-beta
-**Last Updated**: 2026-01-20
-**Phase**: 4 Complete + Phase 1 Auto-Save
+**Last Updated**: 2026-01-26
+**Phase**: 4 UI Feedback Complete + Phase 3 Auto-Continuation + Phase 2 Validation + Phase 1 Auto-Save
 
-### Completed Features (Phase 4 - 100%)
+### Completed Features (Phase 4 UI Feedback - 100%)
 
 **Core Generation**:
 - ✅ AI-powered section generation (Google Gemini 2.5 Flash)
@@ -277,7 +277,7 @@ Historical record of generated sections:
 
 **Code Quality & Testing**:
 - ✅ TypeScript strict mode throughout (no `any` types)
-- ✅ 30+ Jest test suites
+- ✅ 33+ Jest test suites
 - ✅ Service-oriented architecture (19 server modules)
 - ✅ Adapter pattern for mock/real services
 - ✅ Comprehensive error handling
@@ -293,7 +293,51 @@ Historical record of generated sections:
 - ✅ Vite build tooling
 - ✅ Shopify CLI integration
 
-### Phase 1 Enhancements
+### Phase 4: UI Feedback Enhancements
+- ✅ Real-time generation status tracking
+  - GenerationStatus interface: isGenerating, isContinuing, continuationAttempt, wasComplete, continuationCount
+  - Passes through useChat hook to components
+  - Enables transparent user feedback
+- ✅ Continuation event streaming
+  - continuation_start: attempt number and reason (token_limit/incomplete_code)
+  - continuation_complete: success status and merged content length
+  - message_complete: wasComplete and continuationCount metadata
+- ✅ Completion status badges in CodeBlock
+  - 'complete' badge: Shows auto-completion count (e.g., "Auto-completed (2 attempts)")
+  - 'potentially-incomplete' badge: Warning when code validation fails
+  - Tooltips provide context and transparency
+- ✅ Continuation indicator in MessageList
+  - Shows when auto-continuation is in progress
+  - Displays attempt number and reason
+  - Visual feedback prevents user confusion
+- ✅ 9 new test cases for completion badges
+  - Badge rendering tests
+  - Tooltip content tests
+  - Continuation count display tests
+
+### Phase 3: Auto-Continuation Enhancements
+- ✅ Auto-continuation for truncated responses
+  - Detects MAX_TOKENS finish reason
+  - Validates Liquid completeness (tag matching, JSON schema)
+  - Automatically continues on truncation or validation failure
+  - Max 2 continuation attempts (prevents infinite loops)
+- ✅ Response merging with overlap detection
+  - findOverlap() detects repeated content between responses
+  - mergeResponses() intelligently combines responses
+  - Prevents mangled Liquid output from consecutive generations
+- ✅ Structured change extraction
+  - Parses <!-- CHANGES: [...] --> comment format
+  - Fallback: bullet/numbered list extraction from explanation
+  - Max 5 changes enforced for scannable display
+
+### Phase 2: Validation Enhancements
+- ✅ Liquid completeness validation
+  - Stack-based Liquid tag validation (if, for, case, form, etc.)
+  - Stack-based HTML tag validation with truncation detection
+  - Schema block and JSON validation
+  - Reports specific errors: unclosed_liquid_tag, unclosed_html_tag, invalid_schema_json, missing_schema
+
+### Phase 1: Auto-Save Enhancements
 - ✅ Auto-save draft on AI generation (silent, no user action)
   - Uses useFetcher for background persistence
   - Prevents data loss on page refresh
