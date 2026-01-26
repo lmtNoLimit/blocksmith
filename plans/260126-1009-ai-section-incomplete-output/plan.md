@@ -1,7 +1,7 @@
 ---
 title: "Fix AI Section Generation Incomplete Output"
 description: "Hybrid approach: maxOutputTokens + validation + auto-continuation for complete Liquid sections"
-status: in-progress
+status: in-progress (Phase 02 DONE 2026-01-26)
 priority: P1
 effort: 7h
 branch: main
@@ -24,7 +24,7 @@ AI section generation produces broken/incomplete Liquid code due to Gemini 2.5 F
 | Phase | Description | Effort | Status | File |
 |-------|-------------|--------|--------|------|
 | 01 | Add maxOutputTokens to AI service | 1h | ✓ DONE (2026-01-26) | [phase-01-token-limits.md](./phase-01-token-limits.md) |
-| 02 | Create Liquid completeness validator | 2h | [phase-02-liquid-validation.md](./phase-02-liquid-validation.md) |
+| 02 | Create Liquid completeness validator | 2h | ✓ DONE (2026-01-26) | [phase-02-liquid-validation.md](./phase-02-liquid-validation.md) |
 | 03 | Add auto-continuation logic | 3h | [phase-03-auto-continuation.md](./phase-03-auto-continuation.md) |
 | 04 | Add UI feedback for completion status | 1h | [phase-04-ui-feedback.md](./phase-04-ui-feedback.md) |
 

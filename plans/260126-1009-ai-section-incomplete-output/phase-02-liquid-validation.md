@@ -288,14 +288,14 @@ Create `code-extractor.test.ts` test cases:
 
 ## Todo List
 
-- [ ] Add `LiquidValidationResult` and `LiquidValidationError` types
-- [ ] Implement `validateLiquidTags()` with stack algorithm
-- [ ] Implement `validateHTMLTags()` with stack algorithm
-- [ ] Implement `validateSchemaJSON()` for schema validation
-- [ ] Compose `validateLiquidCompleteness()` main function
-- [ ] Add `FLAG_VALIDATE_LIQUID` feature flag
-- [ ] Create comprehensive unit tests
-- [ ] Test with real truncated outputs from production logs
+- [x] Add `LiquidValidationResult` and `LiquidValidationError` types
+- [x] Implement `validateLiquidTags()` with stack algorithm
+- [x] Implement `validateHTMLTags()` with stack algorithm
+- [x] Implement `validateSchemaJSON()` for schema validation
+- [x] Compose `validateLiquidCompleteness()` main function
+- [x] Add `FLAG_VALIDATE_LIQUID` feature flag
+- [x] Create comprehensive unit tests
+- [x] Test with real truncated outputs from production logs
 
 ## Success Criteria
 

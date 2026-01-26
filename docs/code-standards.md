@@ -367,6 +367,137 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 };
 ```
 
+## Liquid Code Validation Standards (Phase 2)
+
+### validateLiquidCompleteness() Function
+
+Validates Liquid code for structural completeness and truncation detection. Essential for detecting incomplete AI-generated sections before storage.
+
+#### Validation Types
+
+**1. Liquid Tag Validation (Stack-Based)**
+```typescript
+// Validates proper nesting and closure of Liquid block tags
+// Supported tags: if, unless, for, case, form, capture, paginate, tablerow, comment, raw, style, javascript, stylesheet
+// Errors: unclosed_liquid_tag, mismatched tags
+
+const result = validateLiquidCompleteness(`
+  {% if section.settings.show_title %}
+    <h2>{{ title }}</h2>
+  {% endif %}  // ✅ Properly closed
+`);
+
+// Error example:
+const badCode = `{% if condition %}<div>Content`;  // Missing {% endif %}
+// Returns: { isComplete: false, errors: [{ type: 'unclosed_liquid_tag', tag: 'if', ... }] }
+```
+
+**2. HTML Tag Validation (Heuristic)**
+```typescript
+// Stack-based HTML tag validation to detect truncation
+// Self-closing tags: br, hr, img, input, meta, link, area, base, col, embed, param, source, track, wbr
+// Only reports errors if multiple tags are unclosed (threshold > 2)
+// Prevents false positives for valid but unclosed HTML elements
+
+const result = validateLiquidCompleteness(`
+  <div class="container">
+    <p>Content</p>
+  </div>  // ✅ Properly closed
+`);
+
+// Truncation detection:
+const truncatedCode = `<div><section><article>Cut off mid-tag`;
+// Returns: { isComplete: false, errors: [{ type: 'unclosed_html_tag', ... }] }
+```
+
+**3. Schema Block Validation**
+```typescript
+// Validates presence, closure, and JSON validity of schema block
+// Errors: missing_schema, unclosed_liquid_tag (if started but not closed), invalid_schema_json
+
+const result = validateLiquidCompleteness(`
+  <div>...</div>
+
+  {% schema %}
+  {
+    "name": "Product Card",
+    "settings": [...]
+  }
+  {% endschema %}  // ✅ Valid
+`);
+
+// Schema validation errors:
+const badSchema = '{% schema %}{ invalid json }{% endschema %}';
+// Returns: { isComplete: false, errors: [{ type: 'invalid_schema_json', message: 'Unexpected token...' }] }
+```
+
+#### Feature Flag Integration
+```typescript
+// In code-extractor.ts - validateLiquidCompleteness() checks FLAG_VALIDATE_LIQUID
+export function validateLiquidCompleteness(code: string): LiquidValidationResult {
+  // Skip validation if feature flag disabled (faster path)
+  if (process.env.FLAG_VALIDATE_LIQUID !== 'true') {
+    return {
+      isComplete: true,
+      errors: [],
+      warnings: []
+    };
+  }
+
+  // Full validation only when flag enabled
+  // ...validation logic...
+}
+```
+
+#### Return Type
+```typescript
+export interface LiquidValidationResult {
+  isComplete: boolean;                    // true if no errors
+  errors: LiquidValidationError[];       // Array of validation errors
+  warnings: string[];                    // Array of warnings (if any)
+  truncationPoint?: number;              // Character index if truncation detected
+}
+
+export interface LiquidValidationError {
+  type: LiquidValidationErrorType;
+  tag?: string;                         // For tag-related errors
+  message: string;                      // User-friendly error description
+}
+
+export type LiquidValidationErrorType =
+  | 'unclosed_liquid_tag'
+  | 'unclosed_html_tag'
+  | 'invalid_schema_json'
+  | 'missing_schema';
+```
+
+#### Usage in Production
+```typescript
+// Import and use in chat/generation flows:
+import { validateLiquidCompleteness } from '@/utils/code-extractor';
+
+async function handleAIResponse(code: string) {
+  // Validate only if feature flag enabled
+  const validation = validateLiquidCompleteness(code);
+
+  if (!validation.isComplete) {
+    // Log errors for debugging
+    console.warn('Incomplete Liquid code:', validation.errors);
+
+    // Option 1: Return error to user
+    // Option 2: Auto-continue generation with error context
+    // Option 3: Store with warning flag for later review
+  }
+
+  return { code, validation };
+}
+```
+
+#### Testing
+- 23 unit tests covering: feature flag, valid sections, tag nesting, HTML truncation, schema validation
+- Tests in: `app/utils/__tests__/code-extractor-validation.test.ts`
+- Coverage: Feature flag bypass, all error types, edge cases
+
 ## Service Layer Standards
 
 ### Service Class Pattern
@@ -698,6 +829,14 @@ GEMINI_API_KEY=your_gemini_key  # optional, falls back to mock
 #   - "false" = Use default Gemini limit (~8K tokens, may truncate long sections)
 # Enable when generating complex sections with detailed Liquid code.
 # Disable for testing or if issues arise with extended output.
+
+# Liquid Code Validation (Phase 2)
+# FLAG_VALIDATE_LIQUID=false  (default)
+#   - "true"  = Validate AI-generated code for truncation/incomplete tags
+#   - "false" = Skip validation (faster, less strict)
+# Controls validateLiquidCompleteness() in code-extractor.ts
+# Checks: schema block, Liquid tag closure, HTML tag balance
+# Enable when enforcing stricter code quality requirements.
 ```
 
 ### Accessing Environment Variables
@@ -878,15 +1017,17 @@ async generateSection(prompt: string): Promise<string> {
 
 ---
 
-**Document Version**: 1.3
-**Last Updated**: 2026-01-04
+**Document Version**: 1.4
+**Last Updated**: 2026-01-26
 **Compliance**: All code must follow these standards (strictly enforced)
-**Current Status**: Phase 4 + Phase 1 Auto-Save - All 235 app files pass TypeScript strict mode
+**Current Status**: Phase 4 + Phase 3 (Structured Changes) + Phase 2 (Liquid Validation) - All 235 app files pass TypeScript strict mode
 **Key Enforcements**:
 - TypeScript strict mode throughout codebase
-- 30+ Jest test suites covering critical paths
+- 30+ Jest test suites covering critical paths (now 33+ with Phase 2 validation tests)
 - 107 React components following feature-based organization
 - 25+ server services with clear separation of concerns
 - Multi-tenant isolation via shop domain verification
 - Comprehensive error handling and input validation
 - Auto-save on AI generation with 4-layer duplicate prevention
+- Liquid code validation with truncation detection (Phase 2)
+- Structured change extraction from AI responses (Phase 3)

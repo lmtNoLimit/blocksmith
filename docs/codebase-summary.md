@@ -307,11 +307,16 @@ ai-section-generator-app/
 │   │   └── (10+ additional services: database, auth, utils)
 │   │
 │   ├── utils/                          # Utility functions (16 files)
-│   │   ├── code-extractor.ts          # Extract code + changes from AI responses (Phase 3)
+│   │   ├── code-extractor.ts          # Extract code + changes from AI responses (Phase 3 + Phase 2)
 │   │   │   - extractCodeFromResponse() → code + changes + explanation
 │   │   │   - extractChanges() → structured comment or fallback parsing
 │   │   │   - stripChangesComment() → clean code for display
 │   │   │   - isCompleteLiquidSection() → validation
+│   │   │   - validateLiquidCompleteness() → comprehensive Liquid validation (Phase 2)
+│   │   │     * Stack-based Liquid tag validation (if, for, case, form, etc.)
+│   │   │     * Stack-based HTML tag validation with truncation detection
+│   │   │     * Schema block and JSON validation
+│   │   │     * Feature flag: FLAG_VALIDATE_LIQUID
 │   │   ├── context-builder.ts         # Build conversation context + CHANGES instruction
 │   │   │   - CHAT_SYSTEM_EXTENSION → AI prompt with structured CHANGES format
 │   │   │   - buildConversationPrompt() → full context assembly
@@ -471,10 +476,15 @@ ai-section-generator-app/
 - `input-sanitizer.ts` - XSS/injection prevention
 
 ### Utilities
-- `code-extractor.ts` - Parse AI responses + extract structured changes (Phase 3)
+- `code-extractor.ts` - Parse AI responses + extract structured changes (Phase 3 + Phase 2)
   - Handles <!-- CHANGES: [...] --> comment format
   - Fallback: bullet/numbered list extraction from explanation
   - Max 5 changes enforced for scannable display
+  - validateLiquidCompleteness() validates Liquid code structure (Phase 2)
+    * Errors: unclosed_liquid_tag, unclosed_html_tag, invalid_schema_json, missing_schema
+    * Stack-based tag matching for proper nesting validation
+    * Heuristic HTML detection (reports only if multiple tags unclosed, likely truncation)
+    * Controlled by FLAG_VALIDATE_LIQUID feature flag
 - `context-builder.ts` - Build conversation prompts with CHANGES instruction
 - `liquid-wrapper.server.ts` - App Proxy injection
 - `settings-transform.server.ts` - Generate Liquid assigns
@@ -640,7 +650,7 @@ SectionFeedback {
 
 ## Feature Status
 
-### Completed (Phase 4 + Phase 3 AI - 100%)
+### Completed (Phase 4 + Phase 3 AI + Phase 2 Validation - 100%)
 - ✅ Full 3-column editor layout
 - ✅ AI chat with streaming (SSE)
 - ✅ Live preview with 18 context + 25+ filters
@@ -653,6 +663,7 @@ SectionFeedback {
 - ✅ 30+ test suites
 - ✅ Comprehensive documentation
 - ✅ Phase 3: Structured change extraction from AI responses (<!-- CHANGES: [...] -->)
+- ✅ Phase 2: Liquid completeness validation (truncation detection, tag matching)
 
 ### Pending
 - ⏳ Shopify write_themes scope approval
@@ -684,6 +695,6 @@ SectionFeedback {
 
 ---
 
-**Document Version**: 1.5
+**Document Version**: 1.7
 **Last Updated**: 2026-01-26
 **Maintainer**: Documentation Manager
