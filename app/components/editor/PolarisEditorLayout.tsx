@@ -92,7 +92,6 @@ export function PolarisEditorLayout({
                   blockSize="100%"
                   background="base"
                   borderRadius="large"
-                  overflow="hidden"
                 >
                   {chatPanel}
                 </s-box>
@@ -136,6 +135,7 @@ export function PolarisEditorLayout({
                 borderRadius="large"
                 overflow="hidden"
                 minBlockSize="0"
+                blockSize="100%"
               >
                 {chatPanel}
               </s-box>

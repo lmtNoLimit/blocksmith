@@ -79,16 +79,18 @@ export function PreviewSettingsPanel({
 
   if (settings.length === 0 && (!blocks || blocks.length === 0)) {
     return (
-      <s-stack gap="base">
-        <s-heading>Preview Settings</s-heading>
-        <s-banner tone="info">
-          <strong>Preview Mode</strong> – These settings are for testing only.
-          To customize in production, use the Shopify Theme Editor.
-        </s-banner>
-        <s-text color="subdued">
-          No customizable settings found in section schema.
-        </s-text>
-      </s-stack>
+      <s-box padding="base">
+        <s-stack gap="base">
+          <s-heading>Preview Settings</s-heading>
+          <s-banner tone="info">
+            <strong>Preview Mode</strong> – These settings are for testing only.
+            To customize in production, use the Shopify Theme Editor.
+          </s-banner>
+          <s-text color="subdued">
+            No customizable settings found in section schema.
+          </s-text>
+        </s-stack>
+      </s-box>
     );
   }
 
@@ -120,7 +122,7 @@ export function PreviewSettingsPanel({
   };
 
   return (
-    <div style={{ height: '100%', overflowY: 'auto' }}>
+    <div style={{ height: "100%", overflowY: "auto" }}>
       <s-box padding="base">
         <s-stack gap="large">
           <s-heading>Preview Settings</s-heading>
@@ -272,7 +274,6 @@ export function PreviewSettingsPanel({
               </s-stack>
             </s-stack>
           )}
-
         </s-stack>
       </s-box>
     </div>
