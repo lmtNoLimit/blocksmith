@@ -689,6 +689,17 @@ DATABASE_URL=postgresql://...  # production
 GEMINI_API_KEY=your_gemini_key  # optional, falls back to mock
 ```
 
+### Feature Flags
+
+```bash
+# AI Output Tokens Configuration
+# FLAG_MAX_OUTPUT_TOKENS=true  (default)
+#   - "true"  = Use maxOutputTokens: 65536 (recommended, prevents silent truncation)
+#   - "false" = Use default Gemini limit (~8K tokens, may truncate long sections)
+# Enable when generating complex sections with detailed Liquid code.
+# Disable for testing or if issues arise with extended output.
+```
+
 ### Accessing Environment Variables
 ```typescript
 // ✅ Good

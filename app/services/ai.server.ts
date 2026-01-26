@@ -3,6 +3,15 @@ import type { AIServiceInterface } from "../types";
 import type { StreamingOptions, ConversationContext } from "../types/ai.types";
 import { buildConversationPrompt, getChatSystemPrompt } from "../utils/context-builder";
 
+/**
+ * Generation config for Gemini API calls
+ * maxOutputTokens: 65536 - Gemini 2.5 Flash max output limit (prevents silent truncation at ~8K default)
+ * Feature flag FLAG_MAX_OUTPUT_TOKENS enables rollback if issues arise
+ */
+const GENERATION_CONFIG = process.env.FLAG_MAX_OUTPUT_TOKENS !== 'false'
+  ? { maxOutputTokens: 65536, temperature: 0.7 }
+  : { temperature: 0.7 };
+
 export const SYSTEM_PROMPT = `You are an expert Shopify theme developer. Generate production-ready Liquid sections.
 
 OUTPUT: Return ONLY raw Liquid code. No markdown fences, no explanations, no comments.
@@ -404,11 +413,19 @@ export class AIService implements AIServiceInterface {
     try {
       const model = this.genAI.getGenerativeModel({
         model: "gemini-2.5-flash",
-        systemInstruction: SYSTEM_PROMPT
+        systemInstruction: SYSTEM_PROMPT,
+        generationConfig: GENERATION_CONFIG,
       });
 
       const result = await model.generateContent(prompt);
       const response = result.response;
+
+      // Log finish reason for monitoring truncation issues
+      const finishReason = response.candidates?.[0]?.finishReason;
+      if (finishReason && finishReason !== 'STOP') {
+        console.warn(`[ai.server] generateSection finishReason: ${finishReason}`);
+      }
+
       const text = response.text();
 
       // Strip markdown code block wrappers if present
@@ -484,7 +501,8 @@ export class AIService implements AIServiceInterface {
     try {
       const model = this.genAI.getGenerativeModel({
         model: "gemini-2.5-flash",
-        systemInstruction: SYSTEM_PROMPT
+        systemInstruction: SYSTEM_PROMPT,
+        generationConfig: GENERATION_CONFIG,
       });
 
       const result = await model.generateContentStream(prompt);
@@ -500,6 +518,13 @@ export class AIService implements AIServiceInterface {
         if (options?.signal?.aborted) {
           break;
         }
+      }
+
+      // Log finish reason after stream completes (check aggregated response)
+      const aggregatedResponse = await result.response;
+      const finishReason = aggregatedResponse.candidates?.[0]?.finishReason;
+      if (finishReason && finishReason !== 'STOP') {
+        console.warn(`[ai.server] generateSectionStream finishReason: ${finishReason}`);
       }
     } catch (error) {
       console.error("Gemini streaming error:", error);
@@ -529,7 +554,8 @@ export class AIService implements AIServiceInterface {
     try {
       const model = this.genAI.getGenerativeModel({
         model: "gemini-2.5-flash",
-        systemInstruction: getChatSystemPrompt(SYSTEM_PROMPT)
+        systemInstruction: getChatSystemPrompt(SYSTEM_PROMPT),
+        generationConfig: GENERATION_CONFIG,
       });
 
       const result = await model.generateContentStream(fullPrompt);
@@ -544,6 +570,13 @@ export class AIService implements AIServiceInterface {
         if (options?.signal?.aborted) {
           break;
         }
+      }
+
+      // Log finish reason after stream completes
+      const aggregatedResponse = await result.response;
+      const finishReason = aggregatedResponse.candidates?.[0]?.finishReason;
+      if (finishReason && finishReason !== 'STOP') {
+        console.warn(`[ai.server] generateWithContext finishReason: ${finishReason}`);
       }
     } catch (error) {
       console.error("Gemini context streaming error:", error);

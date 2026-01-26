@@ -212,10 +212,14 @@ app/routes/
 ```
 app/services/
 ├─ CORE AI
-│  └─ ai.server.ts (290 LOC)
+│  └─ ai.server.ts (310 LOC, Phase 01)
 │     - generateSection(prompt, context) → Liquid code
-│     - enhancePrompt(prompt) → improved prompt
+│     - generateSectionStream(prompt) → AsyncGenerator (SSE)
+│     - generateWithContext(userMessage, context) → Chat refinement
+│     - enhancePrompt(prompt) → improved prompt + variations
+│     - GENERATION_CONFIG: maxOutputTokens: 65536 (controlled by FLAG_MAX_OUTPUT_TOKENS)
 │     - Stream handling + mock fallback
+│     - Form sanitization + finishReason logging
 │
 ├─ DATA MANAGEMENT
 │  ├─ section.server.ts (430 LOC, Phase 02)
@@ -433,11 +437,18 @@ Response:
   ]
 }
 
+Generation Config (Phase 01 - maxOutputTokens):
+- maxOutputTokens: 65536 (Gemini 2.5 Flash limit, prevents silent truncation at ~8K default)
+- Temperature: 0.7 (controlled consistency)
+- Feature flag: FLAG_MAX_OUTPUT_TOKENS (default: true, set to "false" to disable)
+
 Features:
 - Streaming (chunked response)
 - System instruction (137 lines of expertise)
-- Temperature: default (0.7)
+- finishReason logging (monitors STOP vs LENGTH_ONLY/OTHER truncation indicators)
 - Safety settings: default (minimal blocking)
+- Markdown fence stripping (handles ```liquid ... ``` wrapping)
+- Form sanitization (removes invalid new_comment forms, fixes product form arguments)
 ```
 
 #### Shopify GraphQL Admin API (2025-10)

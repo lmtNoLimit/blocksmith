@@ -128,14 +128,14 @@ Update `ai.server.test.ts` to verify:
 
 ## Todo List
 
-- [ ] Add `GENERATION_CONFIG` constant with `maxOutputTokens: 65536`
-- [ ] Update `generateSection()` to use config
-- [ ] Update `generateSectionStream()` to use config
-- [ ] Update `generateWithContext()` to use config
-- [ ] Log `finishReason` for non-STOP completions
-- [ ] Add `FLAG_MAX_OUTPUT_TOKENS` feature flag
-- [ ] Add/update unit tests
-- [ ] Manual test with long section prompt
+- [x] Add `GENERATION_CONFIG` constant with `maxOutputTokens: 65536`
+- [x] Update `generateSection()` to use config
+- [x] Update `generateSectionStream()` to use config
+- [x] Update `generateWithContext()` to use config
+- [x] Log `finishReason` for non-STOP completions
+- [x] Add `FLAG_MAX_OUTPUT_TOKENS` feature flag
+- [x] Add/update unit tests
+- [ ] Manual test with long section prompt (pending user approval)
 
 ## Success Criteria
 
