@@ -1,7 +1,7 @@
 # Codebase Summary - AI Section Generator (Blocksmith)
 
-**Last Updated**: 2026-01-25
-**Version**: 1.5
+**Last Updated**: 2026-01-26
+**Version**: 1.6
 **Architecture**: Service-oriented, multi-tenant, React Router 7 SSR with TypeScript strict mode
 
 ## Overview
@@ -9,12 +9,13 @@
 **AI Section Generator** (Blocksmith) is a production-ready Shopify embedded app enabling merchants to create custom Liquid theme sections using Google Gemini 2.5 Flash AI without coding. The system features a modern React Router 7 server-side rendering architecture with comprehensive AI chat, live preview via App Proxy native Shopify Liquid, multi-tenant billing, and complete TypeScript strict mode throughout.
 
 **Codebase Stats**:
-- **Application Files**: 240 (TypeScript/TSX, Prisma, CSS, JSON)
+- **Application Files**: 241 (TypeScript/TSX, Prisma, CSS, JSON)
 - **React Components**: 115 organized in 8 feature domains
 - **Service Modules**: 19 server-only files (`.server.ts`)
 - **Routes**: 29 file-based (protected/public/webhooks/API)
 - **Database Models**: 11 Prisma models with relationships
 - **Test Suites**: 32+ Jest test files
+- **AI Chat Features**: Streaming SSE, phase tracking, structured change extraction (Phase 3)
 
 ## Directory Structure
 
@@ -73,9 +74,9 @@ ai-section-generator-app/
 │   │   │   ├── MessageList.tsx          # Scrollable message history
 │   │   │   ├── MessageItem.tsx          # Individual message styling
 │   │   │   ├── CodeBlock.tsx            # Code block rendering in chat
-│   │   │   ├── AIResponseCard.tsx       # Unified streaming + completed AI responses (NEW Phase 1)
+│   │   │   ├── AIResponseCard.tsx       # Unified streaming + completed AI responses (Phase 1)
 │   │   │   │   - Phase indicators: Analyzing → Schema → Styling → Finalizing
-│   │   │   │   - Change bullets: Extracted from AI response text
+│   │   │   │   - Change bullets: Extracted from AI response structured comments
 │   │   │   │   - Collapsible code accordion (collapsed by default)
 │   │   │   │   - CSS transitions for smooth state changes
 │   │   │   │   - Memoized for performance
@@ -88,7 +89,7 @@ ai-section-generator-app/
 │   │   │   ├── LoadingIndicator.tsx     # Streaming state indicator
 │   │   │   ├── TypingIndicator.tsx      # Typing animation
 │   │   │   ├── hooks/
-│   │   │   │   ├── useChat.ts           # Chat message management
+│   │   │   │   ├── useChat.ts           # Chat message management (stores changes from streaming)
 │   │   │   │   ├── useAutoScroll.ts     # Auto-scroll on new messages
 │   │   │   │   ├── useStreamingMessage.ts # SSE stream handling
 │   │   │   │   ├── useStreamingProgress.ts # Streaming phase tracking
@@ -97,10 +98,10 @@ ai-section-generator-app/
 │   │   │   │   ├── parseStreamedResponse.ts # Response parsing
 │   │   │   │   ├── formatChatMessage.ts     # Message formatting
 │   │   │   │   ├── extractCodeBlocks.ts     # Code extraction from chat
-│   │   │   │   ├── changes-extractor.ts     # Extract changes from AI response (NEW Phase 1)
-│   │   │   │   │   - Pattern detection: bullets, numbered lists, action verbs
-│   │   │   │   │   - Max 5 most important changes returned
-│   │   │   │   │   - DoS protection: 50KB input limit
+│   │   │   │   ├── code-extractor.ts        # Extract code + changes from AI response (Phase 3)
+│   │   │   │   │   - Structured CHANGES comment parsing: <!-- CHANGES: [...] -->
+│   │   │   │   │   - Fallback: bullet/numbered list extraction
+│   │   │   │   │   - Max 5 changes enforced (UX: scannable display)
 │   │   │   │   ├── section-type-detector.ts # Detect section category from prompt
 │   │   │   │   └── suggestion-engine.ts     # Generate quick action suggestions
 │   │   │   └── __tests__/               # 6 test suites (added AIResponseCard + changes-extractor)
@@ -305,9 +306,16 @@ ai-section-generator-app/
 │   │   │
 │   │   └── (10+ additional services: database, auth, utils)
 │   │
-│   ├── utils/                          # Utility functions (15 files)
-│   │   ├── code-extractor.ts          # Extract code from AI responses
-│   │   ├── context-builder.ts         # Build conversation context
+│   ├── utils/                          # Utility functions (16 files)
+│   │   ├── code-extractor.ts          # Extract code + changes from AI responses (Phase 3)
+│   │   │   - extractCodeFromResponse() → code + changes + explanation
+│   │   │   - extractChanges() → structured comment or fallback parsing
+│   │   │   - stripChangesComment() → clean code for display
+│   │   │   - isCompleteLiquidSection() → validation
+│   │   ├── context-builder.ts         # Build conversation context + CHANGES instruction
+│   │   │   - CHAT_SYSTEM_EXTENSION → AI prompt with structured CHANGES format
+│   │   │   - buildConversationPrompt() → full context assembly
+│   │   │   - getChatSystemPrompt() → system prompt with extension
 │   │   ├── input-sanitizer.ts         # XSS/injection prevention
 │   │   ├── liquid-wrapper.server.ts   # App Proxy context injection
 │   │   ├── settings-transform.server.ts # Liquid assigns generation
@@ -396,7 +404,7 @@ ai-section-generator-app/
 - BuildProgressIndicator, StreamingCodeBlock, VersionBadge, VersionTimeline
 - SuggestionChips, EmptyChatState
 - Custom hooks: useChat, useAutoScroll, useStreamingMessage, useStreamingProgress, useChatSuggestions
-- Utilities: extractChanges, hasChanges, detectSectionType, getSuggestions
+- Utilities: code-extractor (extractCodeFromResponse, extractChanges), detectSectionType, getSuggestions
 
 ### Generate (14 components)
 - GenerateLayout, GenerateInputColumn, GeneratePreviewColumn
@@ -435,9 +443,10 @@ ai-section-generator-app/
 ## Service Layer Overview
 
 ### Core AI Service
-- `ai.server.ts` - Google Gemini 2.5 Flash integration
-  - Streaming response handling
-  - System prompt with 137 lines of Liquid expertise
+- `ai.server.ts` - Google Gemini 2.5 Flash integration (Phase 3 compatible)
+  - Streaming response handling with change extraction
+  - System prompt with 137 lines + CHANGES instruction (Phase 3)
+  - Instruction: AI outputs <!-- CHANGES: [...] --> comment with 3-5 user-visible changes
   - Mock fallback for development
   - Error recovery with retry logic
 
@@ -462,8 +471,11 @@ ai-section-generator-app/
 - `input-sanitizer.ts` - XSS/injection prevention
 
 ### Utilities
-- `code-extractor.ts` - Parse AI responses
-- `context-builder.ts` - Build conversation prompts
+- `code-extractor.ts` - Parse AI responses + extract structured changes (Phase 3)
+  - Handles <!-- CHANGES: [...] --> comment format
+  - Fallback: bullet/numbered list extraction from explanation
+  - Max 5 changes enforced for scannable display
+- `context-builder.ts` - Build conversation prompts with CHANGES instruction
 - `liquid-wrapper.server.ts` - App Proxy injection
 - `settings-transform.server.ts` - Generate Liquid assigns
 - `blocks-iteration.server.ts` - Rewrite block loops
@@ -518,7 +530,7 @@ Conversation {
 
 Message {
   id, conversationId, role, content
-  codeVersion?, createdAt
+  codeSnapshot?, changes?, createdAt  // Phase 3: structured change extraction
 }
 
 // Billing models
@@ -628,7 +640,7 @@ SectionFeedback {
 
 ## Feature Status
 
-### Completed (Phase 4 - 100%)
+### Completed (Phase 4 + Phase 3 AI - 100%)
 - ✅ Full 3-column editor layout
 - ✅ AI chat with streaming (SSE)
 - ✅ Live preview with 18 context + 25+ filters
@@ -640,6 +652,7 @@ SectionFeedback {
 - ✅ TypeScript strict mode
 - ✅ 30+ test suites
 - ✅ Comprehensive documentation
+- ✅ Phase 3: Structured change extraction from AI responses (<!-- CHANGES: [...] -->)
 
 ### Pending
 - ⏳ Shopify write_themes scope approval

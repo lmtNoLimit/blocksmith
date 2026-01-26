@@ -209,6 +209,7 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
       const decoder = new TextDecoder();
       let assistantContent = '';
       let codeSnapshot: string | undefined;
+      let messageChanges: string[] | undefined;
 
       // Store server's real message ID from message_complete event
       let serverMessageId: string | undefined;
@@ -242,6 +243,8 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
                   // Capture server's real message ID to sync client state with DB
                   serverMessageId = event.data.messageId;
                   codeSnapshot = event.data.codeSnapshot;
+                  // Phase 3: Capture changes array from extraction
+                  messageChanges = event.data.changes;
                   if (codeSnapshot && onCodeUpdate) {
                     onCodeUpdate(codeSnapshot);
                   }
@@ -264,6 +267,7 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
         role: 'assistant',
         content: assistantContent,
         codeSnapshot,
+        changes: messageChanges, // Phase 3: include change bullets
         createdAt: new Date(),
       };
       dispatch({ type: 'COMPLETE_STREAMING', message: assistantMessage });

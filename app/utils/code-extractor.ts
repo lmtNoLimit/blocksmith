@@ -7,6 +7,12 @@ const CODE_BLOCK_PATTERNS = [
   /```\s*([\s\S]*?)```/g,
 ];
 
+// Pattern to match structured CHANGES comment
+const CHANGES_COMMENT_PATTERN = /<!--\s*CHANGES:\s*(\[.*?\])\s*-->/s;
+
+// Max changes to return (UX: keep list scannable)
+const MAX_CHANGES = 5;
+
 /**
  * Extract Liquid code from AI response
  * Handles multiple formats:
@@ -52,6 +58,12 @@ export function extractCodeFromResponse(content: string): CodeExtractionResult {
     };
   }
 
+  // Extract changes BEFORE stripping comment from code
+  const changes = extractChanges(content, code);
+
+  // Remove CHANGES comment from code output
+  const cleanedCode = stripChangesComment(code);
+
   // Compute explanation (content without the code block)
   const explanation = content
     .replace(/```(?:liquid|html)?\s*[\s\S]*?```/g, '')
@@ -59,32 +71,90 @@ export function extractCodeFromResponse(content: string): CodeExtractionResult {
 
   return {
     hasCode: true,
-    code,
+    code: cleanedCode,
     explanation,
-    changes: extractChangeSummary(content),
+    changes,
   };
 }
 
 /**
- * Extract change summary from AI response
- * Looks for bullet points or numbered lists describing changes
+ * Extract changes from AI response
+ * Priority:
+ * 1. Structured <!-- CHANGES: [...] --> comment (inside or outside code block)
+ * 2. Fallback: bullet points or numbered lists in explanation text
  */
-function extractChangeSummary(content: string): string[] | undefined {
+function extractChanges(fullContent: string, codeContent: string): string[] | undefined {
+  // Try structured comment in code first
+  let changes = parseStructuredChanges(codeContent);
+  if (changes) return changes;
+
+  // Try structured comment in full content (might be outside code block)
+  changes = parseStructuredChanges(fullContent);
+  if (changes) return changes;
+
+  // Fallback: extract from bullet points in explanation (outside code)
+  const explanationText = fullContent.replace(/```[\s\S]*?```/g, '');
+  return extractBulletChanges(explanationText);
+}
+
+/**
+ * Parse structured CHANGES comment
+ * Format: <!-- CHANGES: ["item1", "item2"] -->
+ */
+function parseStructuredChanges(content: string): string[] | undefined {
+  const match = content.match(CHANGES_COMMENT_PATTERN);
+  if (!match) return undefined;
+
+  try {
+    const parsed = JSON.parse(match[1]);
+    if (Array.isArray(parsed)) {
+      return parsed
+        .filter((item): item is string => typeof item === 'string')
+        .map(item => item.trim())
+        .filter(item => item.length > 0)
+        .slice(0, MAX_CHANGES);
+    }
+  } catch {
+    // Invalid JSON, return undefined to try fallback
+  }
+  return undefined;
+}
+
+/**
+ * Extract change summary from bullet points/numbered lists
+ * Fallback when structured comment not present
+ */
+function extractBulletChanges(content: string): string[] | undefined {
   const changes: string[] = [];
 
   // Match bullet points (- or *)
   const bulletMatches = content.matchAll(/^[\s]*[-*]\s+(.+)$/gm);
   for (const match of bulletMatches) {
-    changes.push(match[1].trim());
+    const text = match[1].trim();
+    // Filter out markdown artifacts and code-like content
+    if (text && !text.startsWith('`') && !text.includes('```')) {
+      changes.push(text);
+    }
   }
 
   // Match numbered lists
   const numberedMatches = content.matchAll(/^[\s]*\d+\.\s+(.+)$/gm);
   for (const match of numberedMatches) {
-    changes.push(match[1].trim());
+    const text = match[1].trim();
+    if (text && !text.startsWith('`') && !text.includes('```')) {
+      changes.push(text);
+    }
   }
 
-  return changes.length > 0 ? changes : undefined;
+  return changes.length > 0 ? changes.slice(0, MAX_CHANGES) : undefined;
+}
+
+/**
+ * Remove CHANGES comment from code
+ * Keeps code clean for display and storage
+ */
+function stripChangesComment(code: string): string {
+  return code.replace(CHANGES_COMMENT_PATTERN, '').trim();
 }
 
 /**

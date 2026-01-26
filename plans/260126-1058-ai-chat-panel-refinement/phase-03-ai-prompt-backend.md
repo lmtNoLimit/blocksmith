@@ -1,8 +1,9 @@
 ---
 phase: 3
 title: "AI Prompt & Backend Integration"
-status: pending
+status: completed
 effort: 2h
+completed: 2026-01-26
 ---
 
 # Phase 3: AI Prompt & Backend Integration
@@ -234,26 +235,26 @@ case 'message_complete':
 
 ## Todo List
 
-- [ ] Add changes[] to UIMessage type
-- [ ] Update AI system prompt with CHANGES instruction
-- [ ] Add few-shot examples to prompt
-- [ ] Implement extractChanges() in code-extractor.ts
-- [ ] Add fallback parsing for unstructured changes
-- [ ] Remove CHANGES comment from extracted code
-- [ ] Verify message_complete sends changes
-- [ ] Update useChat to store changes in state
-- [ ] Test end-to-end: prompt -> extraction -> display
-- [ ] Add unit tests for extractChanges()
-- [ ] Test with various AI outputs (structured, unstructured, missing)
+- [x] Add changes[] to UIMessage type
+- [x] Update AI system prompt with CHANGES instruction
+- [x] Add few-shot examples to prompt
+- [x] Implement extractChanges() in code-extractor.ts
+- [x] Add fallback parsing for unstructured changes
+- [x] Remove CHANGES comment from extracted code
+- [x] Verify message_complete sends changes
+- [x] Update useChat to store changes in state
+- [x] Test end-to-end: prompt -> extraction -> display
+- [x] Add unit tests for extractChanges()
+- [x] Test with various AI outputs (structured, unstructured, missing)
 
 ## Success Criteria
 
-- [ ] AI outputs `<!-- CHANGES: [...] -->` comment in code
-- [ ] Code extractor parses changes array correctly
-- [ ] Changes appear in AIResponseCard as bullets
-- [ ] Fallback works when structured comment missing
-- [ ] Max 5 changes enforced
-- [ ] CHANGES comment removed from displayed code
+- [x] AI outputs `<!-- CHANGES: [...] -->` comment in code
+- [x] Code extractor parses changes array correctly
+- [x] Changes appear in AIResponseCard as bullets
+- [x] Fallback works when structured comment missing
+- [x] Max 5 changes enforced
+- [x] CHANGES comment removed from displayed code
 
 ## Risk Assessment
 

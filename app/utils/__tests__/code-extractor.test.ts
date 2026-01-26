@@ -122,6 +122,111 @@ Updates:
     expect(result.changes).toContain('Added button styles');
     expect(result.changes).toContain('Fixed mobile layout');
   });
+
+  // Phase 3: Structured CHANGES comment tests
+  describe('structured CHANGES comment extraction', () => {
+    it('should extract structured CHANGES comment from code', () => {
+      const content = `\`\`\`liquid
+{% schema %}
+{"name": "Hero"}
+{% endschema %}
+<div>Content</div>
+<!-- CHANGES: ["Added hero banner", "Set heading to blue", "Added CTA button"] -->
+\`\`\``;
+
+      const result = extractCodeFromResponse(content);
+
+      expect(result.hasCode).toBe(true);
+      expect(result.changes).toEqual([
+        'Added hero banner',
+        'Set heading to blue',
+        'Added CTA button'
+      ]);
+      // CHANGES comment should be stripped from code
+      expect(result.code).not.toContain('CHANGES:');
+    });
+
+    it('should strip CHANGES comment from extracted code', () => {
+      const content = `\`\`\`liquid
+{% schema %}{"name": "Test"}{% endschema %}
+<div>Test</div>
+<!-- CHANGES: ["Updated layout"] -->
+\`\`\``;
+
+      const result = extractCodeFromResponse(content);
+
+      expect(result.code).not.toContain('<!-- CHANGES');
+      expect(result.code).toContain('{% schema %}');
+      expect(result.code).toContain('<div>Test</div>');
+    });
+
+    it('should handle malformed JSON in CHANGES gracefully', () => {
+      const content = `\`\`\`liquid
+{% schema %}{"name": "Test"}{% endschema %}
+<div>Test</div>
+<!-- CHANGES: [invalid json] -->
+\`\`\`
+
+- Fallback bullet point`;
+
+      const result = extractCodeFromResponse(content);
+
+      // Should fallback to bullet extraction
+      expect(result.changes).toContain('Fallback bullet point');
+    });
+
+    it('should limit changes to 5 items max', () => {
+      const content = `\`\`\`liquid
+{% schema %}{"name": "Test"}{% endschema %}
+<div>Test</div>
+<!-- CHANGES: ["One", "Two", "Three", "Four", "Five", "Six", "Seven"] -->
+\`\`\``;
+
+      const result = extractCodeFromResponse(content);
+
+      expect(result.changes?.length).toBe(5);
+      expect(result.changes).not.toContain('Six');
+      expect(result.changes).not.toContain('Seven');
+    });
+
+    it('should prefer structured comment over bullet fallback', () => {
+      const content = `\`\`\`liquid
+{% schema %}{"name": "Test"}{% endschema %}
+<div>Test</div>
+<!-- CHANGES: ["Structured change"] -->
+\`\`\`
+
+- Bullet change that should be ignored`;
+
+      const result = extractCodeFromResponse(content);
+
+      expect(result.changes).toEqual(['Structured change']);
+      expect(result.changes).not.toContain('Bullet change that should be ignored');
+    });
+
+    it('should handle CHANGES comment with extra whitespace', () => {
+      const content = `\`\`\`liquid
+{% schema %}{"name": "Test"}{% endschema %}
+<div>Test</div>
+<!--   CHANGES:   ["Spaced change"]   -->
+\`\`\``;
+
+      const result = extractCodeFromResponse(content);
+
+      expect(result.changes).toEqual(['Spaced change']);
+    });
+
+    it('should return undefined changes when no changes found', () => {
+      const content = `\`\`\`liquid
+{% schema %}{"name": "Test"}{% endschema %}
+<div>Test</div>
+\`\`\``;
+
+      const result = extractCodeFromResponse(content);
+
+      expect(result.changes).toBeUndefined();
+    });
+  });
 });
 
 describe('isCompleteLiquidSection', () => {

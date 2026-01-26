@@ -1,13 +1,14 @@
 ---
 title: "AI Chat Panel Refinement"
 description: "Unified AIResponseCard with streaming phases, auto-apply, and non-destructive restore"
-status: in-progress
+status: completed
 priority: P1
 effort: 8h
 branch: main
 tags: [chat, ux, streaming, versions, ai-response]
 created: 2026-01-26
 updated: 2026-01-26
+completed: 2026-01-26T13:37:00Z
 ---
 
 # AI Chat Panel Refinement
@@ -28,8 +29,8 @@ Consolidate streaming + completed message states into single `AIResponseCard` co
 | Phase | Name | Effort | Status | File |
 |-------|------|--------|--------|------|
 | 1 | AIResponseCard Component | 3h | completed | [phase-01-ai-response-card.md](./phase-01-ai-response-card.md) |
-| 2 | Auto-Apply & Version Management | 3h | pending | [phase-02-auto-apply-version-management.md](./phase-02-auto-apply-version-management.md) |
-| 3 | AI Prompt & Backend Integration | 2h | pending | [phase-03-ai-prompt-backend.md](./phase-03-ai-prompt-backend.md) |
+| 2 | Auto-Apply & Version Management | 3h | completed | [phase-02-auto-apply-version-management.md](./phase-02-auto-apply-version-management.md) |
+| 3 | AI Prompt & Backend Integration | 2h | completed | [phase-03-ai-prompt-backend.md](./phase-03-ai-prompt-backend.md) |
 
 ## Key Components
 

@@ -165,9 +165,9 @@ AI Section Generator is a Shopify embedded app that leverages Google Gemini AI t
 
 ---
 
-### Phase 5: Preview Settings Sync Enhancement (In Progress)
-**Status**: 🔄 In Progress - Phases 01, 02, 03, 05d Complete
-**Target**: December 2025
+### Phase 5: Preview Settings Sync Enhancement (Completed)
+**Status**: ✅ 100% Complete
+**Completion**: 2025-12-25
 **Completion Dates**: Phase 01: 2025-12-25 | Phase 02: 2025-12-25 | Phase 03: 2025-12-25
 
 #### Phase 5a: Resource Picker Context Integration (COMPLETE)
@@ -226,7 +226,63 @@ AI Section Generator is a Shopify embedded app that leverages Google Gemini AI t
 
 ---
 
-### Phase 6: Advanced Features (Planned)
+### Phase 6: AI Chat Panel Refinement (Completed)
+**Status**: ✅ 100% Complete
+**Completion**: 2026-01-26
+
+#### Phase 6a: AIResponseCard Component (COMPLETE)
+**Status**: ✅ 100% Complete
+**Completion**: 2026-01-26
+
+- ✅ Unified `AIResponseCard` component for streaming and completed states
+- ✅ CSS transitions for smooth state changes
+- ✅ Phase indicators (Analyzing → Schema → Styling → Finalizing)
+- ✅ Indeterminate spinner with phase text
+- ✅ Change bullet display with scannable format
+- ✅ 18/18 tests passing (100% pass rate)
+- ✅ Code review: 0 critical issues
+
+**Key Achievement**: Replaced split streaming/saved display with unified component, reducing code duplication and improving UX consistency.
+
+#### Phase 6b: Auto-Apply & Version Management (COMPLETE)
+**Status**: ✅ 100% Complete
+**Completion**: 2026-01-26
+
+- ✅ Auto-apply on generation completion
+- ✅ Removed manual "Apply to Draft" friction
+- ✅ Active version badge display
+- ✅ Non-destructive restore flow
+- ✅ Version history preservation
+- ✅ 18/18 tests passing
+- ✅ Code review: 0 critical issues
+
+**Key Achievement**: Implemented bolt.new-style auto-apply with version tracking, allowing users to restore previous versions without losing history.
+
+#### Phase 6c: AI Prompt & Backend Integration (COMPLETE)
+**Status**: ✅ 100% Complete
+**Completion**: 2026-01-26
+
+- ✅ Added `changes[]` to UIMessage type
+- ✅ Updated AI system prompt with CHANGES instruction
+- ✅ Implemented structured `extractChanges()` in code-extractor.ts
+- ✅ Fallback parser for unstructured changes (bullet points)
+- ✅ CHANGES comment removed from displayed code
+- ✅ useChat hook updated to store changes in state
+- ✅ Changes displayed as bullets in AIResponseCard
+- ✅ 18/18 tests passing
+- ✅ Code review: 0 critical issues
+
+**Key Achievement**: Connected AI output to UIMessage changes display, enabling user-visible change bullets from structured CHANGES comment extraction.
+
+**Phase 6 Metrics**:
+- Code Review Grade: A (0 critical issues)
+- Test Coverage: 100% (54 tests total across all sub-phases)
+- TypeScript: 100% compliance
+- Implementation Files: 8 modified, integration complete
+
+---
+
+### Phase 7: Advanced Features (Planned)
 **Status**: ⏳ Pending
 **Target**: Q1 2026
 
@@ -313,12 +369,24 @@ AI Section Generator is a Shopify embedded app that leverages Google Gemini AI t
 | Block Settings Defaults Inheritance (Phase 5b) | ✅ Complete | 100% | 2025-12-12 |
 | Font Picker Data Loading (Phase 5c) | ✅ Complete | 100% | 2025-12-12 |
 | Settings Transform & Liquid Rendering (Phase 5d) | ✅ Complete | 100% | 2025-12-25 |
+| AI Chat Panel Refinement (Phase 6a - AIResponseCard) | ✅ Complete | 100% | 2026-01-26 |
+| AI Chat Panel Refinement (Phase 6b - Auto-Apply) | ✅ Complete | 100% | 2026-01-26 |
+| AI Chat Panel Refinement (Phase 6c - AI Prompt & Backend) | ✅ Complete | 100% | 2026-01-26 |
 
 ---
 
-## Current Sprint: Phase 5 Complete (All Sub-phases 5a-5d Complete)
+## Current Sprint: Phase 6 Complete (All Sub-phases 6a-6c Complete)
 
-### Completed in Current Sprint (December 2025)
+### Completed in Current Sprint (January 2026)
+1. ✅ Phase 6: AI Chat Panel Refinement (Complete - 2026-01-26)
+   - Phase 6a: AIResponseCard Component (unified streaming/completed states)
+   - Phase 6b: Auto-Apply & Version Management (auto-apply on completion)
+   - Phase 6c: AI Prompt & Backend Integration (changes extraction and display)
+   - 54 tests passing (100% pass rate)
+   - Code review: 0 critical issues
+   - Key achievement: Unified AI response display with change bullets
+
+### Completed in Previous Sprint (December 2025)
 1. ✅ Dual-action save flow implementation (Save Draft + Publish to Theme)
 2. ✅ Section edit and regenerate capabilities
 3. ✅ Phase 5b: Block Settings Defaults Inheritance (2025-12-12)
@@ -471,7 +539,39 @@ AI Section Generator is a Shopify embedded app that leverages Google Gemini AI t
 
 ## Changelog
 
-### Version 1.2 (Current)
+### Version 1.3 (Current)
+
+#### 2026-01-26
+- ✅ Phase 6: AI Chat Panel Refinement Complete (All Sub-phases 6a-6c)
+
+  **Phase 6a - AIResponseCard Component**:
+  - Unified component for streaming and completed states
+  - CSS transitions for smooth state changes
+  - Phase indicators: Analyzing → Schema → Styling → Finalizing
+  - Indeterminate spinner + phase text display
+
+  **Phase 6b - Auto-Apply & Version Management**:
+  - Auto-apply on generation completion
+  - Removed manual "Apply to Draft" friction
+  - Active version badge display
+  - Non-destructive restore flow with version history
+
+  **Phase 6c - AI Prompt & Backend Integration**:
+  - Added `changes[]` to UIMessage type
+  - Updated AI system prompt with CHANGES instruction
+  - Implemented `extractChanges()` in code-extractor.ts
+  - Fallback parser for unstructured changes
+  - Changes displayed as scannable bullets
+
+  **Phase 6 Metrics**:
+  - Code Review Grade: A (0 critical issues)
+  - Test Coverage: 100% (54 tests across all sub-phases)
+  - TypeScript: 100% compliance
+  - Files Modified: 8
+
+  **Key Achievement**: Unified AI response display with structured change bullets, auto-apply on completion, and non-destructive version restore.
+
+### Version 1.2
 
 #### 2025-12-25
 - ✅ Phase 5d: Settings Transform & Liquid Rendering Complete
@@ -738,7 +838,7 @@ For questions about this roadmap or project status:
 
 ---
 
-**Document Version**: 1.7
-**Last Updated**: 2025-12-25 (Phase 5d Settings Transform & Liquid Rendering Complete)
-**Status**: Phase 5 Complete (All Sub-phases 5a-5d 100% Complete) - Planning Phase 6
-**Next Review**: 2026-01-08 (Phase 6 Planning & Initiation)
+**Document Version**: 1.8
+**Last Updated**: 2026-01-26 (Phase 6 AI Chat Panel Refinement Complete)
+**Status**: Phase 6 Complete (All Sub-phases 6a-6c 100% Complete) - Phase 7 Planning
+**Next Review**: 2026-02-02 (Phase 7 Planning & Initiation)

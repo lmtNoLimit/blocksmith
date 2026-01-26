@@ -12,6 +12,7 @@ export interface UIMessage {
   role: MessageRole;
   content: string;
   codeSnapshot?: string;
+  changes?: string[]; // Phase 3: change summary bullets from AI
   tokenCount?: number;
   isError?: boolean;
   errorMessage?: string;
@@ -57,6 +58,7 @@ export interface StreamEvent {
     messageId?: string;
     content?: string;
     codeSnapshot?: string;
+    changes?: string[]; // Phase 3: change summary bullets
     error?: string;
   };
 }
