@@ -1,12 +1,12 @@
 # Codebase Summary - AI Section Generator (Blocksmith)
 
 **Last Updated**: 2026-01-27
-**Version**: 1.9 (Phase 01 CRO Recipes Complete)
+**Version**: 2.0 (Phase 03 AI CRO Integration Complete)
 **Architecture**: Service-oriented, multi-tenant, React Router 7 SSR with TypeScript strict mode
 
 ## Overview
 
-**AI Section Generator** (Blocksmith) is a production-ready Shopify embedded app enabling merchants to create custom Liquid theme sections using Google Gemini 2.5 Flash AI without coding. The system features a modern React Router 7 server-side rendering architecture with comprehensive AI chat, live preview via App Proxy native Shopify Liquid, multi-tenant billing, complete TypeScript strict mode throughout, and UI feedback for continuation events during generation.
+**AI Section Generator** (Blocksmith) is a production-ready Shopify embedded app enabling merchants to create custom Liquid theme sections using Google Gemini 2.5 Flash AI without coding. The system features a modern React Router 7 server-side rendering architecture with comprehensive AI chat, live preview via App Proxy native Shopify Liquid, multi-tenant billing, complete TypeScript strict mode throughout, UI feedback for continuation events during generation, and AI-extracted CRO (Conversion Rate Optimization) reasoning with design principle explanations for recipe-based section generation.
 
 **Codebase Stats**:
 - **Application Files**: 242 (TypeScript/TSX, Prisma, CSS, JSON)
@@ -34,10 +34,11 @@ ai-section-generator-app/
 │   │   │   ├── app.tsx                  # App layout wrapper (navigation, auth)
 │   │   │
 │   │   ├── API Routes (data endpoints):
-│   │   │   ├── api.chat.stream.tsx      # SSE streaming for chat (Phase 4 updated)
+│   │   │   ├── api.chat.stream.tsx      # SSE streaming for chat (Phase 4 updated, Phase 3 CRO reasoning)
+│   │   │   │   - Phase 3: CRO reasoning extraction from AI response (parsesCROReasoning, separates from code)
 │   │   │   │   - Phase 3: Auto-continuation for truncated responses
 │   │   │   │   - Phase 4: Emits continuation_start/continuation_complete events
-│   │   │   │   - Phase 4: message_complete includes wasComplete, continuationCount
+│   │   │   │   - Phase 4: message_complete includes wasComplete, continuationCount, croReasoning, hasCROReasoning
 │   │   │   ├── api.chat.messages.ts     # Conversation message persistence
 │   │   │   ├── api.enhance-prompt.ts    # Prompt optimization via Gemini
 │   │   │   ├── api.preview.render.ts    # App Proxy rendering (native Liquid)
@@ -234,13 +235,18 @@ ai-section-generator-app/
 │   │       └── __tests__/              # 1 test suite
 │   │
 │   ├── services/                       # 19 server-only modules (business logic)
-│   │   ├── ai.server.ts               # Gemini 2.5 Flash integration (330 LOC, Phase 3 Auto-Continuation)
+│   │   ├── ai.server.ts               # Gemini 2.5 Flash integration (1019 LOC, Phase 3 CRO Reasoning + Auto-Continuation)
 │   │   │   - GENERATION_CONFIG: maxOutputTokens 65536 (prevents silent truncation at ~8K default)
 │   │   │   - generateWithContext(prompt, context, options) → async generator streaming tokens (Phase 3)
 │   │   │   - onFinishReason callback → reports MAX_TOKENS or STOP reason (Phase 3)
 │   │   │   - Feature flag: FLAG_MAX_OUTPUT_TOKENS for rollback
 │   │   │   - generateSection(prompt, context) → Liquid code (legacy alias)
 │   │   │   - enhancePrompt(prompt) → improved prompt
+│   │   │   - CRO_REASONING_INSTRUCTIONS constant → AI prompt extension for recipe-based generation (Phase 3)
+│   │   │   - getSystemPrompt(includeCROInstructions?) → conditional CRO reasoning instruction extension
+│   │   │   - CROGenerationOptions: recipe, recipeContext
+│   │   │   - CROGenerationResult: code, reasoning, rawResponse
+│   │   │   - parseCROReasoning(response) → extract structured CRO reasoning (Phase 3)
 │   │   │   - Mock fallback for development
 │   │   │
 │   │   ├── chat.server.ts             # Conversation management (220 LOC)
@@ -332,7 +338,14 @@ ai-section-generator-app/
 │   │   │
 │   │   └── (10+ additional services: database, auth, utils)
 │   │
-│   ├── utils/                          # Utility functions (17 files, Phase 3 Auto-Continuation)
+│   ├── utils/                          # Utility functions (18 files, Phase 3 CRO Reasoning + Auto-Continuation)
+│   │   ├── cro-reasoning-parser.ts     # CRO reasoning extraction (Phase 3, NEW)
+│   │   │   - CRODecision: element, choice, principle, explanation, source
+│   │   │   - CROReasoning: goal, decisions[], tip?
+│   │   │   - parseCROReasoning() → extract JSON from <!-- CRO_REASONING_START/END -->
+│   │   │   - extractCodeWithoutReasoning() → clean code before extraction
+│   │   │   - hasCROReasoning() → check for reasoning block markers
+│   │   │   - getPrincipleDisplay() → map principle to emoji + label
 │   │   ├── code-extractor.ts          # Extract code + changes from AI responses (Phase 3 + Phase 2)
 │   │   │   - extractCodeFromResponse() → code + changes + explanation
 │   │   │   - extractChanges() → structured comment or fallback parsing
@@ -705,7 +718,7 @@ CRORecipe {
 
 ## Feature Status
 
-### Completed (Phase 4 UI Feedback + Phase 3 Auto-Continuation + Phase 2 Validation - 100%)
+### Completed (Phase 04 UI Feedback + Phase 03 CRO Reasoning + Phase 02 Validation - 100%)
 - ✅ Full 3-column editor layout
 - ✅ AI chat with streaming (SSE)
 - ✅ Live preview with 18 context + 25+ filters
@@ -715,16 +728,24 @@ CRORecipe {
 - ✅ Section editing with auto-save
 - ✅ Hybrid billing (recurring + usage)
 - ✅ TypeScript strict mode
-- ✅ 33+ test suites
+- ✅ 34+ test suites (added cro-reasoning-parser tests)
 - ✅ Comprehensive documentation
-- ✅ Phase 4: UI Feedback for generation status
+- ✅ Phase 04: UI Feedback for generation status
   - Completion status badges (complete, potentially-incomplete, generating)
   - Continuation indicators with attempt count and reason (token_limit, incomplete_code)
   - Auto-completed badge showing continuation count
   - GenerationStatus tracking (isGenerating, isContinuing, wasComplete)
-- ✅ Phase 3: Structured change extraction from AI responses (<!-- CHANGES: [...] -->)
-- ✅ Phase 3: Auto-continuation for truncated responses with MAX_TOKENS detection
-- ✅ Phase 2: Liquid completeness validation (truncation detection, tag matching)
+- ✅ Phase 03: CRO Reasoning Extraction from AI responses
+  - parseCROReasoning utility: Extract structured JSON from <!-- CRO_REASONING_START/END -->
+  - 12 CRO principles supported (urgency, scarcity, social proof, authority, reciprocity, etc.)
+  - Design decision explanations with psychological principles
+  - A/B testing suggestions included
+  - Full integration: AI service + chat endpoint + context builder
+  - Backward compatible (optional in message_complete event)
+  - Comprehensive test coverage (9 test suites, 33 test cases)
+- ✅ Phase 03: Structured change extraction from AI responses (<!-- CHANGES: [...] -->)
+- ✅ Phase 03: Auto-continuation for truncated responses with MAX_TOKENS detection
+- ✅ Phase 02: Liquid completeness validation (truncation detection, tag matching)
 
 ### Pending
 - ⏳ Shopify write_themes scope approval
@@ -756,6 +777,6 @@ CRORecipe {
 
 ---
 
-**Document Version**: 1.7
-**Last Updated**: 2026-01-26
+**Document Version**: 2.0
+**Last Updated**: 2026-01-27
 **Maintainer**: Documentation Manager

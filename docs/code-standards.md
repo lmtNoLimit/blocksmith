@@ -1025,20 +1025,183 @@ async generateSection(prompt: string): Promise<string> {
 - Maintain backward compatibility for 1 major version
 - Remove deprecated code with major version bump
 
+## Phase 3: CRO Reasoning Patterns
+
+### CRO Reasoning Extraction Pattern
+
+When implementing CRO (Conversion Rate Optimization) reasoning extraction in the AI service:
+
+```typescript
+// In ai.server.ts
+import { parseCROReasoning, extractCodeWithoutReasoning, type CROReasoning } from "../utils/cro-reasoning-parser";
+
+export const CRO_REASONING_INSTRUCTIONS = `
+=== CRO REASONING OUTPUT ===
+After generating the Liquid code, include a CRO reasoning block:
+<!-- CRO_REASONING_START -->
+{
+  "goal": "[Conversion goal]",
+  "decisions": [
+    {
+      "element": "[Design element]",
+      "choice": "[Implementation]",
+      "principle": "[CRO principle]",
+      "explanation": "[Why this works]",
+      "source": "[Optional reference]"
+    }
+  ],
+  "tip": "[A/B testing suggestion]"
+}
+<!-- CRO_REASONING_END -->
+`;
+
+export class AIService {
+  getSystemPrompt(includeCROInstructions = false): string {
+    if (includeCROInstructions) {
+      return SYSTEM_PROMPT + CRO_REASONING_INSTRUCTIONS;
+    }
+    return SYSTEM_PROMPT;
+  }
+
+  parseCROReasoning(response: string): CROReasoning | null {
+    return parseCROReasoning(response);
+  }
+}
+```
+
+### CRO Reasoning Extraction in Streaming Endpoint
+
+When handling CRO reasoning in SSE endpoints:
+
+```typescript
+// In api.chat.stream endpoint
+import { parseCROReasoning, extractCodeWithoutReasoning, hasCROReasoning } from "../utils/cro-reasoning-parser";
+
+// Extract CRO reasoning if present
+let croReasoning: CROReasoning | null = null;
+let contentForExtraction = fullContent;
+
+if (hasCROReasoning(fullContent)) {
+  croReasoning = parseCROReasoning(fullContent);
+  // Remove reasoning block from content before code extraction
+  contentForExtraction = extractCodeWithoutReasoning(fullContent);
+}
+
+// Extract code from completed response (without reasoning block)
+const extraction = extractCodeFromResponse(contentForExtraction);
+
+// Send completion event with CRO reasoning data
+controller.enqueue(
+  encoder.encode(
+    `data: ${JSON.stringify({
+      type: 'message_complete',
+      data: {
+        messageId: assistantMessage.id,
+        hasCode: extraction.hasCode,
+        croReasoning: croReasoning,        // Phase 3: structured CRO reasoning
+        hasCROReasoning: croReasoning !== null,
+      },
+    })}\n\n`
+  )
+);
+```
+
+### CRO Principles Reference
+
+Supported CRO principles with psychological foundations:
+
+| Principle | Element Type | Mechanism | Example |
+|-----------|--------------|-----------|---------|
+| **Urgency** | Time-limited offers | Triggers action via time pressure | Countdown timers, "Ends soon" |
+| **Scarcity** | Limited availability | Increases perceived value | "Only 3 left", limited edition |
+| **Social Proof** | Others' actions | Validates decisions | Reviews, testimonials, "1000+ sold" |
+| **Authority** | Expert endorsements | Builds trust | Certifications, credentials |
+| **Reciprocity** | Giving creates obligation | Reciprocal response | Free samples, bonus content |
+| **Visual Hierarchy** | Element prominence | Guides attention to key elements | Size, contrast, placement |
+| **F-Pattern** | Natural eye movement | Follows reading behavior | Key content along F path |
+| **Contrast** | Visual distinctness | Makes CTAs stand out | Color, size, whitespace |
+| **Whitespace** | Breathing room | Reduces cognitive load | Improves readability |
+| **Risk Reversal** | Perceived risk reduction | Lowers purchase barriers | Guarantees, free returns |
+| **Anchoring** | Reference pricing | Makes sale price compelling | Original price display |
+| **Loss Aversion** | Fear of missing out | Drives faster decisions | Scarcity + urgency combo |
+
+### Testing CRO Reasoning
+
+```typescript
+// Example test in cro-reasoning-parser.test.ts
+describe('parseCROReasoning', () => {
+  it('parses valid CRO reasoning block', () => {
+    const response = `
+<!-- CRO_REASONING_START -->
+{
+  "goal": "Reduce Cart Abandonment",
+  "decisions": [
+    {
+      "element": "CTA Placement",
+      "choice": "Above-the-fold",
+      "principle": "Visual Hierarchy",
+      "explanation": "Users see it first",
+      "source": "Nielsen Norman Group"
+    }
+  ],
+  "tip": "Test different colors"
+}
+<!-- CRO_REASONING_END -->
+    `;
+
+    const result = parseCROReasoning(response);
+
+    expect(result?.goal).toBe('Reduce Cart Abandonment');
+    expect(result?.decisions).toHaveLength(1);
+    expect(result?.decisions[0].principle).toBe('Visual Hierarchy');
+  });
+});
+```
+
+### Integration with Context Builder
+
+When building CRO-enhanced prompts for recipe-based generation:
+
+```typescript
+// In context-builder.ts
+export function buildCROEnhancedPrompt(
+  recipe: CRORecipe,
+  context: RecipeContext
+): string {
+  let prompt = recipe.promptTemplate;
+
+  // Inject user answers into template
+  if (context.userAnswers) {
+    Object.entries(context.userAnswers).forEach(([key, value]) => {
+      prompt = prompt.replace(`{{${key}}}`, value);
+    });
+  }
+
+  // Add CRO principles reminder
+  if (recipe.croPrinciples && recipe.croPrinciples.length > 0) {
+    const principles = recipe.croPrinciples.join(', ');
+    prompt += `\n\nCRO PRINCIPLES TO APPLY: ${principles}`;
+  }
+
+  return prompt;
+}
+```
+
 ---
 
-**Document Version**: 1.5
-**Last Updated**: 2026-01-26
+**Document Version**: 1.6
+**Last Updated**: 2026-01-27
 **Compliance**: All code must follow these standards (strictly enforced)
-**Current Status**: Phase 4 + Phase 3 (Auto-Continuation) + Phase 3 (Structured Changes) + Phase 2 (Liquid Validation) - All 235 app files pass TypeScript strict mode
+**Current Status**: Phase 4 UI Feedback + Phase 3 CRO Reasoning + Phase 3 Auto-Continuation + Phase 3 Structured Changes + Phase 2 Liquid Validation - All 235+ app files pass TypeScript strict mode
 **Key Enforcements**:
 - TypeScript strict mode throughout codebase
-- 33+ Jest test suites covering critical paths
-- 115 React components following feature-based organization
+- 34+ Jest test suites covering critical paths
+- 116 React components following feature-based organization
 - 19 server services with clear separation of concerns
 - Multi-tenant isolation via shop domain verification
 - Comprehensive error handling and input validation
 - Auto-save on AI generation with 4-layer duplicate prevention
+- CRO reasoning extraction from AI responses with structured JSON (Phase 3)
 - Liquid code validation with truncation detection (Phase 2)
 - Structured change extraction from AI responses (Phase 3)
 - Auto-continuation for truncated responses with intelligent merge (Phase 3)

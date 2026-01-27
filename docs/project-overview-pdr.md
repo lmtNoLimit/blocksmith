@@ -217,14 +217,15 @@ Historical record of generated sections:
 
 **Version**: 1.0-beta
 **Last Updated**: 2026-01-26
-**Phase**: 4 UI Feedback Complete + Phase 3 Auto-Continuation + Phase 2 Validation + Phase 1 Auto-Save
+**Phase**: 4 UI Feedback Complete + Phase 3 CRO Reasoning Complete + Phase 2 Validation + Phase 1 Auto-Save
 
-### Completed Features (Phase 4 UI Feedback - 100%)
+### Completed Features (Phase 4 UI Feedback + Phase 3 CRO Reasoning - 100%)
 
 **Core Generation**:
 - ✅ AI-powered section generation (Google Gemini 2.5 Flash)
 - ✅ Streaming responses via Server-Sent Events (SSE)
 - ✅ System prompt with 137 lines of Shopify Liquid expertise
+- ✅ CRO (Conversion Rate Optimization) recipe-based generation with reasoning extraction
 - ✅ Mock fallback for development/testing
 - ✅ Auto-save draft on AI version apply (silent persistence)
 
@@ -314,6 +315,34 @@ Historical record of generated sections:
   - Badge rendering tests
   - Tooltip content tests
   - Continuation count display tests
+
+### Phase 3: CRO (Conversion Rate Optimization) Reasoning Integration
+- ✅ Structured CRO reasoning extraction from AI responses
+  - New utility: `cro-reasoning-parser.ts` (150 LOC)
+  - Parses JSON from <!-- CRO_REASONING_START/END --> HTML comments
+  - CRODecision interface: element, choice, principle, explanation, source
+  - CROReasoning interface: goal, decisions[], tip?
+- ✅ CRO principle support (12 principles)
+  - Urgency, Scarcity, Social Proof, Authority, Reciprocity
+  - Visual Hierarchy, F-Pattern, Contrast, Whitespace
+  - Risk Reversal, Anchoring, Loss Aversion
+  - Each decision includes psychological explanation
+- ✅ AI service integration
+  - CRO_REASONING_INSTRUCTIONS constant in system prompt (44 lines)
+  - Extends system prompt when generating from CRO recipes
+  - getSystemPrompt(includeCROInstructions?) method
+- ✅ SSE streaming integration
+  - api.chat.stream endpoint extracts reasoning from response
+  - Separates reasoning from code before processing
+  - Sends croReasoning object in message_complete event
+  - Backward compatible (reasoning optional)
+- ✅ Context-builder enhancement
+  - buildCROEnhancedPrompt() builds recipe-enhanced generation prompt
+  - Injects user context and CRO principles into template
+- ✅ Comprehensive testing
+  - 9 test suites in cro-reasoning-parser.test.ts
+  - 33 test cases covering all edge cases
+  - Validates parsing, extraction, principle mapping
 
 ### Phase 3: Auto-Continuation Enhancements
 - ✅ Auto-continuation for truncated responses
@@ -427,4 +456,4 @@ Historical record of generated sections:
 
 **Document Version**: 1.6
 **Last Updated**: 2026-01-26
-**Status**: Phase 4 Complete + Phase 3 Auto-Continuation + Phase 3 Structured Changes + Phase 2 Liquid Validation - Production Ready (awaiting Shopify scope approval)
+**Status**: Phase 4 UI Feedback + Phase 3 CRO Reasoning + Phase 3 Auto-Continuation + Phase 3 Structured Changes + Phase 2 Liquid Validation - Production Ready (awaiting Shopify scope approval)

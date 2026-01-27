@@ -3,7 +3,7 @@ title: "CRO-Focused Pivot: Goal-Based Prompting"
 description: "Replace blank canvas with CRO recipe cards for conversion-focused section generation"
 status: in-progress
 priority: P1
-effort: 16h (3h complete, 13h remaining)
+effort: 16h (7h complete, 9h remaining)
 branch: main
 tags: [cro, pivot, recipes, ui]
 created: 2026-01-26
@@ -27,7 +27,7 @@ Total: 16h sequential
 |---|-------|--------|--------|-------------|
 | 1 | [Database & CRO Recipes](./phase-01-database-cro-recipes.md) | 3h | ✅ Complete | CRORecipe model, seed data, service layer |
 | 2 | [Recipe Selection UI](./phase-02-recipe-selection-ui.md) | 5h | ⏳ Pending | Replace PromptInput with recipe cards grid |
-| 3 | [AI CRO Integration](./phase-03-ai-cro-integration.md) | 4h | ⏳ Pending | Update prompts, structured reasoning output |
+| 3 | [AI CRO Integration](./phase-03-ai-cro-integration.md) | 4h | ✅ Complete | Update prompts, structured reasoning output |
 | 4 | [CRO Reasoning Panel](./phase-04-cro-reasoning-panel.md) | 4h | ⏳ Pending | New component showing design explanations |
 
 ### Option B: Parallel (2 people/AI) - RECOMMENDED

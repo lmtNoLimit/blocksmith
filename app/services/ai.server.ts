@@ -1,7 +1,10 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import type { AIServiceInterface } from "../types";
 import type { StreamingOptions, ConversationContext, ExtendedStreamingOptions } from "../types/ai.types";
-import { buildConversationPrompt, getChatSystemPrompt } from "../utils/context-builder";
+import { buildConversationPrompt, getChatSystemPrompt, buildCROEnhancedPrompt } from "../utils/context-builder";
+import { parseCROReasoning, extractCodeWithoutReasoning, type CROReasoning } from "../utils/cro-reasoning-parser";
+import type { CRORecipe } from "@prisma/client";
+import type { RecipeContext } from "../services/cro-recipe.server";
 
 /**
  * Generation config for Gemini API calls
@@ -393,6 +396,104 @@ ABSOLUTELY FORBIDDEN - NEVER GENERATE THESE:
 18. Product form without product argument -> ALWAYS use {% form 'product', section.settings.product %}
 19. NEVER generate new_comment forms -> They cause "must be given an article" errors`;
 
+/**
+ * CRO Reasoning Instructions
+ * Appended to SYSTEM_PROMPT when generating with a CRO recipe
+ * Instructs AI to include structured reasoning explaining design decisions
+ */
+export const CRO_REASONING_INSTRUCTIONS = `
+
+=== CRO REASONING OUTPUT ===
+
+After generating the Liquid code, you MUST include a CRO reasoning block explaining your design decisions.
+
+FORMAT (place AFTER your code):
+<!-- CRO_REASONING_START -->
+{
+  "goal": "[The conversion goal from user context]",
+  "decisions": [
+    {
+      "element": "[Design element name]",
+      "choice": "[What you implemented]",
+      "principle": "[CRO principle applied]",
+      "explanation": "[Why this works psychologically - 1-2 sentences]",
+      "source": "[Reference if applicable, e.g., 'Nielsen Norman Group', 'Cialdini']"
+    }
+  ],
+  "tip": "[A/B testing suggestion or optimization tip]"
+}
+<!-- CRO_REASONING_END -->
+
+REQUIREMENTS:
+1. Include 3-5 design decisions that directly address the stated conversion goal
+2. Each decision MUST reference a specific CRO principle
+3. Explanations should cite psychological/behavioral reasons
+4. The JSON must be valid and parseable
+
+CRO PRINCIPLES TO REFERENCE:
+- Urgency: Time-limited offers trigger action (countdown timers, "ends soon")
+- Scarcity: Limited availability increases perceived value ("only 3 left", "limited edition")
+- Social Proof: Others' actions validate decisions (reviews, testimonials, "1000+ sold")
+- Authority: Expert endorsements build trust (certifications, credentials, expert quotes)
+- Reciprocity: Giving creates obligation (free samples, bonus content)
+- Visual Hierarchy: Guide attention to key elements (size, contrast, placement)
+- F-Pattern: Place key content along natural eye movement path
+- Contrast: Make CTAs visually distinct from surrounding content
+- Whitespace: Reduce cognitive load, improve readability
+- Risk Reversal: Reduce perceived risk (guarantees, free returns, security badges)
+- Anchoring: Show original price to make sale price compelling
+- Loss Aversion: Fear of missing out drives action stronger than gains
+
+EXAMPLE REASONING:
+<!-- CRO_REASONING_START -->
+{
+  "goal": "Reduce Cart Abandonment",
+  "decisions": [
+    {
+      "element": "CTA Placement",
+      "choice": "Above-the-fold, following F-pattern",
+      "principle": "Visual Hierarchy",
+      "explanation": "80% of viewing time is spent above the fold; F-pattern matches natural reading behavior for faster conversion.",
+      "source": "Nielsen Norman Group"
+    },
+    {
+      "element": "Urgency Element",
+      "choice": "Stock counter showing limited availability",
+      "principle": "Scarcity",
+      "explanation": "Triggers loss aversion - fear of missing out drives faster purchase decisions.",
+      "source": "Cialdini, Influence"
+    },
+    {
+      "element": "Trust Signal",
+      "choice": "Guarantee badge positioned near CTA",
+      "principle": "Risk Reversal",
+      "explanation": "Reduces perceived risk at the decision moment; addresses last-minute purchase hesitation.",
+      "source": "CRO Best Practices"
+    }
+  ],
+  "tip": "A/B test urgency messaging (countdown vs stock counter) to find what resonates with your audience."
+}
+<!-- CRO_REASONING_END -->
+
+IMPORTANT: Always generate valid Liquid code FIRST, then add the reasoning block at the very end.`;
+
+/**
+ * Options for CRO-aware generation
+ */
+export interface CROGenerationOptions {
+  recipe?: CRORecipe;
+  recipeContext?: RecipeContext;
+}
+
+/**
+ * Result from CRO-aware generation
+ */
+export interface CROGenerationResult {
+  code: string;
+  reasoning: CROReasoning | null;
+  rawResponse: string;
+}
+
 export class AIService implements AIServiceInterface {
   private genAI: GoogleGenerativeAI | null = null;
 
@@ -403,6 +504,17 @@ export class AIService implements AIServiceInterface {
     } else {
       console.warn("GEMINI_API_KEY not set. Mock mode enabled.");
     }
+  }
+
+  /**
+   * Get system prompt with optional CRO reasoning instructions
+   * @param includeCROInstructions - Whether to append CRO reasoning instructions
+   */
+  getSystemPrompt(includeCROInstructions = false): string {
+    if (includeCROInstructions) {
+      return SYSTEM_PROMPT + CRO_REASONING_INSTRUCTIONS;
+    }
+    return SYSTEM_PROMPT;
   }
 
   async generateSection(prompt: string): Promise<string> {
@@ -594,6 +706,94 @@ export class AIService implements AIServiceInterface {
     }
   }
 
+  /**
+   * Generate section with CRO context and reasoning
+   * Used when generating from CRO recipes
+   * Includes CRO reasoning instructions in system prompt
+   */
+  async *generateWithCROContext(
+    userMessage: string,
+    context: ConversationContext,
+    croOptions: CROGenerationOptions,
+    options?: ExtendedStreamingOptions
+  ): AsyncGenerator<string, void, unknown> {
+    // Build enhanced prompt with CRO context
+    let fullPrompt = userMessage;
+    if (croOptions.recipe && croOptions.recipeContext) {
+      fullPrompt = buildCROEnhancedPrompt(croOptions.recipe, croOptions.recipeContext);
+    }
+
+    // Add conversation context if available
+    fullPrompt = buildConversationPrompt(fullPrompt, context);
+
+    if (!this.genAI) {
+      // Mock mode: yield mock with CRO reasoning
+      const mockResponse = this.getMockCROSection(croOptions.recipe?.businessProblem || 'Conversion Optimization');
+      const chunks = mockResponse.match(/.{1,50}/g) || [];
+      for (const chunk of chunks) {
+        yield chunk;
+        await new Promise(r => setTimeout(r, 20));
+      }
+      options?.onFinishReason?.('STOP');
+      return;
+    }
+
+    try {
+      // Use system prompt with CRO instructions appended
+      const systemPrompt = this.getSystemPrompt(true);
+
+      const model = this.genAI.getGenerativeModel({
+        model: "gemini-2.5-flash",
+        systemInstruction: getChatSystemPrompt(systemPrompt),
+        generationConfig: GENERATION_CONFIG,
+      });
+
+      const result = await model.generateContentStream(fullPrompt);
+
+      for await (const chunk of result.stream) {
+        const text = chunk.text();
+        if (text) {
+          yield text;
+          options?.onToken?.(text);
+        }
+
+        if (options?.signal?.aborted) {
+          break;
+        }
+      }
+
+      // Get finish reason
+      const aggregatedResponse = await result.response;
+      const finishReason = aggregatedResponse.candidates?.[0]?.finishReason;
+
+      if (finishReason && finishReason !== 'STOP') {
+        console.warn(`[ai.server] generateWithCROContext finishReason: ${finishReason}`);
+      }
+
+      options?.onFinishReason?.(finishReason);
+    } catch (error) {
+      console.error("Gemini CRO streaming error:", error);
+      options?.onError?.(error instanceof Error ? error : new Error(String(error)));
+      yield "I encountered an error processing your request. Please try again.";
+    }
+  }
+
+  /**
+   * Parse CRO reasoning from completed response
+   * Utility method to extract reasoning after streaming completes
+   */
+  parseCROReasoning(response: string): CROReasoning | null {
+    return parseCROReasoning(response);
+  }
+
+  /**
+   * Extract code without reasoning block
+   * Use when storing section code separately from reasoning
+   */
+  extractCodeOnly(response: string): string {
+    return extractCodeWithoutReasoning(response);
+  }
+
   getMockSection(prompt: string): string {
     return `
 {% schema %}
@@ -638,6 +838,109 @@ export class AIService implements AIServiceInterface {
   <h2>{{ section.settings.heading }}</h2>
   <p>This is a mock section for: ${prompt}</p>
 </div>
+    `.trim();
+  }
+
+  /**
+   * Mock section with CRO reasoning for development/testing
+   */
+  getMockCROSection(goal: string): string {
+    return `
+{% schema %}
+{
+  "name": "CRO Optimized Section",
+  "settings": [
+    {
+      "type": "text",
+      "id": "heading",
+      "label": "Heading",
+      "default": "Limited Time Offer"
+    },
+    {
+      "type": "text",
+      "id": "cta_text",
+      "label": "CTA Button Text",
+      "default": "Shop Now"
+    },
+    {
+      "type": "url",
+      "id": "cta_link",
+      "label": "CTA Link",
+      "default": "#"
+    }
+  ],
+  "presets": [
+    {
+      "name": "CRO Optimized Section"
+    }
+  ]
+}
+{% endschema %}
+
+{% style %}
+#shopify-section-{{ section.id }} .ai-cro-section {
+  padding: 60px 20px;
+  text-align: center;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+#shopify-section-{{ section.id }} .ai-cro-section h2 {
+  font-size: 2.5rem;
+  margin: 0 0 1.5rem;
+  font-weight: 700;
+}
+
+#shopify-section-{{ section.id }} .ai-cro-section .cta-btn {
+  display: inline-block;
+  padding: 16px 32px;
+  background: #fff;
+  color: #764ba2;
+  font-weight: 600;
+  border-radius: 8px;
+  text-decoration: none;
+  transition: transform 0.2s;
+}
+
+#shopify-section-{{ section.id }} .ai-cro-section .cta-btn:hover {
+  transform: scale(1.05);
+}
+{% endstyle %}
+
+<div class="ai-cro-section">
+  <h2>{{ section.settings.heading }}</h2>
+  <a href="{{ section.settings.cta_link }}" class="cta-btn">{{ section.settings.cta_text }}</a>
+</div>
+
+<!-- CRO_REASONING_START -->
+{
+  "goal": "${goal}",
+  "decisions": [
+    {
+      "element": "Color Scheme",
+      "choice": "High-contrast gradient background with white CTA",
+      "principle": "Visual Hierarchy",
+      "explanation": "The gradient creates visual interest while the white button stands out as the clear action point.",
+      "source": "CRO Best Practices"
+    },
+    {
+      "element": "CTA Design",
+      "choice": "Large padding, prominent placement, hover animation",
+      "principle": "Contrast",
+      "explanation": "Oversized button with animation draws attention and encourages clicks.",
+      "source": "Baymard Institute"
+    },
+    {
+      "element": "Heading Style",
+      "choice": "Bold, large typography above CTA",
+      "principle": "F-Pattern",
+      "explanation": "Users scan from top-left; placing value proposition above CTA follows natural eye movement.",
+      "source": "Nielsen Norman Group"
+    }
+  ],
+  "tip": "Test different CTA colors (orange, green) against the current white to find what converts best for your audience."
+}
+<!-- CRO_REASONING_END -->
     `.trim();
   }
 

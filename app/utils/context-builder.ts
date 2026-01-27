@@ -1,6 +1,18 @@
 import type { ConversationContext } from '../types/ai.types';
 import type { ModelMessage } from '../types/chat.types';
 import type { LiquidValidationError } from './code-extractor';
+import type { CRORecipe } from '@prisma/client';
+
+/**
+ * Recipe context values provided by user
+ */
+export interface RecipeContextValues {
+  productType?: string;
+  priceRange?: string;
+  targetAudience?: string;
+  customNotes?: string;
+  [key: string]: string | undefined;
+}
 
 /**
  * Chat-specific system prompt extension
@@ -180,4 +192,75 @@ ${lastChunk}
 """${missingTagsHint}
 
 Continue from here, completing all unclosed tags and the section.`;
+}
+
+/**
+ * Build CRO-enhanced prompt for recipe-based generation
+ * Injects user context and CRO principles into the recipe template
+ *
+ * @param recipe - The CRO recipe with prompt template
+ * @param context - User-provided context values
+ * @returns Enhanced prompt with context and principles
+ */
+export function buildCROEnhancedPrompt(
+  recipe: CRORecipe,
+  context?: RecipeContextValues
+): string {
+  let prompt = recipe.promptTemplate;
+
+  // Build context block from user values
+  const contextBlock = buildContextBlock(context);
+  prompt = prompt.replace('{{CONTEXT}}', contextBlock);
+
+  // Add CRO principles reminder if available
+  const principles = recipe.croPrinciples as string[] | null;
+  if (principles && principles.length > 0) {
+    prompt += `\n\nCRO PRINCIPLES TO APPLY: ${principles.join(', ')}`;
+    prompt += '\nEnsure your design decisions reference these principles in your reasoning.';
+  }
+
+  return prompt;
+}
+
+/**
+ * Build context block from user-provided values
+ * Formats context for injection into prompt template
+ */
+function buildContextBlock(context?: RecipeContextValues): string {
+  if (!context || Object.keys(context).length === 0) {
+    return '';
+  }
+
+  const lines: string[] = [];
+
+  // Process known fields with better labels
+  const fieldLabels: Record<string, string> = {
+    productType: 'Product Type',
+    priceRange: 'Price Range',
+    targetAudience: 'Target Audience',
+    customNotes: 'Additional Notes',
+  };
+
+  for (const [key, value] of Object.entries(context)) {
+    if (value !== undefined && value !== '') {
+      const label = fieldLabels[key] || formatContextKey(key);
+      lines.push(`${label}: ${value}`);
+    }
+  }
+
+  if (lines.length === 0) {
+    return '';
+  }
+
+  return `\nUSER CONTEXT:\n${lines.join('\n')}`;
+}
+
+/**
+ * Format context key for display (camelCase to Title Case)
+ */
+function formatContextKey(key: string): string {
+  return key
+    .replace(/([A-Z])/g, ' $1')
+    .replace(/^./, (str) => str.toUpperCase())
+    .trim();
 }

@@ -9,6 +9,7 @@ import { checkRefinementAccess } from "../services/feature-gate.server";
 import { logGeneration } from "../services/generation-log.server";
 import { trackGeneration } from "../services/usage-tracking.server";
 import { getSubscription } from "../services/billing.server";
+import { parseCROReasoning, extractCodeWithoutReasoning, hasCROReasoning, type CROReasoning } from "../utils/cro-reasoning-parser";
 import type { ConversationContext } from "../types/ai.types";
 
 // Constants for input validation
@@ -220,8 +221,19 @@ export async function action({ request }: ActionFunctionArgs) {
           }
         }
 
-        // Extract code from completed response
-        const extraction = extractCodeFromResponse(fullContent);
+        // Extract CRO reasoning if present (Phase 3)
+        let croReasoning: CROReasoning | null = null;
+        let contentForExtraction = fullContent;
+
+        if (hasCROReasoning(fullContent)) {
+          croReasoning = parseCROReasoning(fullContent);
+          // Remove reasoning block from content before code extraction
+          // This ensures clean code storage while preserving reasoning separately
+          contentForExtraction = extractCodeWithoutReasoning(fullContent);
+        }
+
+        // Extract code from completed response (without reasoning block)
+        const extraction = extractCodeFromResponse(contentForExtraction);
 
         // Sanitize extracted code to prevent XSS
         const sanitizedCode = extraction.hasCode && extraction.code
@@ -282,7 +294,7 @@ export async function action({ request }: ActionFunctionArgs) {
           : { isComplete: true };
         const wasComplete = validation.isComplete;
 
-        // Send completion event with Phase 4 metadata
+        // Send completion event with Phase 4 metadata + Phase 3 CRO reasoning
         // NOTE: codeSnapshot is NOT sent via SSE - client extracts locally from
         // streamed content to avoid SSE chunking issues with large payloads
         controller.enqueue(
@@ -294,6 +306,9 @@ export async function action({ request }: ActionFunctionArgs) {
                 hasCode: extraction.hasCode,
                 wasComplete, // Phase 4: true if code complete after all continuations
                 continuationCount, // Phase 4: number of continuation attempts
+                // Phase 3: CRO reasoning data (null if not a recipe-based generation)
+                croReasoning: croReasoning,
+                hasCROReasoning: croReasoning !== null,
               },
             })}\n\n`
           )
