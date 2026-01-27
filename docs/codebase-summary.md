@@ -1,7 +1,7 @@
 # Codebase Summary - AI Section Generator (Blocksmith)
 
-**Last Updated**: 2026-01-26
-**Version**: 1.8 (Phase 4 UI Feedback Complete)
+**Last Updated**: 2026-01-27
+**Version**: 1.9 (Phase 01 CRO Recipes Complete)
 **Architecture**: Service-oriented, multi-tenant, React Router 7 SSR with TypeScript strict mode
 
 ## Overview
@@ -11,9 +11,9 @@
 **Codebase Stats**:
 - **Application Files**: 242 (TypeScript/TSX, Prisma, CSS, JSON)
 - **React Components**: 116 organized in 8 feature domains
-- **Service Modules**: 19 server-only files (`.server.ts`)
+- **Service Modules**: 20 server-only files (`.server.ts`)
 - **Routes**: 29 file-based (protected/public/webhooks/API)
-- **Database Models**: 11 Prisma models with relationships
+- **Database Models**: 12 Prisma models with relationships
 - **Test Suites**: 33+ Jest test files
 - **AI Chat Features**: Streaming SSE, phase tracking, structured change extraction (Phase 3), auto-continuation for truncated responses (Phase 3), UI feedback badges for completion status (Phase 4)
 
@@ -317,6 +317,14 @@ ai-section-generator-app/
 │   │   │   - Immutable append-only log
 │   │   │   - For compliance & debugging
 │   │   │
+│   │   ├── cro-recipe.server.ts       # CRO recipes (180 LOC, Phase 01)
+│   │   │   - getActiveRecipes() → all active recipes ordered by display order
+│   │   │   - getRecipeBySlug(slug) → single recipe by URL-safe identifier
+│   │   │   - getRecipeById(id) → single recipe by ID
+│   │   │   - buildPrompt(recipe, context) → inject context into prompt template
+│   │   │   - Conversion-optimized section generation prompts
+│   │   │   - Stores business problem context + CRO principles
+│   │   │
 │   │   ├── shopify.server.ts          # Shopify app config (280 LOC)
 │   │   │   - OAuth configuration
 │   │   │   - Session storage (online/offline)
@@ -560,7 +568,7 @@ ai-section-generator-app/
 - `GET /auth/callback` - OAuth callback
 - `POST /auth/logout` - Logout
 
-## Database Models (11 Prisma Models)
+## Database Models (12 Prisma Models)
 
 ```prisma
 // Core business models
@@ -620,6 +628,14 @@ FailedUsageCharge {
 
 SectionFeedback {
   id, sectionId, rating, comment, createdAt
+}
+
+CRORecipe {
+  id, slug, name, icon
+  businessProblem, croPrinciples[]
+  promptTemplate, requiredElements[]
+  contextQuestions (JSON), active, order
+  createdAt, updatedAt
 }
 ```
 

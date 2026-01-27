@@ -29,13 +29,13 @@ AI-powered custom Shopify Liquid sections without coding. Merchants describe sec
 **Quick Links**:
 - [Quick Start](#quick-start) - Setup in 5 minutes
 - [Project Overview & PDR](docs/project-overview-pdr.md) - Features, requirements, roadmap
-- [Codebase Summary](docs/codebase-summary.md) - 111 components, 19 services, 11 models
+- [Codebase Summary](docs/codebase-summary.md) - 116 components, 20 services, 12 models
 - [Code Standards](docs/code-standards.md) - TypeScript strict, patterns, testing
 - [System Architecture](docs/system-architecture.md) - Data flow, integrations, scalability
 
 ## Project Status
 
-**Current Version**: 1.0-beta - Phase 4 Complete + Phase 1 Auto-Save
+**Current Version**: 1.0-beta - Phase 4 UI Feedback + Phase 01 CRO Recipes
 
 **Implemented**:
 - ✅ AI section generation (Google Gemini 2.5 Flash)
@@ -45,10 +45,11 @@ AI-powered custom Shopify Liquid sections without coding. Merchants describe sec
 - ✅ Dual-action save (Draft + Publish)
 - ✅ Section editing with auto-save on AI generation
 - ✅ Auto-save draft when AI applies version (Phase 1)
+- ✅ CRO-focused recipe system for section generation (Phase 01)
 - ✅ Hybrid billing (recurring + usage-based)
 - ✅ Multi-tenant shop isolation
 - ✅ TypeScript strict mode, 30+ test suites
-- ✅ 107 React components, 25 services, 11 database models
+- ✅ 116 React components, 20 services, 12 database models
 
 **Pending**: Production deployment, Shopify write_themes scope approval
 

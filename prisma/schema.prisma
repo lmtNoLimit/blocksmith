@@ -323,3 +323,24 @@ model Trial {
 
   @@index([status, endsAt])
 }
+
+/// CRO-focused recipe for section generation
+/// Stores conversion-optimized prompts with business problem context
+model CRORecipe {
+  id               String   @id @default(auto()) @map("_id") @db.ObjectId
+  name             String   // Display name (e.g., "Cart Abandonment Recovery")
+  slug             String   @unique // URL-safe identifier
+  icon             String   // Polaris icon name
+  businessProblem  String   // Problem this recipe solves
+  croPrinciples    String[] // CRO principles: urgency, trust, scarcity, etc.
+  promptTemplate   String   // Full AI prompt with {{CONTEXT}} placeholder
+  requiredElements String[] // Elements AI must include: cta, testimonial, etc.
+  contextQuestions Json?    // Optional form fields: [{field, label, options}]
+  active           Boolean  @default(true)
+  order            Int      @default(0) // Display sort order
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([active, order])
+}

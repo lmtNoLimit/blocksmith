@@ -1,8 +1,8 @@
 # AI Section Generator - Project Roadmap
 
-**Last Updated**: 2026-01-26
-**Version**: 1.5 (Development)
-**Status**: Active Development - AI Section Fix Complete, Phase 6 Complete, Phase 7 Planning
+**Last Updated**: 2026-01-27
+**Version**: 1.6 (Development)
+**Status**: Active Development - CRO Pivot Phase 01 Complete, AI Section Fix Complete, Phase 6 Complete, Phase 7 Planning
 
 ## Project Overview
 
@@ -542,6 +542,41 @@ AI Section Generator is a Shopify embedded app that leverages Google Gemini AI t
 ---
 
 ## Changelog
+
+### Version 1.6 (Current)
+
+#### 2026-01-27
+- ✅ CRO-Focused Pivot: Phase 01 Complete (Database & CRO Recipes)
+
+  **Implementation Summary**:
+  - Created `CRORecipe` Prisma model with all required fields
+  - Implemented seed script populating 8 CRO-researched recipes
+  - Created service layer `cro-recipe.server.ts` with CRUD operations
+  - All 8 recipes seeded successfully with complete prompts and context
+
+  **Recipes Included**:
+  1. Cart Abandonment (urgency, trust, scarcity)
+  2. High-Ticket Trust (authority, social proof)
+  3. Page Engagement (visual hierarchy, f-pattern)
+  4. Email Signup (value exchange, micro-commitment)
+  5. Upsell/Cross-sell (anchoring, bundle psychology)
+  6. Promotion Highlight (scarcity, contrast)
+  7. Homepage Conversion (clear CTA, progressive disclosure)
+  8. Objection Handling (objection reversal, guarantees)
+
+  **Files Changed**:
+  - MODIFIED: `prisma/schema.prisma` (+20 lines, CRORecipe model)
+  - NEW: `prisma/seed-cro-recipes.ts` (328 lines, seed data)
+  - NEW: `app/services/cro-recipe.server.ts` (128 lines, service layer)
+
+  **Quality Metrics**:
+  - Test Coverage: 100% (seed validation passed)
+  - Code Review: ✅ Approved for production (0 critical issues)
+  - TypeScript: 0 errors
+  - Build: Passed (625.74 kB server bundle)
+  - Security Review: 0 critical issues
+
+  **Key Achievement**: Foundation laid for goal-based prompting. Recipes stored in DB for A/B testing and iteration without deploys.
 
 ### Version 1.5 (Current)
 
