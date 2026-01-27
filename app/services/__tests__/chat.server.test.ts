@@ -217,6 +217,8 @@ old code here
         createdAt: new Date(),
       };
 
+      // Mock findMany for duplicate check (returns empty = no existing response)
+      (prisma.message.findMany as MockedFunction<typeof prisma.message.findMany>).mockResolvedValue([]);
       (prisma.message.create as MockedFunction<typeof prisma.message.create>).mockResolvedValue(mockMessage);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (prisma.conversation.update as MockedFunction<typeof prisma.conversation.update>).mockResolvedValue({} as any);
@@ -257,6 +259,8 @@ old code here
         createdAt: new Date(),
       };
 
+      // Mock findMany for duplicate check (returns empty = no existing response)
+      (prisma.message.findMany as MockedFunction<typeof prisma.message.findMany>).mockResolvedValue([]);
       (prisma.message.create as MockedFunction<typeof prisma.message.create>).mockResolvedValue(mockMessage);
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       (prisma.conversation.update as MockedFunction<typeof prisma.conversation.update>).mockResolvedValue({} as any);

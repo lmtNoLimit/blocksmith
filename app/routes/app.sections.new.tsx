@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router";
 import {
   useActionData,
@@ -7,25 +7,29 @@ import {
   useNavigate,
   useLoaderData,
 } from "react-router";
+import type { CRORecipe } from "@prisma/client";
 import { authenticate } from "../shopify.server";
 import { sectionService } from "../services/section.server";
 import { chatService } from "../services/chat.server";
 import {
-  templateService,
-  type FeaturedTemplate,
-} from "../services/template.server";
+  getActiveRecipes,
+  getRecipeBySlug,
+  buildRecipePrompt,
+} from "../services/cro-recipe.server";
 import { sanitizeUserInput } from "../utils/input-sanitizer";
-
-const MAX_PROMPT_LENGTH = 2000;
+import { RecipeSelector } from "../components/generate/RecipeSelector";
+import {
+  RecipeContextModal,
+  type RecipeContext,
+} from "../components/generate/RecipeContextModal";
 
 /**
- * /sections/new route - AI-powered section creation
- * Two-column layout: Main prompt form + aside with tips
- * Creates section + conversation on submit, redirects to /$id for AI chat
+ * /sections/new route - CRO Recipe-based section creation
+ * Recipe selection grid → Optional context modal → AI generation
  */
 
 interface LoaderData {
-  templates: FeaturedTemplate[];
+  recipes: CRORecipe[];
   prebuiltCode: string | null;
   prebuiltName: string | null;
 }
@@ -33,25 +37,25 @@ interface LoaderData {
 export async function loader({
   request,
 }: LoaderFunctionArgs): Promise<LoaderData> {
-  const { session } = await authenticate.admin(request);
+  await authenticate.admin(request);
   const url = new URL(request.url);
 
-  // Handle pre-built code from "Use As-Is" template flow
+  // Handle pre-built code from "Use As-Is" template flow (backward compat)
   const prebuiltCode = url.searchParams.get("code");
   const prebuiltName = url.searchParams.get("name");
 
-  // Fetch featured templates (shop-specific + defaults fallback)
+  // Fetch active CRO recipes
   try {
-    const templates = await templateService.getFeatured(session.shop, 6);
+    const recipes = await getActiveRecipes();
     return {
-      templates,
+      recipes,
       prebuiltCode,
       prebuiltName,
     };
   } catch (error) {
-    console.error("Failed to fetch featured templates:", error);
+    console.error("Failed to fetch CRO recipes:", error);
     return {
-      templates: [],
+      recipes: [],
       prebuiltCode,
       prebuiltName,
     };
@@ -82,7 +86,6 @@ export async function action({
         code: prebuiltCode,
       });
 
-      // Create conversation for potential future modifications
       const conversation = await chatService.getOrCreateConversation(
         section.id,
         session.shop,
@@ -102,37 +105,50 @@ export async function action({
     }
   }
 
-  // Standard prompt-based path
-  const rawPrompt = formData.get("prompt") as string;
+  // Recipe-based path
+  const recipeSlug = formData.get("recipeSlug") as string;
+  const recipeContextRaw = formData.get("recipeContext") as string | null;
 
-  if (!rawPrompt?.trim()) {
-    return { error: "Please describe the section you want to create" };
+  if (!recipeSlug) {
+    return { error: "Please select a recipe" };
   }
-
-  // Validate length
-  if (rawPrompt.length > MAX_PROMPT_LENGTH) {
-    return {
-      error: `Prompt is too long (max ${MAX_PROMPT_LENGTH} characters)`,
-    };
-  }
-
-  // Sanitize input
-  const { sanitized: prompt } = sanitizeUserInput(rawPrompt.trim());
 
   try {
-    // Create section with minimal data (always starts as draft, empty code until AI generates)
+    // Fetch the selected recipe
+    const recipe = await getRecipeBySlug(recipeSlug);
+    if (!recipe) {
+      return { error: "Recipe not found" };
+    }
+
+    // Parse context if provided
+    let recipeContext: RecipeContext = {};
+    if (recipeContextRaw) {
+      try {
+        recipeContext = JSON.parse(recipeContextRaw);
+      } catch {
+        console.warn("Failed to parse recipe context, using empty context");
+      }
+    }
+
+    // Build the full prompt from recipe template + context
+    const prompt = buildRecipePrompt(recipe, recipeContext);
+
+    // Sanitize the generated prompt
+    const { sanitized: safePrompt } = sanitizeUserInput(prompt);
+
+    // Create section (starts as draft, empty code until AI generates)
     const section = await sectionService.create({
       shop: session.shop,
-      prompt,
-      code: "", // Empty until AI generates in /$id
+      prompt: safePrompt,
+      code: "",
     });
 
-    // Create conversation + first user message
+    // Create conversation + first user message with recipe context
     const conversation = await chatService.getOrCreateConversation(
       section.id,
       session.shop,
     );
-    await chatService.addUserMessage(conversation.id, prompt);
+    await chatService.addUserMessage(conversation.id, safePrompt);
 
     return { sectionId: section.id };
   } catch (error) {
@@ -142,14 +158,16 @@ export async function action({
 }
 
 export default function NewSectionPage() {
-  const { templates, prebuiltCode, prebuiltName } =
+  const { recipes, prebuiltCode, prebuiltName } =
     useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const navigate = useNavigate();
   const submit = useSubmit();
-  const [prompt, setPrompt] = useState("");
   const hasSubmittedPrebuilt = useRef(false);
+
+  // Selected recipe for context modal
+  const [selectedRecipe, setSelectedRecipe] = useState<CRORecipe | null>(null);
 
   const isSubmitting = navigation.state === "submitting";
 
@@ -173,43 +191,31 @@ export default function NewSectionPage() {
     }
   }, [actionData, navigate]);
 
-  // Focus textarea on mount (only if not prebuilt flow)
-  useEffect(() => {
-    if (!prebuiltCode) {
-      const textarea = document.getElementById(
-        "prompt-textarea",
-      ) as HTMLElement | null;
-      textarea?.focus();
-    }
-  }, [prebuiltCode]);
+  // Recipe selection handler - opens context modal
+  const handleRecipeSelect = (recipe: CRORecipe) => {
+    setSelectedRecipe(recipe);
+  };
 
-  const handleSubmit = useCallback(() => {
-    if (!prompt.trim() || isSubmitting) return;
+  // Context submit handler - submits form with recipe + context
+  const handleContextSubmit = (context: RecipeContext) => {
+    if (!selectedRecipe) return;
+
     const formData = new FormData();
-    formData.append("prompt", prompt);
+    formData.append("recipeSlug", selectedRecipe.slug);
+    formData.append("recipeContext", JSON.stringify(context));
     submit(formData, { method: "post" });
-  }, [prompt, isSubmitting, submit]);
+    setSelectedRecipe(null);
+  };
 
-  // Handle keyboard shortcut (Cmd/Ctrl + Enter)
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-        e.preventDefault();
-        handleSubmit();
-      }
-    };
+  // Skip context handler - submits form with recipe only
+  const handleContextSkip = () => {
+    if (!selectedRecipe) return;
 
-    const textarea = document.getElementById("prompt-textarea");
-    textarea?.addEventListener("keydown", handleKeyDown);
-    return () => textarea?.removeEventListener("keydown", handleKeyDown);
-  }, [handleSubmit]);
-
-  const handleTemplateSelect = (templatePrompt: string) => {
-    setPrompt(templatePrompt);
-    const textarea = document.getElementById(
-      "prompt-textarea",
-    ) as HTMLElement | null;
-    textarea?.focus();
+    const formData = new FormData();
+    formData.append("recipeSlug", selectedRecipe.slug);
+    formData.append("recipeContext", "{}");
+    submit(formData, { method: "post" });
+    setSelectedRecipe(null);
   };
 
   // Show loading state when processing prebuilt code
@@ -219,9 +225,21 @@ export default function NewSectionPage() {
         <s-section>
           <s-stack gap="large" alignItems="center">
             <s-spinner />
-            <s-text>
-              Setting up your {prebuiltName || "section"}...
-            </s-text>
+            <s-text>Setting up your {prebuiltName || "section"}...</s-text>
+          </s-stack>
+        </s-section>
+      </s-page>
+    );
+  }
+
+  // Show loading state when submitting recipe
+  if (isSubmitting) {
+    return (
+      <s-page heading="Generating section..." inlineSize="base">
+        <s-section>
+          <s-stack gap="large" alignItems="center">
+            <s-spinner />
+            <s-text>Preparing your CRO-optimized section...</s-text>
           </s-stack>
         </s-section>
       </s-page>
@@ -240,78 +258,20 @@ export default function NewSectionPage() {
             </s-banner>
           )}
 
-          {/* Hero Section - Prompt Input */}
-
-          <s-stack gap="large">
-            <s-stack gap="small">
-              <s-heading accessibilityRole="heading">
-                What section do you want to create?
-              </s-heading>
-              <s-text color="subdued">
-                Describe your vision and our AI will generate a custom Shopify
-                section for your store.
-              </s-text>
-            </s-stack>
-
-            <s-text-area
-              id="prompt-textarea"
-              label="Describe your section"
-              labelAccessibilityVisibility="exclusive"
-              value={prompt}
-              placeholder="Example: A hero banner with a full-width background image, bold headline, subtext, and a call-to-action button that links to a collection..."
+          {/* Recipe Selector */}
+          {recipes.length > 0 ? (
+            <RecipeSelector
+              recipes={recipes}
+              onRecipeSelect={handleRecipeSelect}
               disabled={isSubmitting}
-              rows={5}
-              maxLength={MAX_PROMPT_LENGTH}
-              onInput={(e: Event) => {
-                const target = e.target as HTMLTextAreaElement;
-                setPrompt(target.value);
-              }}
             />
-
-            <s-stack
-              direction="inline"
-              gap="base"
-              justifyContent="space-between"
-              alignItems="center"
-            >
-              <s-text color="subdued">
-                {prompt.length}/{MAX_PROMPT_LENGTH} • Press ⌘/Ctrl + Enter
-              </s-text>
-              <s-button
-                variant="primary"
-                onClick={handleSubmit}
-                loading={isSubmitting}
-                disabled={!prompt.trim()}
-              >
-                Generate Section
-              </s-button>
-            </s-stack>
-          </s-stack>
-
-          {/* Template Suggestions */}
-          {templates.length > 0 && (
-            <s-stack gap="base">
-              <s-stack gap="small-100">
-                <s-heading>Start with a template</s-heading>
-                <s-text color="subdued">
-                  Choose a starting point and customize it to your needs
-                </s-text>
+          ) : (
+            <s-box padding="large" background="subdued" borderRadius="base">
+              <s-stack gap="base" alignItems="center">
+                <s-icon type="alert-circle" />
+                <s-text>No recipes available. Please check configuration.</s-text>
               </s-stack>
-
-              <s-stack direction="inline" gap="small">
-                {templates.map((template) => (
-                  <s-clickable-chip
-                    key={template.id}
-                    accessibilityLabel={`Use ${template.title} template`}
-                    disabled={isSubmitting}
-                    onClick={() => handleTemplateSelect(template.prompt)}
-                  >
-                    <s-icon slot="graphic" type="wand" />
-                    {template.title}
-                  </s-clickable-chip>
-                ))}
-              </s-stack>
-            </s-stack>
+            </s-box>
           )}
         </s-stack>
       </s-section>
@@ -319,32 +279,41 @@ export default function NewSectionPage() {
       {/* Aside - Tips */}
       <s-section slot="aside">
         <s-stack gap="large">
-          <s-heading>Tips for better results</s-heading>
+          <s-heading>How it works</s-heading>
 
           <s-stack gap="base">
             <s-box padding="base" background="subdued" borderRadius="base">
               <s-stack gap="small-100">
-                <s-text>Be specific</s-text>
+                <s-stack direction="inline" gap="small" alignItems="center">
+                  <s-badge>1</s-badge>
+                  <s-text type="strong">Choose a goal</s-text>
+                </s-stack>
                 <s-text color="subdued">
-                  Include details about layout, colors, and content placement
+                  Select the conversion goal that matches your needs
                 </s-text>
               </s-stack>
             </s-box>
 
             <s-box padding="base" background="subdued" borderRadius="base">
               <s-stack gap="small-100">
-                <s-text>Mention your brand</s-text>
+                <s-stack direction="inline" gap="small" alignItems="center">
+                  <s-badge>2</s-badge>
+                  <s-text type="strong">Add context (optional)</s-text>
+                </s-stack>
                 <s-text color="subdued">
-                  Reference your brand style, tone, or existing design elements
+                  Provide details about your product or brand
                 </s-text>
               </s-stack>
             </s-box>
 
             <s-box padding="base" background="subdued" borderRadius="base">
               <s-stack gap="small-100">
-                <s-text>Define the goal</s-text>
+                <s-stack direction="inline" gap="small" alignItems="center">
+                  <s-badge>3</s-badge>
+                  <s-text type="strong">Generate & refine</s-text>
+                </s-stack>
                 <s-text color="subdued">
-                  What action should visitors take? Buy, subscribe, explore?
+                  AI creates a CRO-optimized section you can edit
                 </s-text>
               </s-stack>
             </s-box>
@@ -353,14 +322,21 @@ export default function NewSectionPage() {
           <s-divider />
 
           <s-stack gap="small">
-            <s-text>What happens next?</s-text>
+            <s-text type="strong">Why recipes?</s-text>
             <s-text color="subdued">
-              After generating, you can preview your section, make edits with AI
-              assistance, and publish directly to your theme.
+              Each recipe applies proven CRO principles like urgency, trust
+              signals, and social proof to maximize conversions.
             </s-text>
           </s-stack>
         </s-stack>
       </s-section>
+
+      {/* Context Modal */}
+      <RecipeContextModal
+        recipe={selectedRecipe}
+        onSubmit={handleContextSubmit}
+        onSkip={handleContextSkip}
+      />
     </s-page>
   );
 }

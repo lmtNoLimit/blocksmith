@@ -27,18 +27,31 @@ describe('api.feedback route', () => {
   const mockSession = {
     shop: 'test-shop.myshopify.com',
   };
+  // Valid MongoDB ObjectId format (24 hex chars) for testing
+  const VALID_SECTION_ID = '507f1f77bcf86cd799439011';
 
   let mockRequest: any;
   let mockFormData: any;
 
+  // Use fake timers to avoid rate limit issues
+  beforeAll(() => {
+    jest.useFakeTimers();
+  });
+
+  afterAll(() => {
+    jest.useRealTimers();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
+    // Advance time by 2 hours to reset rate limit between tests
+    jest.advanceTimersByTime(2 * 60 * 60 * 1000);
 
-    // Setup mock FormData
+    // Setup mock FormData with valid ObjectId format
     mockFormData = {
       get: jest.fn((key) => {
         const data: Record<string, any> = {
-          sectionId: 'section-123',
+          sectionId: VALID_SECTION_ID,
           positive: 'true',
         };
         return data[key] || null;
@@ -57,13 +70,13 @@ describe('api.feedback route', () => {
 
     // Setup default prisma mocks
     (prisma.section.findFirst as jest.Mock).mockResolvedValue({
-      id: 'section-123',
+      id: VALID_SECTION_ID,
       shop: mockSession.shop,
     });
 
     (prisma.sectionFeedback.create as jest.Mock).mockResolvedValue({
       id: 'feedback-1',
-      sectionId: 'section-123',
+      sectionId: VALID_SECTION_ID,
       positive: true,
     });
   });
@@ -82,9 +95,10 @@ describe('api.feedback route', () => {
     });
 
     it('should extract sectionId from form data', async () => {
+      const testId = '507f1f77bcf86cd799439012';
       mockFormData.get = jest.fn((key) => {
         const data: Record<string, any> = {
-          sectionId: 'test-section-id',
+          sectionId: testId,
           positive: 'true',
         };
         return data[key] || null;
@@ -150,7 +164,7 @@ describe('api.feedback route', () => {
     it('should store positive feedback correctly', async () => {
       mockFormData.get = jest.fn((key) => {
         const data: Record<string, any> = {
-          sectionId: 'section-123',
+          sectionId: VALID_SECTION_ID,
           positive: 'true',
         };
         return data[key];
@@ -170,7 +184,7 @@ describe('api.feedback route', () => {
     it('should store negative feedback correctly', async () => {
       mockFormData.get = jest.fn((key) => {
         const data: Record<string, any> = {
-          sectionId: 'section-123',
+          sectionId: VALID_SECTION_ID,
           positive: 'false',
         };
         return data[key];
@@ -188,13 +202,17 @@ describe('api.feedback route', () => {
     });
 
     it('should store sectionId', async () => {
-      const testSectionId = 'test-section-123';
+      const testSectionId = '507f1f77bcf86cd799439013';
       mockFormData.get = jest.fn((key) => {
         const data: Record<string, any> = {
           sectionId: testSectionId,
           positive: 'true',
         };
         return data[key];
+      });
+      (prisma.section.findFirst as jest.Mock).mockResolvedValue({
+        id: testSectionId,
+        shop: mockSession.shop,
       });
 
       await action({ request: mockRequest } as any);
@@ -319,7 +337,7 @@ describe('api.feedback route', () => {
     it('should handle positive feedback', async () => {
       mockFormData.get = jest.fn((key) => {
         const data: Record<string, any> = {
-          sectionId: 'section-1',
+          sectionId: VALID_SECTION_ID,
           positive: 'true',
         };
         return data[key];
@@ -334,7 +352,7 @@ describe('api.feedback route', () => {
     it('should handle negative feedback', async () => {
       mockFormData.get = jest.fn((key) => {
         const data: Record<string, any> = {
-          sectionId: 'section-1',
+          sectionId: VALID_SECTION_ID,
           positive: 'false',
         };
         return data[key];
@@ -347,7 +365,12 @@ describe('api.feedback route', () => {
     });
 
     it('should handle various section IDs', async () => {
-      const testIds = ['section-1', 'section-abc-123', 'test-section'];
+      // Valid MongoDB ObjectIds (24 hex chars)
+      const testIds = [
+        '507f1f77bcf86cd799439014',
+        '507f1f77bcf86cd799439015',
+        '507f1f77bcf86cd799439016',
+      ];
 
       for (const testId of testIds) {
         jest.clearAllMocks();

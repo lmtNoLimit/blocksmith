@@ -41,7 +41,9 @@ describe('MessageItem', () => {
       const message = createMessage({ role: 'user' });
       const { container } = render(<MessageItem message={message} />);
 
-      expect(container.querySelector('.chat-bubble--user')).toBeInTheDocument();
+      // User messages have s-box with background="strong"
+      const boxes = container.querySelectorAll('s-box[background="strong"]');
+      expect(boxes.length).toBeGreaterThan(0);
     });
 
     it('sets proper aria label for user message', () => {
@@ -78,7 +80,9 @@ describe('MessageItem', () => {
       const message = createMessage({ role: 'assistant' });
       const { container } = render(<MessageItem message={message} />);
 
-      expect(container.querySelector('.chat-bubble--ai')).toBeInTheDocument();
+      // Assistant messages have s-box with background="subdued"
+      const boxes = container.querySelectorAll('s-box[background="subdued"]');
+      expect(boxes.length).toBeGreaterThan(0);
     });
 
     it('sets proper aria label for assistant message', () => {
@@ -184,7 +188,9 @@ describe('MessageItem', () => {
 
       const { container } = render(<MessageItem message={message} isStreaming={true} />);
 
-      expect(container.querySelector('.chat-cursor')).toBeInTheDocument();
+      // Streaming cursor is a span with aria-hidden="true" and animation style
+      const cursor = container.querySelector('span[aria-hidden="true"]');
+      expect(cursor).toBeInTheDocument();
     });
 
     it('hides cursor when not streaming', () => {
@@ -195,7 +201,9 @@ describe('MessageItem', () => {
 
       const { container } = render(<MessageItem message={message} isStreaming={false} />);
 
-      expect(container.querySelector('.chat-cursor')).not.toBeInTheDocument();
+      // No cursor span when not streaming
+      const cursor = container.querySelector('span[aria-hidden="true"]');
+      expect(cursor).not.toBeInTheDocument();
     });
   });
 
