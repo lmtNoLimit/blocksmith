@@ -25,6 +25,8 @@ import {
   useEditorState,
   FeedbackWidget,
 } from '../components/editor';
+import { CROReasoningPanel } from '../components/reasoning';
+import type { CROReasoning } from '../utils/cro-reasoning-parser';
 import { ImagePickerModal } from '../components/preview/settings/ImagePickerModal';
 import { usePreviewSettings } from '../components/preview';
 import { updateSchemaDefaults } from '../components/preview/schema/parseSchema';
@@ -68,6 +70,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   // Load feature gates for UI
   const features = await getFeaturesSummary(shop, conversation.id);
 
+  // Parse CRO reasoning from section (Phase 04)
+  // Cast through unknown as Prisma JsonValue is not directly assignable to CROReasoning
+  const croReasoning = section.croReasoning
+    ? (section.croReasoning as unknown as CROReasoning)
+    : null;
+
   return {
     section,
     themes,
@@ -78,6 +86,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
     shopDomain: shop,
     initialVersionId: versionId,
     features,
+    croReasoning,
   };
 }
 
@@ -223,7 +232,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function UnifiedEditorPage() {
-  const { section, themes, conversation, shopDomain, initialVersionId, features } = useLoaderData<typeof loader>();
+  const { section, themes, conversation, shopDomain, initialVersionId, features, croReasoning } = useLoaderData<typeof loader>();
   const actionData = useActionData<typeof action>();
   const navigation = useNavigation();
   const submit = useSubmit();
@@ -678,6 +687,12 @@ export default function UnifiedEditorPage() {
             onResourceSelect={previewSettings.handleResourceSelect}
             isLoadingResource={previewSettings.isLoadingResource}
             disabled={isLoading}
+          />
+        }
+        reasoningPanel={
+          <CROReasoningPanel
+            reasoning={croReasoning}
+            defaultCollapsed={false}
           />
         }
       />

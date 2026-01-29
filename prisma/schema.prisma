@@ -47,6 +47,10 @@ model Section {
   tone  String? // professional, casual, friendly
   style String? // minimal, bold, elegant
 
+  // CRO Reasoning (Phase 04)
+  croReasoning  Json?   // Stores CROReasoning object from AI generation
+  croRecipeSlug String? // Reference to CRO recipe used for generation
+
   // Status
   status String @default("draft") // draft, active, inactive, archive
 

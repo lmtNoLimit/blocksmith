@@ -84,6 +84,10 @@ export interface CreateSectionInput {
   themeId?: string;
   themeName?: string;
   fileName?: string;
+  // CRO Reasoning fields (Phase 04)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  croReasoning?: any; // Prisma.InputJsonValue - JSON object from CROReasoning
+  croRecipeSlug?: string;
 }
 
 export interface UpdateSectionInput {
@@ -93,6 +97,10 @@ export interface UpdateSectionInput {
   themeName?: string;
   fileName?: string;
   status?: SectionStatus;
+  // CRO Reasoning fields (Phase 04)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  croReasoning?: any; // Prisma.InputJsonValue - JSON object from CROReasoning
+  croRecipeSlug?: string;
 }
 
 export interface GetByShopOptions {
@@ -132,6 +140,8 @@ export const sectionService = {
         themeId: input.themeId,
         themeName: input.themeName,
         fileName: input.fileName,
+        croReasoning: input.croReasoning,
+        croRecipeSlug: input.croRecipeSlug,
       },
     });
   },

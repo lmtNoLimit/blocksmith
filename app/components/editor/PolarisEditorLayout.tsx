@@ -10,14 +10,17 @@ interface PolarisEditorLayoutProps {
   chatPanel: ReactNode;
   codePreviewPanel: ReactNode;
   settingsPanel: ReactNode;
+  /** Optional CRO reasoning panel - renders below settings on desktop, as tab on mobile */
+  reasoningPanel?: ReactNode;
 }
 
-type MobileTab = "chat" | "editor" | "settings";
+type MobileTab = "chat" | "editor" | "settings" | "insights";
 
 export function PolarisEditorLayout({
   chatPanel,
   codePreviewPanel,
   settingsPanel,
+  reasoningPanel,
 }: PolarisEditorLayoutProps) {
   const [activeTab, setActiveTab] = useState<MobileTab>("editor");
   const [containerHeight, setContainerHeight] = useState(600);
@@ -82,6 +85,14 @@ export function PolarisEditorLayout({
                   >
                     Settings
                   </s-button>
+                  {reasoningPanel && (
+                    <s-button
+                      variant={activeTab === "insights" ? "primary" : "secondary"}
+                      onClick={() => setActiveTab("insights")}
+                    >
+                      Insights
+                    </s-button>
+                  )}
                 </s-button-group>
               </s-box>
 
@@ -114,6 +125,24 @@ export function PolarisEditorLayout({
                 >
                   {settingsPanel}
                 </s-box>
+                {reasoningPanel && (
+                  <div
+                    style={{
+                      display: activeTab === "insights" ? "block" : "none",
+                      height: "100%",
+                      overflowY: "auto",
+                    }}
+                  >
+                    <s-box
+                      blockSize="100%"
+                      background="base"
+                      borderRadius="large"
+                      padding="base"
+                    >
+                      {reasoningPanel}
+                    </s-box>
+                  </div>
+                )}
               </s-box>
             </s-stack>
           </s-box>
@@ -151,15 +180,23 @@ export function PolarisEditorLayout({
                 {codePreviewPanel}
               </s-box>
 
-              {/* Settings Panel */}
-              <s-box
-                background="base"
-                borderRadius="large"
-                overflow="hidden"
-                minBlockSize="0"
-              >
-                {settingsPanel}
-              </s-box>
+              {/* Settings Panel + Reasoning Panel (stacked) */}
+              <div style={{ minHeight: 0, overflowY: "auto" }}>
+                <s-stack gap="base" direction="block">
+                  <s-box
+                    background="base"
+                    borderRadius="large"
+                    overflow="hidden"
+                  >
+                    {settingsPanel}
+                  </s-box>
+                  {reasoningPanel && (
+                    <s-box>
+                      {reasoningPanel}
+                    </s-box>
+                  )}
+                </s-stack>
+              </div>
             </s-grid>
           </s-box>
         </s-box>
