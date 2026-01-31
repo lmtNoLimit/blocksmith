@@ -283,6 +283,12 @@ export default function SectionsPage() {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const modalTriggerRef = useRef<any>(null);
 
+  // Ref for the Create Section button in title bar
+  // We use a native DOM event listener since s-button in s-page slots
+  // are rendered by App Bridge outside React's synthetic event system
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const createButtonRef = useRef<any>(null);
+
   const currentPage = parseInt(searchParams.get("page") || "1", 10);
 
   const isDeleting =
@@ -456,6 +462,23 @@ export default function SectionsPage() {
     }
   }, [actionData]);
 
+  // Attach native click listener to Create Section button
+  // s-button in s-page slots are rendered by App Bridge outside React's DOM
+  // so React's onClick doesn't work - we use native addEventListener
+  useEffect(() => {
+    const button = createButtonRef.current;
+    if (!button) return;
+
+    const handleClick = () => {
+      navigate("/app/sections/new");
+    };
+
+    button.addEventListener("click", handleClick);
+    return () => {
+      button.removeEventListener("click", handleClick);
+    };
+  }, [navigate]);
+
   // Promoted bulk actions for IndexTable
   const promotedBulkActions = [
     {
@@ -560,16 +583,16 @@ export default function SectionsPage() {
   return (
     <>
       <s-page heading="Sections" inlineSize="large">
-        {/* Primary action button */}
+        {/* Primary action in title bar - uses ref with native event listener */}
         <s-button
+          ref={createButtonRef}
           slot="primary-action"
           variant="primary"
-          href="/app/sections/new"
         >
           Create Section
         </s-button>
 
-        {/* Table section with IndexFilters + IndexTable */}
+        {/* Table section */}
         <s-section padding="none" accessibilityLabel="Sections table">
           <IndexFilters
             sortOptions={sortOptions}

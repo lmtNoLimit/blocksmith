@@ -1,6 +1,5 @@
-import { useEffect } from "react";
 import type { HeadersFunction, LoaderFunctionArgs } from "react-router";
-import { Outlet, useLoaderData, useNavigate, useRouteError } from "react-router";
+import { Outlet, useLoaderData, useRouteError } from "react-router";
 import { boundary } from "@shopify/shopify-app-react-router/server";
 import { AppProvider } from "@shopify/shopify-app-react-router/react";
 import { AppProvider as LegacyPolarisAppProvider } from "@shopify/polaris";
@@ -17,25 +16,9 @@ export const loader = async ({ request }: LoaderFunctionArgs) => {
 
 export default function App() {
   const { apiKey } = useLoaderData<typeof loader>();
-  const navigate = useNavigate();
 
-  // Handle shopify:navigate events from Polaris web components (s-button, s-link)
-  // This bridges the gap between web components using href and React Router navigation
-  useEffect(() => {
-    const handleNavigate = (event: Event) => {
-      const customEvent = event as CustomEvent<{ href: string }>;
-      const href = customEvent.detail?.href || (event.target as HTMLElement)?.getAttribute?.('href');
-      if (href) {
-        event.preventDefault();
-        navigate(href);
-      }
-    };
-
-    document.addEventListener('shopify:navigate', handleNavigate);
-    return () => {
-      document.removeEventListener('shopify:navigate', handleNavigate);
-    };
-  }, [navigate]);
+  // NOTE: Navigation is handled natively by App Bridge for s-button/s-link with href
+  // Use React Router's navigate() via onClick handlers for programmatic navigation
 
   return (
     <AppProvider embedded apiKey={apiKey}>
