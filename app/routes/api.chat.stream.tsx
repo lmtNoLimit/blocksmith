@@ -2,22 +2,32 @@ import type { ActionFunctionArgs } from "react-router";
 import { authenticate } from "../shopify.server";
 import { chatService } from "../services/chat.server";
 import { aiService } from "../services/ai.server";
-import { extractCodeFromResponse, validateLiquidCompleteness, mergeResponses } from "../utils/code-extractor";
-import { summarizeOldMessages, buildContinuationPrompt } from "../utils/context-builder";
+import { summarizeOldMessages } from "../utils/context-builder";
 import { sanitizeUserInput, sanitizeLiquidCode } from "../utils/input-sanitizer";
 import { checkRefinementAccess } from "../services/feature-gate.server";
 import { logGeneration } from "../services/generation-log.server";
 import { trackGeneration } from "../services/usage-tracking.server";
 import { getSubscription } from "../services/billing.server";
-import { parseCROReasoning, extractCodeWithoutReasoning, hasCROReasoning, type CROReasoning } from "../utils/cro-reasoning-parser";
+import { parseCROReasoning, hasCROReasoning, type CROReasoning } from "../utils/cro-reasoning-parser";
 import type { ConversationContext } from "../types/ai.types";
 
 // Constants for input validation
 const MAX_CONTENT_LENGTH = 10000; // 10K chars max
 const MAX_CODE_LENGTH = 100000; // 100K chars max for Liquid code
 
-// Auto-continuation constants
-const MAX_CONTINUATIONS = 2; // Hard limit to prevent infinite loops
+/**
+ * Extract raw Liquid from marker-wrapped response
+ * Returns content between ===START LIQUID=== and ===END LIQUID===
+ * Fallback: If markers not found, return full content as-is (validated decision)
+ */
+function extractFromMarkers(content: string): string | null {
+  const match = content.match(/===START LIQUID===\s*([\s\S]*?)\s*===END LIQUID===/);
+  if (match) {
+    return match[1].trim();
+  }
+  // Fallback: store full response if markers missing
+  return content.trim() || null;
+}
 
 /**
  * SSE streaming endpoint for chat messages
@@ -120,13 +130,9 @@ export async function action({ request }: ActionFunctionArgs) {
 
         let fullContent = '';
         let tokenCount = 0;
-        let continuationCount = 0;
-        let lastFinishReason: string | undefined;
 
         // Stream AI response using real Gemini streaming
-        const generator = aiService.generateWithContext(sanitizedContent, context, {
-          onFinishReason: (reason) => { lastFinishReason = reason; }
-        });
+        const generator = aiService.generateWithContext(sanitizedContent, context);
 
         for await (const token of generator) {
           fullContent += token;
@@ -142,103 +148,16 @@ export async function action({ request }: ActionFunctionArgs) {
           );
         }
 
-        // Auto-continuation logic (feature flag controlled)
-        if (process.env.FLAG_AUTO_CONTINUE === 'true') {
-          let validation = validateLiquidCompleteness(fullContent);
-
-          // Continue if truncated (MAX_TOKENS) or validation fails, max 2 attempts
-          while (!validation.isComplete && continuationCount < MAX_CONTINUATIONS) {
-            continuationCount++;
-
-            // Notify client of continuation attempt
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: 'continuation_start',
-                  data: {
-                    attempt: continuationCount,
-                    reason: lastFinishReason === 'MAX_TOKENS' ? 'token_limit' : 'incomplete_code',
-                    errors: validation.errors.map(e => e.message)
-                  }
-                })}\n\n`
-              )
-            );
-
-            // Build continuation prompt with validation context
-            const continuationPrompt = buildContinuationPrompt(
-              sanitizedContent,
-              fullContent,
-              validation.errors
-            );
-
-            // Create continuation context with partial response
-            const continuationContext: ConversationContext = {
-              ...context,
-              currentCode: fullContent, // Include partial as context
-            };
-
-            // Stream continuation response
-            let continuationContent = '';
-            const continuationGen = aiService.generateWithContext(
-              continuationPrompt,
-              continuationContext,
-              { onFinishReason: (reason) => { lastFinishReason = reason; } }
-            );
-
-            for await (const token of continuationGen) {
-              continuationContent += token;
-              tokenCount += estimateTokens(token);
-
-              controller.enqueue(
-                encoder.encode(
-                  `data: ${JSON.stringify({
-                    type: 'content_delta',
-                    data: { content: token },
-                  })}\n\n`
-                )
-              );
-            }
-
-            // Merge responses with overlap detection
-            fullContent = mergeResponses(fullContent, continuationContent);
-
-            // Re-validate merged content
-            validation = validateLiquidCompleteness(fullContent);
-
-            // Notify client of continuation result
-            controller.enqueue(
-              encoder.encode(
-                `data: ${JSON.stringify({
-                  type: 'continuation_complete',
-                  data: {
-                    attempt: continuationCount,
-                    isComplete: validation.isComplete,
-                    totalLength: fullContent.length
-                  }
-                })}\n\n`
-              )
-            );
-          }
-        }
-
-        // Extract CRO reasoning if present (Phase 3)
+        // Extract CRO reasoning if present (preserved from Phase 3)
         let croReasoning: CROReasoning | null = null;
-        let contentForExtraction = fullContent;
-
         if (hasCROReasoning(fullContent)) {
           croReasoning = parseCROReasoning(fullContent);
-          // Remove reasoning block from content before code extraction
-          // This ensures clean code storage while preserving reasoning separately
-          contentForExtraction = extractCodeWithoutReasoning(fullContent);
         }
 
-        // Extract code from completed response (without reasoning block)
-        const extraction = extractCodeFromResponse(contentForExtraction);
-
-        // Sanitize extracted code to prevent XSS
-        const sanitizedCode = extraction.hasCode && extraction.code
-          ? sanitizeLiquidCode(extraction.code)
-          : undefined;
+        // Extract code from markers (simplified - no complex extraction/validation)
+        const rawCode = extractFromMarkers(fullContent);
+        const sanitizedCode = rawCode ? sanitizeLiquidCode(rawCode) : undefined;
+        const hasCode = !!sanitizedCode;
 
         // Save assistant message
         const assistantMessage = await chatService.addAssistantMessage(
@@ -250,7 +169,7 @@ export async function action({ request }: ActionFunctionArgs) {
         );
 
         // Track generation for ALL tiers when code is generated
-        if (extraction.hasCode) {
+        if (hasCode) {
           try {
             const subscription = await getSubscription(shop);
             const userTier = subscription?.planName ?? "free";
@@ -288,26 +207,16 @@ export async function action({ request }: ActionFunctionArgs) {
           }
         }
 
-        // Determine completion status for Phase 4 UI feedback
-        const validation = process.env.FLAG_AUTO_CONTINUE === 'true'
-          ? validateLiquidCompleteness(fullContent)
-          : { isComplete: true };
-        const wasComplete = validation.isComplete;
-
-        // Send completion event with Phase 4 metadata + Phase 3 CRO reasoning
-        // NOTE: codeSnapshot is NOT sent via SSE - client extracts locally from
-        // streamed content to avoid SSE chunking issues with large payloads
+        // Send completion event with CRO reasoning and code snapshot
         controller.enqueue(
           encoder.encode(
             `data: ${JSON.stringify({
               type: 'message_complete',
               data: {
                 messageId: assistantMessage.id,
-                hasCode: extraction.hasCode,
-                wasComplete, // Phase 4: true if code complete after all continuations
-                continuationCount, // Phase 4: number of continuation attempts
-                // Phase 3: CRO reasoning data (null if not a recipe-based generation)
-                croReasoning: croReasoning,
+                hasCode,
+                codeSnapshot: sanitizedCode, // Server sends extracted code to client
+                croReasoning,
                 hasCROReasoning: croReasoning !== null,
               },
             })}\n\n`
