@@ -1,0 +1,115 @@
+SCOUT REPORT SUMMARY: AI Chat/Response Mechanism
+================================================
+
+Report Location: /Users/lmtnolimit/projects/blocksmith/plans/reports/scout-260201-0903-ai-chat-streaming.md
+
+QUICK FILE INDEX
+================
+
+CORE AI SERVICES (5 files)
+- app/services/ai.server.ts ..................... Main Gemini integration, streaming, continuations
+- app/services/chat.server.ts .................. Conversation persistence, message management
+- app/services/cro-recipe.server.ts ........... CRO recipe templates & context injection
+- app/services/section.server.ts .............. Section persistence, Liquid sanitization
+- app/services/generation-log.server.ts ....... Immutable audit trail & billing
+
+API ENDPOINTS (4 files)
+- app/routes/api.chat.stream.tsx .............. SSE streaming endpoint (POST /api/chat/stream)
+- app/routes/api.enhance-prompt.tsx ........... Prompt improvement (POST /api/enhance-prompt)
+- app/routes/api.chat.messages.tsx ............ Conversation history (GET /api/chat/messages)
+- app/routes/api.chat.restore.tsx ............. Version restore (POST /api/chat/restore)
+
+CODE EXTRACTION & LIQUID (4 files)
+- app/utils/code-extractor.ts ................. Server-side parsing, validation, change detection
+- app/utils/code-extraction.client.ts ........ Client-side parsing (pure functions)
+- app/utils/liquid-wrapper.server.ts ......... Settings injection, schema stripping
+- app/utils/input-sanitizer.ts ............... Prompt injection & XSS prevention
+
+PROMPT & CONTEXT (3 files)
+- app/utils/context-builder.ts ............... Prompt composition with conversation context
+- app/utils/cro-reasoning-parser.ts .......... CRO decision extraction from AI responses
+- app/utils/prompt-templates.ts .............. 8 quick-start prompt templates
+
+CHAT UI COMPONENTS (22 files)
+- ChatPanel.tsx .............................. Main container with flex layout
+- useChat.ts ................................ State management, message streaming
+- useStreamingProgress.ts .................... Phase tracking (analyzing → schema → styles → markup)
+- AIResponseCard.tsx ......................... Unified streaming + completed display
+- StreamingCodeBlock.tsx ..................... Code viewer with typing animation
+- MessageList.tsx, MessageItem.tsx, ChatInput.tsx
+- VersionCard.tsx, VersionTimeline.tsx
+- PromptTemplates.tsx, PromptEnhancer.tsx
+- SuggestionChips.tsx, RestoreMessage.tsx
+- And 10+ utility components
+
+CHAT UTILITIES (3 files)
+- app/components/chat/utils/changes-extractor.ts ....... Parse change descriptions
+- app/components/chat/utils/section-type-detector.ts .. Identify section type (hero, newsletter, etc.)
+- app/components/chat/utils/suggestion-engine.ts ...... 3-tier contextual suggestions
+
+TYPE DEFINITIONS (2 files)
+- app/types/ai.types.ts ....................... Streaming & context types
+- app/types/chat.types.ts ..................... Message & conversation types
+
+TESTS (10+ files)
+- All core services & utilities have test suites
+- Components have integration tests
+
+KEY INTEGRATION FLOW
+====================
+
+1. USER ENTERS PROMPT
+   → sanitizeUserInput() [input-sanitizer.ts]
+   → buildConversationPrompt() [context-builder.ts]
+
+2. API CALL
+   → POST /api/chat/stream [api.chat.stream.tsx]
+   → aiService.generateSection() [ai.server.ts]
+
+3. STREAMING
+   → Gemini API returns tokens via SSE
+   → useStreamingProgress tracks 5 phases
+   → updatePhase() detects {% schema %}, {% style %} triggers
+
+4. CODE EXTRACTION
+   → extractCodeFromResponse() [code-extractor.ts]
+   → validateLiquidCompleteness() checks for truncation
+   → If incomplete → auto-continue (max 2x)
+
+5. PERSISTENCE
+   → chatService.addAssistantMessage() [chat.server.ts]
+   → logGeneration() [generation-log.server.ts]
+   → extractChanges() for UI display [changes-extractor.ts]
+
+6. UI DISPLAY
+   → AIResponseCard shows streaming phases
+   → Shows change bullets after completion
+   → Suggestion engine provides refinement prompts
+
+KEY LIMITS & CONSTANTS
+======================
+
+User message: 10,000 chars max
+Liquid code: 100,000 chars max
+Settings: 70,000 chars base64 max
+Gemini output: 65,536 tokens max
+Auto-continuations: 2 attempts max
+Rate limit (enhance): 10 requests/min per shop
+Change bullets: 5 max displayed
+Section detection threshold: 2 pattern matches min
+
+SECURITY FEATURES
+==================
+
+✓ Prompt injection detection & filtering
+✓ XSS pattern detection in Liquid
+✓ Shop isolation on all endpoints
+✓ Input size limits (DoS prevention)
+✓ Rate limiting on API endpoints
+✓ Control character stripping
+✓ Base64 encoding checks for data: URIs
+
+TOTAL FILES MAPPED: 45+
+CATEGORIES: 10 (Services, Endpoints, Extraction, Context, UI, Utilities, Types, Tests, etc.)
+
+For detailed analysis, see: scout-260201-0903-ai-chat-streaming.md
