@@ -7,7 +7,6 @@ import { useReducer, useCallback, useRef, useEffect, useState } from 'react';
 import type { UIMessage, StreamEvent, GenerationStatus } from '../../../types';
 import { parseError, formatErrorMessage, createUpgradeError, type ChatError, type ApiErrorResponse } from '../../../utils/error-handler';
 import { useStreamingProgress, type StreamingProgress } from './useStreamingProgress';
-import { extractCodeFromContent, sanitizeLiquidCode } from '../../../utils/code-extraction.client';
 
 interface FailedMessage {
   content: string;
@@ -116,13 +115,9 @@ export interface UseChatOptions {
   onCodeUpdate?: (code: string) => void;
 }
 
-// Initial generation status (Phase 4: UI Feedback)
+// Initial generation status (simplified - server handles continuation)
 const initialGenerationStatus: GenerationStatus = {
   isGenerating: false,
-  isContinuing: false,
-  continuationAttempt: 0,
-  wasComplete: true,
-  continuationCount: 0,
 };
 
 export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOptions) {
@@ -170,14 +165,8 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
     currentGenerationIdRef.current = generationId;
     console.log('[useChat] Starting generation:', generationId, 'skipAddMessage:', skipAddMessage);
 
-    // Phase 4: Reset generation status for new stream
-    setGenerationStatus({
-      isGenerating: true,
-      isContinuing: false,
-      continuationAttempt: 0,
-      wasComplete: true,
-      continuationCount: 0,
-    });
+    // Set generation status
+    setGenerationStatus({ isGenerating: true });
 
     // Abort any existing request
     abortControllerRef.current?.abort();
@@ -230,10 +219,6 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
       const decoder = new TextDecoder();
       let assistantContent = '';
       let codeSnapshot: string | undefined;
-      let messageChanges: string[] | undefined;
-      // Phase 4: Track completion metadata from server
-      let wasComplete = true;
-      let continuationCount = 0;
 
       // Store server's real message ID from message_complete event
       let serverMessageId: string | undefined;
@@ -275,39 +260,13 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
                   }
                   break;
 
-                // Phase 4: Handle continuation start event
-                case 'continuation_start':
-                  continuationCount = event.data.attempt ?? 1;
-                  setGenerationStatus((prev: GenerationStatus) => ({
-                    ...prev,
-                    isContinuing: true,
-                    continuationAttempt: event.data.attempt ?? 1,
-                  }));
-                  break;
-
-                // Phase 4: Handle continuation complete event
-                case 'continuation_complete':
-                  setGenerationStatus((prev: GenerationStatus) => ({
-                    ...prev,
-                    isContinuing: false,
-                    wasComplete: event.data.isComplete ?? true,
-                    continuationCount: event.data.attempt ?? prev.continuationCount,
-                  }));
-                  break;
-
                 case 'message_complete':
                   // Capture server's real message ID to sync client state with DB
                   serverMessageId = event.data.messageId;
-                  // Phase 4: Capture completion metadata (ignore server codeSnapshot - extract locally)
-                  wasComplete = event.data.wasComplete ?? true;
-                  continuationCount = event.data.continuationCount ?? 0;
 
-                  // CLIENT-SIDE CODE EXTRACTION: Extract from full accumulated content
-                  // This avoids SSE chunking issues with large codeSnapshot payloads
-                  const extraction = extractCodeFromContent(assistantContent);
-                  if (extraction.hasCode && extraction.code) {
-                    codeSnapshot = sanitizeLiquidCode(extraction.code);
-                    messageChanges = extraction.changes;
+                  // Use server-provided code directly (no client extraction)
+                  if (event.data.hasCode && event.data.codeSnapshot) {
+                    codeSnapshot = event.data.codeSnapshot;
                   }
 
                   if (codeSnapshot && onCodeUpdate) {
@@ -332,19 +291,12 @@ export function useChat({ conversationId, currentCode, onCodeUpdate }: UseChatOp
         role: 'assistant',
         content: assistantContent,
         codeSnapshot,
-        changes: messageChanges, // Phase 3: include change bullets
         createdAt: new Date(),
       };
       dispatch({ type: 'COMPLETE_STREAMING', message: assistantMessage });
 
-      // Phase 4: Update final generation status
-      setGenerationStatus({
-        isGenerating: false,
-        isContinuing: false,
-        continuationAttempt: 0,
-        wasComplete,
-        continuationCount,
-      });
+      // Update final generation status
+      setGenerationStatus({ isGenerating: false });
 
     } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {

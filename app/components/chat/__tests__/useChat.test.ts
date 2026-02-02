@@ -302,10 +302,10 @@ describe('useChat', () => {
         useChat({ conversationId: mockConversationId, onCodeUpdate })
       );
 
-      // Code must be in content_delta events (client-side extraction)
-      const codeContent = '```liquid\n<div>{{ product.title }}</div>\n```';
+      const codeContent = '<div>{{ product.title }}</div>';
 
       // Create a mock response with streaming body that sends content_delta then message_complete
+      // Server provides codeSnapshot directly in message_complete event
       const mockBody = {
         getReader: jest.fn(() => ({
           read: jest.fn()
@@ -314,7 +314,7 @@ describe('useChat', () => {
               value: new TextEncoder().encode(
                 `data: ${JSON.stringify({
                   type: 'content_delta',
-                  data: { content: codeContent },
+                  data: { content: 'Here is the code...' },
                 })}\n`
               ),
             })
@@ -323,7 +323,11 @@ describe('useChat', () => {
               value: new TextEncoder().encode(
                 `data: ${JSON.stringify({
                   type: 'message_complete',
-                  data: { messageId: 'msg-123' },
+                  data: {
+                    messageId: 'msg-123',
+                    hasCode: true,
+                    codeSnapshot: codeContent,
+                  },
                 })}\n`
               ),
             })
@@ -342,9 +346,9 @@ describe('useChat', () => {
         result.current.sendMessage('Update code');
       });
 
-      // Client-side extraction gives us the code without markdown fences
+      // Server sends codeSnapshot directly via message_complete event
       await waitFor(() => {
-        expect(onCodeUpdate).toHaveBeenCalledWith('<div>{{ product.title }}</div>');
+        expect(onCodeUpdate).toHaveBeenCalledWith(codeContent);
       });
     });
   });
