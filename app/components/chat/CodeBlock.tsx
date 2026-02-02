@@ -11,9 +11,8 @@ export interface CodeBlockProps {
   code: string;
   language?: string;
   showLineNumbers?: boolean;
-  // Phase 4: Completion status for badges
+  // Completion status for badges
   completionStatus?: CompletionStatus;
-  continuationCount?: number;
 }
 
 // Minimal inline styles for code block (dark theme not in Polaris)
@@ -50,7 +49,6 @@ export function CodeBlock({
   language = 'liquid',
   showLineNumbers = true,
   completionStatus,
-  continuationCount = 0,
 }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
@@ -78,17 +76,11 @@ export function CodeBlock({
         <s-stack direction="inline" justifyContent="space-between" alignItems="center">
           <s-stack direction="inline" gap="small" alignItems="center">
             <s-text color="subdued">{language.toUpperCase()}</s-text>
-            {/* Phase 4: Completion status badges */}
+            {/* Completion status badges */}
             {completionStatus === 'potentially-incomplete' && (
               <s-tooltip id="incomplete-tooltip">
                 <span slot="content">AI output may be incomplete. Some code may be missing.</span>
                 <s-badge tone="warning">Potentially Incomplete</s-badge>
-              </s-tooltip>
-            )}
-            {completionStatus === 'complete' && continuationCount > 0 && (
-              <s-tooltip id="autocomplete-tooltip">
-                <span slot="content">AI continued {continuationCount} time(s) to complete this section.</span>
-                <s-badge tone="success">Auto-completed</s-badge>
               </s-tooltip>
             )}
           </s-stack>

@@ -1,6 +1,5 @@
 import type { ConversationContext } from '../types/ai.types';
 import type { ModelMessage } from '../types/chat.types';
-import type { LiquidValidationError } from './code-extractor';
 import type { CRORecipe } from '@prisma/client';
 
 /**
@@ -17,49 +16,23 @@ export interface RecipeContextValues {
 /**
  * Chat-specific system prompt extension
  * Appended to base SYSTEM_PROMPT for conversational context
+ * Uses marker format for consistent extraction
  */
 const CHAT_SYSTEM_EXTENSION = `
 
 === CONVERSATION MODE ===
 
-You are now in conversation mode, helping the user iteratively refine their Liquid section.
+For code refinements, output the COMPLETE updated section.
+Wrap output: ===START LIQUID=== [full code] ===END LIQUID===
 
-RESPONSE RULES:
-1. If user asks for code changes, output the COMPLETE updated section code
-2. Include ALL code (schema, style, markup) - never output partial sections
-3. Wrap code in \`\`\`liquid ... \`\`\` fences
-4. At the END of your code block, add a CHANGES comment (see format below)
-5. If user asks a question (not requesting changes), answer without code
-
-=== CHANGES COMMENT FORMAT (REQUIRED for code responses) ===
-
-At the very end of your code block (after {% endschema %} or closing HTML), add:
-<!-- CHANGES: ["Change 1", "Change 2", "Change 3"] -->
-
-Rules for CHANGES:
-- List 3-5 user-visible changes
-- Focus on what the user sees, not technical implementation details
-- Use present tense verbs: "Added", "Changed", "Removed", "Updated"
-- Be specific but concise (max 60 chars per item)
-- MUST be valid JSON array
-
-Examples:
-<!-- CHANGES: ["Added hero section with gradient background", "Set heading to bold 48px", "Added CTA button with hover effect"] -->
-<!-- CHANGES: ["Changed background color to #1a1a2e", "Increased padding to 60px"] -->
-<!-- CHANGES: ["Removed sidebar navigation", "Added mobile-responsive grid layout"] -->
-
-CHANGE REQUEST EXAMPLES:
-- "Make the heading larger" → Increase font-size in CSS, output full section with CHANGES comment
-- "Add a button" → Add button markup + settings, output full section with CHANGES comment
-- "Change colors to blue" → Update color defaults/CSS, output full section with CHANGES comment
-
-QUESTION EXAMPLES:
-- "What settings does this have?" → List settings without code output (no CHANGES needed)
-- "How do I use this?" → Explain usage without code output (no CHANGES needed)
+RULES:
+- Always output complete section (schema + style + markup)
+- NO markdown fences, NO explanations before/after code
+- Base changes on provided current code
+- For questions (not code changes), answer without code markers
 
 CONTEXT:
-The user's current section code is provided below. Always base your changes on this code.
-Never start from scratch unless explicitly asked.`;
+The user's current section code is provided below. Always base changes on this code.`;
 
 /**
  * Build full prompt with conversation context
@@ -150,48 +123,6 @@ export function summarizeOldMessages(messages: ModelMessage[]): string {
   summary.push(`(${userMessages} refinement requests made)`);
 
   return summary.join('\n');
-}
-
-/**
- * Build continuation prompt when AI response was truncated
- * Provides context about what was cut off and hints for completion
- *
- * @param originalPrompt - The original user request
- * @param partialResponse - The truncated AI response
- * @param validationErrors - Errors from validateLiquidCompleteness
- */
-export function buildContinuationPrompt(
-  originalPrompt: string,
-  partialResponse: string,
-  validationErrors: LiquidValidationError[]
-): string {
-  // Take last 500 chars for context (avoids token bloat)
-  const lastChunk = partialResponse.slice(-500);
-
-  // Extract missing tag names for hints
-  const missingTags = validationErrors
-    .filter(e => e.type === 'unclosed_liquid_tag')
-    .map(e => e.tag)
-    .filter((tag): tag is string => !!tag);
-
-  const missingTagsHint = missingTags.length > 0
-    ? `\n\nMissing closing tags: ${missingTags.map(t => `{% end${t} %}`).join(', ')}`
-    : '';
-
-  return `CONTINUE generating the Liquid section. Your previous response was truncated.
-
-IMPORTANT RULES:
-- Continue EXACTLY where you left off
-- Do NOT repeat content already generated
-- Complete all unclosed tags and sections
-- Maintain proper indentation matching previous code
-
-Last part of your response:
-"""
-${lastChunk}
-"""${missingTagsHint}
-
-Continue from here, completing all unclosed tags and the section.`;
 }
 
 /**

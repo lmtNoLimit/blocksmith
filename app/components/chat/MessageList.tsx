@@ -87,7 +87,7 @@ export function MessageList({
   isStreaming,
   streamingContent,
   progress,
-  generationStatus,
+  generationStatus: _generationStatus,
   versions = [],
   selectedVersionId,
   activeVersionId,
@@ -187,18 +187,6 @@ export function MessageList({
                     percentage={progress.percentage}
                     isComplete={progress.isComplete}
                   />
-                )}
-
-                {/* Phase 4: Continuation indicator */}
-                {generationStatus?.isContinuing && (
-                  <s-box padding="small base" background="subdued">
-                    <s-stack direction="inline" gap="small" alignItems="center">
-                      <s-spinner size="base" />
-                      <s-text color="subdued">
-                        Completing section (attempt {generationStatus.continuationAttempt}/2)...
-                      </s-text>
-                    </s-stack>
-                  </s-box>
                 )}
 
                 {/* Streaming code block (if code detected) */}

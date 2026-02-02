@@ -213,30 +213,12 @@ describe('CodeBlock', () => {
       expect(tooltip).toBeInTheDocument();
     });
 
-    it('renders auto-completed badge when complete with continuations', () => {
-      render(
-        <CodeBlock code="test" completionStatus="complete" continuationCount={2} />
-      );
-
-      expect(screen.getByText('Auto-completed')).toBeInTheDocument();
-    });
-
-    it('does not render auto-completed badge when continuationCount is 0', () => {
+    it('does not render badges when complete', () => {
       const { container } = render(
-        <CodeBlock code="test" completionStatus="complete" continuationCount={0} />
+        <CodeBlock code="test" completionStatus="complete" />
       );
 
       expect(container.querySelector('s-badge')).not.toBeInTheDocument();
-    });
-
-    it('renders tooltip with continuation count for auto-completed', () => {
-      const { container } = render(
-        <CodeBlock code="test" completionStatus="complete" continuationCount={1} />
-      );
-
-      const tooltip = container.querySelector('s-tooltip#autocomplete-tooltip');
-      expect(tooltip).toBeInTheDocument();
-      expect(screen.getByText(/AI continued 1 time\(s\)/)).toBeInTheDocument();
     });
 
     it('does not render badges when generating', () => {
