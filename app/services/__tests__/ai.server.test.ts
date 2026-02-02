@@ -39,7 +39,7 @@ describe('AIService', () => {
   describe('SYSTEM_PROMPT', () => {
     it('exports SYSTEM_PROMPT constant', () => {
       expect(SYSTEM_PROMPT).toBeDefined();
-      expect(SYSTEM_PROMPT).toContain('Shopify theme developer');
+      expect(SYSTEM_PROMPT).toContain('Shopify Liquid code generator');
     });
   });
 

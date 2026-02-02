@@ -53,33 +53,14 @@ export interface SendMessageResponse {
 export type StreamEventType =
   | 'message_start'
   | 'content_delta'
-  | 'continuation_start'
-  | 'continuation_complete'
   | 'message_complete'
   | 'error';
 
-// Continuation start event data (Phase 4: UI Feedback)
-export interface ContinuationStartData {
-  attempt: number;
-  reason: 'token_limit' | 'incomplete_code';
-  errors: string[];
-}
-
-// Continuation complete event data (Phase 4: UI Feedback)
-export interface ContinuationCompleteData {
-  attempt: number;
-  isComplete: boolean;
-  totalLength: number;
-}
-
-// Message complete event data with completion metadata (Phase 4: UI Feedback)
-// NOTE: codeSnapshot and changes are NOT sent via SSE - client extracts locally
-// from streamed content to avoid SSE chunking issues with large payloads
+// Message complete event data
 export interface MessageCompleteData {
   messageId?: string;
   hasCode?: boolean;
-  wasComplete?: boolean; // true if code is complete (no continuation needed or successful)
-  continuationCount?: number; // number of continuation attempts
+  codeSnapshot?: string;
 }
 
 export interface StreamEvent {
@@ -88,15 +69,11 @@ export interface StreamEvent {
     messageId?: string;
     content?: string;
     error?: string;
-    // Continuation fields (Phase 4)
-    attempt?: number;
-    reason?: 'token_limit' | 'incomplete_code';
-    errors?: string[];
-    isComplete?: boolean;
-    totalLength?: number;
-    wasComplete?: boolean;
-    continuationCount?: number;
     hasCode?: boolean;
+    codeSnapshot?: string; // Server sends extracted code directly
+    // CRO reasoning (Phase 3)
+    croReasoning?: unknown;
+    hasCROReasoning?: boolean;
   };
 }
 
@@ -112,13 +89,9 @@ export interface CodeVersion {
   restoredFromVersion?: number; // source version number if isRestore
 }
 
-// Generation status for UI feedback (Phase 4: UI Feedback)
+// Generation status for UI feedback (simplified - server handles continuation)
 export interface GenerationStatus {
   isGenerating: boolean;
-  isContinuing: boolean;
-  continuationAttempt: number;
-  wasComplete: boolean;
-  continuationCount: number;
 }
 
 // Code completion status for badges (Phase 4: UI Feedback)
